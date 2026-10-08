@@ -18,5 +18,12 @@ authenticated v2 durable wake-acceptance endpoint.
 - An explicit `moltnet send` made during a Daimon wake and the terminal receipt
   fallback share one target-scoped idempotent publication slot. The first
   durable message wins; terminal-only agents still publish through the fallback.
+- Read Daimon's wake receipt as Daimon serves it: `execution_id` and
+  `deferred` are its bookkeeping and decide nothing here; a failed receipt's
+  `text` is a diagnostic and is never published. A receipt the decoder cannot
+  read is retried forever, so a schema drift parks every job.
+- A 404 for a delivery accepted more than a day ago is a compacted receipt:
+  end the job `receipt_unavailable`. A younger 404 is a runtime not yet
+  serving its store, and is retried.
 - Use the shared control loop for Moltnet transport.
 - Do not select engines or coordinate work.

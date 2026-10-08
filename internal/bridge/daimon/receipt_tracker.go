@@ -2,6 +2,7 @@ package daimon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -16,6 +17,12 @@ import (
 var (
 	receiptPollBaseDelay = 500 * time.Millisecond
 	receiptPollMaxDelay  = 30 * time.Second
+	// A receipt Daimon no longer has, for a delivery accepted longer ago than
+	// this, was compacted: Daimon stops any delivery left queued for a day and
+	// later deletes old terminal records. Nothing will ever answer it, so the
+	// job ends instead of being polled forever. A younger 404 is a runtime
+	// that is not serving its store yet, and is retried.
+	receiptUnavailableAfter = 24 * time.Hour
 )
 
 type receiptTracker struct {
@@ -120,6 +127,9 @@ func stopReceiptTimer(timer *time.Timer) {
 
 func (t *receiptTracker) follow(ctx context.Context, job receiptJob) bool {
 	receipt, err := t.fetch(ctx, job)
+	if errors.Is(err, errWakeReceiptNotFound) && time.Since(job.AcceptedAt) > receiptUnavailableAfter {
+		return t.store.MarkTerminal(job.AcceptanceID, receiptJobUnavailable, "", time.Now()) == nil
+	}
 	if err != nil {
 		return false
 	}

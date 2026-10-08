@@ -229,7 +229,7 @@ func TestReceiptTrackerReportsTerminalRuntimeFailureOnceAcrossRestart(t *testing
 	}
 }
 
-func TestDecodeWakeReceiptAllowsLegacyAndEmptyCompletionButRejectsStateLeaks(t *testing.T) {
+func TestDecodeWakeReceiptAcceptsDaimonShapesAndRejectsStateLeaks(t *testing.T) {
 	job := trackerTestJob()
 	acceptance := loop.ControlAcceptance{ID: job.AcceptanceID, AgentID: job.RuntimeAgentID, DeliveryID: job.DeliveryID, RequestDigest: job.RequestDigest}
 	tests := []struct {
@@ -240,7 +240,14 @@ func TestDecodeWakeReceiptAllowsLegacyAndEmptyCompletionButRejectsStateLeaks(t *
 	}{
 		{name: "empty reply", body: trackerReceiptJSON(t, job, "completed", "", ""), ok: true, hasText: true},
 		{name: "legacy completion", body: strings.Replace(trackerReceiptJSON(t, job, "completed", "", ""), `,"text":""`, "", 1), ok: true},
-		{name: "failed text leak", body: strings.Replace(trackerReceiptJSON(t, job, "failed", "", "engine_failed"), `,"code":"engine_failed"`, `,"code":"engine_failed","text":"leak"`, 1)},
+		// Daimon keeps a failure's diagnostic as text; it is read, never published.
+		{name: "failed diagnostic", body: strings.Replace(trackerReceiptJSON(t, job, "failed", "", "engine_failed"), `,"code":"engine_failed"`, `,"code":"engine_failed","text":"CLI engine exited 1"`, 1), ok: true, hasText: true},
+		// The shape Daimon has served since its batched executions: refusing it
+		// left every production receipt unreadable and every job pending.
+		{name: "daimon execution bookkeeping", body: strings.Replace(trackerReceiptJSON(t, job, "completed", "", ""), `"state":"completed"`, `"state":"completed","execution_id":"2d221b2a-6dd2-4b6c-80cb-a9834d2f85cd","deferred":false`, 1), ok: true, hasText: true},
+		{name: "deferred must be a boolean", body: strings.Replace(trackerReceiptJSON(t, job, "accepted", "", ""), `"state":"accepted"`, `"state":"accepted","deferred":"no"`, 1)},
+		{name: "stale queued delivery stopped", body: trackerReceiptJSON(t, job, "stopped", "", "queued_wake_stopped"), ok: true},
+		{name: "active wake aborted", body: trackerReceiptJSON(t, job, "failed", "", "active_wake_aborted"), ok: true},
 		{name: "unknown field", body: strings.Replace(trackerReceiptJSON(t, job, "running", "", ""), `"state":"running"`, `"state":"running","extra":true`, 1)},
 	}
 	for _, test := range tests {
@@ -312,4 +319,85 @@ func useFastReceiptPolling(t *testing.T) {
 	priorBase, priorMax := receiptPollBaseDelay, receiptPollMaxDelay
 	receiptPollBaseDelay, receiptPollMaxDelay = 2*time.Millisecond, 5*time.Millisecond
 	t.Cleanup(func() { receiptPollBaseDelay, receiptPollMaxDelay = priorBase, priorMax })
+}
+
+func TestReceiptTrackerEndsAJobWhoseReceiptDaimonCompacted(t *testing.T) {
+	useFastReceiptPolling(t)
+	var polls atomic.Int32
+	control := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		polls.Add(1)
+		response.WriteHeader(http.StatusNotFound)
+		_, _ = response.Write([]byte(`{"error":"not_found"}`))
+	}))
+	defer control.Close()
+	moltnet := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		t.Error("a compacted receipt must never publish")
+		response.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer moltnet.Close()
+
+	storePath := filepath.Join(t.TempDir(), "private", "receipts.json")
+	config := trackerConfig(control.URL, moltnet.URL, storePath)
+	store, err := openReceiptStore(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := trackerTestJob() // accepted in August: far past the horizon
+	young := trackerTestJob()
+	young.AcceptanceID = "22222222-2222-4222-8222-222222222222"
+	young.DeliveryID, young.Event.ID, young.Event.Message.ID = "moltnet:msg_2", "evt_2", "msg_2"
+	young.AcceptedAt, young.UpdatedAt = time.Now().UTC().Add(-time.Minute), time.Now().UTC().Add(-time.Minute)
+	tracker := newReceiptTracker(store, "daimon-token", loop.NewMoltnetClient(config), config)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := runTracker(ctx, tracker)
+	for _, job := range []receiptJob{old, young} {
+		if err := tracker.Accept(job); err != nil {
+			t.Fatal(err)
+		}
+	}
+	waitFor(t, func() bool { return len(store.Pending()) == 1 && polls.Load() >= 3 })
+	cancel()
+	<-done
+	if pending := store.Pending(); len(pending) != 1 || pending[0].AcceptanceID != young.AcceptanceID {
+		t.Fatalf("a 404 for a minute-old delivery is a runtime not serving yet, and stays pending: %#v", pending)
+	}
+	reopened, err := openReceiptStore(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reopened.data.Jobs[old.AcceptanceID].State; got != receiptJobUnavailable {
+		t.Fatalf("compacted receipt state = %q, want %q", got, receiptJobUnavailable)
+	}
+}
+
+func TestReceiptTrackerClosesADaimonShapedEmptyCompletionWithoutPublishing(t *testing.T) {
+	useFastReceiptPolling(t)
+	job := trackerTestJob()
+	control := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, _ = response.Write([]byte(strings.Replace(trackerReceiptJSON(t, job, "completed", "", ""), `"state":"completed"`, `"state":"completed","execution_id":"2d221b2a-6dd2-4b6c-80cb-a9834d2f85cd","deferred":false`, 1)))
+	}))
+	defer control.Close()
+	moltnet := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		t.Error("an empty completion must never publish")
+		response.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer moltnet.Close()
+	storePath := filepath.Join(t.TempDir(), "private", "receipts.json")
+	config := trackerConfig(control.URL, moltnet.URL, storePath)
+	store, err := openReceiptStore(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tracker := newReceiptTracker(store, "daimon-token", loop.NewMoltnetClient(config), config)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := runTracker(ctx, tracker)
+	if err := tracker.Accept(job); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool { return len(store.Pending()) == 0 })
+	cancel()
+	<-done
+	if got := store.data.Jobs[job.AcceptanceID].State; got != receiptJobNoReply {
+		t.Fatalf("state = %q, want %q", got, receiptJobNoReply)
+	}
 }
