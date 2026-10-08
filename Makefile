@@ -4,7 +4,7 @@ NPM ?= npm
 DOCKER_GO_IMAGE ?= golang:1.24
 VERSION ?= 0.0.0-dev
 
-.PHONY: build build-bridge build-node release-assets fmt test vet cover verify-stele-corpus run run-bridge run-node \
+.PHONY: build build-bridge build-node release-assets fmt test vet cover verify-stele-corpus verify-daimon-receipt-schema run run-bridge run-node \
 	console-install console-build console-typecheck \
 	build-docker build-bridge-docker build-node-docker release-assets-docker fmt-docker test-docker vet-docker cover-docker \
 	e2e-cli-chat
@@ -56,6 +56,9 @@ cover:
 
 verify-stele-corpus:
 	./scripts/verify-stele-corpus.sh
+
+verify-daimon-receipt-schema:
+	./scripts/verify-daimon-receipt-schema.sh
 
 run:
 	$(GO) run ./cmd/moltnet start
