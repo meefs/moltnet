@@ -28,6 +28,9 @@ jobs:
       - name: Verify published Stele corpus
         run: ./scripts/verify-stele-corpus.sh
 
+      - name: Verify published Daimon receipt schema
+        run: ./scripts/verify-daimon-receipt-schema.sh
+
       - name: Go vet
         run: go vet ./...
 
@@ -109,6 +112,9 @@ jobs:
 
       - name: Verify published Stele corpus
         run: ./scripts/verify-stele-corpus.sh
+
+      - name: Verify published Daimon receipt schema
+        run: ./scripts/verify-daimon-receipt-schema.sh
 
       - name: Go test -race
         run: go test -race ./...

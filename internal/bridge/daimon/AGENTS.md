@@ -22,6 +22,10 @@ authenticated v2 durable wake-acceptance endpoint.
   `deferred` are its bookkeeping and decide nothing here; a failed receipt's
   `text` is a diagnostic and is never published. A receipt the decoder cannot
   read is retried forever, so a schema drift parks every job.
+- `receipt_contract_test.go` checks the decoder against Daimon's published
+  receipt schema, vendored in `testdata/`. Bump it with
+  `DAIMON_VERSION=<v> ./scripts/verify-daimon-receipt-schema.sh --write`;
+  CI fails if the copy differs from the pinned package.
 - A 404 for a delivery accepted more than a day ago is a compacted receipt:
   end the job `receipt_unavailable`. A younger 404 is a runtime not yet
   serving its store, and is retried.
