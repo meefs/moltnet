@@ -1,6 +1,8 @@
 package daimon
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,6 +12,11 @@ import (
 )
 
 const wakeReceiptVersion = "noopolis.daimon.wake-receipt-status.v2"
+
+// errWakeReceiptNotFound is Daimon answering 404 for an acceptance id: it
+// compacted the terminal record, or it is not serving its store yet. The
+// tracker tells the two apart by the job's age (receipt_tracker.go).
+var errWakeReceiptNotFound = errors.New("daimon wake receipt is not found")
 
 type wakeReceipt struct {
 	AcceptanceID  string
@@ -25,6 +32,9 @@ type wakeReceipt struct {
 }
 
 func decodeWakeReceipt(response *http.Response, acceptance loop.ControlAcceptance) (wakeReceipt, error) {
+	if response.StatusCode == http.StatusNotFound {
+		return wakeReceipt{}, errWakeReceiptNotFound
+	}
 	if response.StatusCode != http.StatusOK {
 		return wakeReceipt{}, fmt.Errorf("daimon wake receipt returned %s", response.Status)
 	}
@@ -33,7 +43,11 @@ func decodeWakeReceipt(response *http.Response, acceptance loop.ControlAcceptanc
 		return wakeReceipt{}, fmt.Errorf("decode Daimon wake receipt: %w", err)
 	}
 	required := []string{"version", "acceptance_id", "agent_id", "delivery_id", "request_digest", "state", "accepted_at", "updated_at"}
-	allowed := map[string]bool{"code": true, "text": true}
+	// execution_id and deferred are Daimon's own bookkeeping, carried on every
+	// receipt since its batched executions; they decide nothing here. Refusing
+	// them left every receipt since early September unreadable, so no job ever
+	// reached a terminal state and each was re-polled every 30 seconds.
+	allowed := map[string]bool{"code": true, "text": true, "execution_id": true, "deferred": true}
 	for _, field := range required {
 		allowed[field] = true
 		if _, ok := fields[field]; !ok {
@@ -88,6 +102,17 @@ func decodeWakeReceipt(response *http.Response, acceptance loop.ControlAcceptanc
 			return wakeReceipt{}, fmt.Errorf("decode Daimon wake receipt: code is unsupported")
 		}
 	}
+	if raw, ok := fields["execution_id"]; ok {
+		if _, err := requiredBoundedString(fields, "execution_id"); err != nil || len(raw) == 0 {
+			return wakeReceipt{}, fmt.Errorf("decode Daimon wake receipt: execution id is invalid")
+		}
+	}
+	if raw, ok := fields["deferred"]; ok {
+		var deferred bool
+		if err := json.Unmarshal(raw, &deferred); err != nil {
+			return wakeReceipt{}, fmt.Errorf("decode Daimon wake receipt: deferred is invalid")
+		}
+	}
 	if _, ok := fields["text"]; ok {
 		result.Text, err = requiredString(fields, "text")
 		if err != nil || !utf8.ValidString(result.Text) || len(result.Text) > maxStringBytes {
@@ -112,9 +137,8 @@ func validateWakeReceiptFields(receipt wakeReceipt) error {
 			return fmt.Errorf("decode Daimon wake receipt: completed code is invalid")
 		}
 	case "failed", "stopped":
-		if receipt.HasText {
-			return fmt.Errorf("decode Daimon wake receipt: failed text is invalid")
-		}
+		// Daimon keeps a failure's diagnostic as its text. It is never a reply
+		// and is never published; the failure report carries the code only.
 	}
 	return nil
 }
@@ -124,5 +148,5 @@ func validWakeReceiptState(value string) bool {
 }
 
 func validWakeReceiptCode(value string) bool {
-	return value == "engine_failed" || value == "host_stopped" || value == "host_stopping" || value == "queue_full" || value == "unknown_agent"
+	return value == "engine_failed" || value == "host_stopped" || value == "host_stopping" || value == "queue_full" || value == "unknown_agent" || value == "queued_wake_stopped" || value == "active_wake_aborted"
 }

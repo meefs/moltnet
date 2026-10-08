@@ -26,6 +26,7 @@ const (
 	receiptJobNoReply        = "completed_without_reply"
 	receiptJobRuntimeFailed  = "runtime_failed"
 	receiptJobRuntimeStopped = "runtime_stopped"
+	receiptJobUnavailable    = "receipt_unavailable"
 )
 
 type receiptJob struct {
@@ -269,7 +270,7 @@ func validateReceiptJob(job receiptJob) error {
 		return fmt.Errorf("daimon receipt job target is invalid")
 	}
 	switch job.State {
-	case receiptJobPending, receiptJobPublished, receiptJobNoReply, receiptJobRuntimeFailed, receiptJobRuntimeStopped:
+	case receiptJobPending, receiptJobPublished, receiptJobNoReply, receiptJobRuntimeFailed, receiptJobRuntimeStopped, receiptJobUnavailable:
 	default:
 		return fmt.Errorf("daimon receipt job state is invalid")
 	}
