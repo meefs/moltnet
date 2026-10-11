@@ -14,7 +14,11 @@ func (s *Service) ReconcileRoomContext(ctx context.Context, request protocol.Cre
 	if err := validateRoomCredentialMode(ctx, request.Credential); err != nil {
 		return protocol.Room{}, err
 	}
-	room, err := roomFromCreateRequest(s.networkID, request, s.now().UTC())
+	now, err := s.now()
+	if err != nil {
+		return protocol.Room{}, err
+	}
+	room, err := roomFromCreateRequest(s.networkID, request, now)
 	if err != nil {
 		return protocol.Room{}, err
 	}

@@ -51,6 +51,10 @@ func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	clockIdentity, err := config.Clock.Identity()
+	if err != nil {
+		return nil, err
+	}
 	if err := validateRoomCredentials(config.Rooms, config.Auth.Mode); err != nil {
 		return nil, err
 	}
@@ -101,6 +105,7 @@ func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
 	}
 
 	handler := transport.NewHTTPHandler(service, policy, transport.HTTPConfig{
+		ClockIdentity: clockIdentity,
 		Console: transport.ConsoleConfig{
 			Analytics: transport.ConsoleAnalyticsConfig{
 				Provider:      config.Console.Analytics.Provider,

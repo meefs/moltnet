@@ -112,11 +112,16 @@ func newFilteredEventStreamHandler(
 			return
 		}
 
+		stream, err := service.SubscribeFromContext(request.Context(), readLastEventID(request))
+		if err != nil {
+			writeError(response, statusForError(err), err)
+			return
+		}
+
 		response.Header().Set("Content-Type", "text/event-stream")
 		response.Header().Set("Cache-Control", "no-cache")
 		response.Header().Set("Connection", "keep-alive")
 
-		stream := service.SubscribeFrom(request.Context(), readLastEventID(request))
 		if _, err := fmt.Fprint(response, ": stream-open\n\n"); err != nil {
 			return
 		}

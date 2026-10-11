@@ -119,6 +119,9 @@ func LoadFile(path string) (Config, error) {
 	}
 
 	var config Config
+	if err := ValidateClockField(bytes, false); err != nil {
+		return Config{}, fmt.Errorf("decode bridge config: %w", err)
+	}
 	if err := json.Unmarshal(bytes, &config); err != nil {
 		return Config{}, fmt.Errorf("decode bridge config: %w", err)
 	}

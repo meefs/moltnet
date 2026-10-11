@@ -7,6 +7,7 @@ import (
 
 	authn "github.com/noopolis/moltnet/internal/auth"
 	"github.com/noopolis/moltnet/internal/observability"
+	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
@@ -32,7 +33,7 @@ type Service interface {
 	JoinRoomContext(ctx context.Context, roomID string, request protocol.JoinRoomRequest) (protocol.Room, error)
 	RemoveRoomContext(ctx context.Context, roomID string) (protocol.RemoveResult, error)
 	UpdateRoomMembers(ctx context.Context, roomID string, request protocol.UpdateRoomMembersRequest) (protocol.Room, error)
-	RegisterAgentContext(ctx context.Context, request protocol.RegisterAgentRequest) (protocol.AgentRegistration, error)
+	RegisterAgentContext(ctx context.Context, request protocol.RegisterAgentRequest) (store.RegistrationResult, error)
 	RemoveAgentContext(ctx context.Context, agentID string) (protocol.RemoveResult, error)
 	AgentConnected(ctx context.Context, agent protocol.Actor)
 	AgentDisconnected(ctx context.Context, agent protocol.Actor, reason string, err error)
@@ -47,7 +48,7 @@ type Service interface {
 	SendMessageContext(ctx context.Context, request protocol.SendMessageRequest) (protocol.MessageAccepted, error)
 	AuthenticateAgentTokenContext(ctx context.Context, token string) (authn.Claims, bool, error)
 	Subscribe(ctx context.Context) <-chan protocol.Event
-	SubscribeFrom(ctx context.Context, lastEventID string) <-chan protocol.Event
+	SubscribeFromContext(ctx context.Context, lastEventID string) (<-chan protocol.Event, error)
 }
 
 func NewHTTPHandler(service Service, policy *authn.Policy, configs ...HTTPConfig) http.Handler {
@@ -393,5 +394,5 @@ func NewHTTPHandler(service Service, policy *authn.Policy, configs ...HTTPConfig
 		handleAttachment(response, request, service, policy, attachments)
 	}))
 	mux.HandleFunc("GET /v1/events/stream", authorizedEventStream(policy, service, service, sseLimiter))
-	return withObservability(mux)
+	return withClockIdentity(withObservability(mux), config.ClockIdentity)
 }

@@ -1,7 +1,8 @@
 package transport
 
 type HTTPConfig struct {
-	Console ConsoleConfig
+	ClockIdentity string
+	Console       ConsoleConfig
 }
 
 type ConsoleConfig struct {

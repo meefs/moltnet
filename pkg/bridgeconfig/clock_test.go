@@ -86,27 +86,27 @@ func TestClockFormulaAndInverse(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := time.Date(2025, 10, 1, 10, 0, 2, 468000000, time.UTC)
-	if !now().Equal(want) {
-		t.Fatalf("got %s, want %s", now(), want)
+	if !readClock(t, now).Equal(want) {
+		t.Fatalf("got %s, want %s", readClock(t, now), want)
 	}
 	restored, err := config.RealTime(want)
 	if err != nil || !restored.Equal(real.Truncate(time.Millisecond)) {
 		t.Fatalf("inverse: %s, %v", restored, err)
 	}
 	real = real.Add(time.Second)
-	if !now().Equal(want.Add(time.Second)) {
+	if !readClock(t, now).Equal(want.Add(time.Second)) {
 		t.Fatal("clock did not advance with elapsed real time")
 	}
 	// Date.parse truncates sub-ms origin precision; do not round.
 	config.Origin = "2025-10-01T10:00:00.123999Z"
 	now, err = config.Now(func() time.Time { return time.UnixMilli(config.AnchorEpochMS) })
-	if err != nil || now().Nanosecond() != 123000000 {
+	if err != nil || readClock(t, now).Nanosecond() != 123000000 {
 		t.Fatalf("origin precision: %v", err)
 	}
 	// A multi-century offset must not saturate a time.Duration.
 	config.Origin = "1500-01-01T00:00:00Z"
 	now, err = config.Now(func() time.Time { return time.UnixMilli(config.AnchorEpochMS) })
-	if err != nil || now().Year() != 1500 {
+	if err != nil || readClock(t, now).Year() != 1500 {
 		t.Fatalf("wide offset: %v", err)
 	}
 }
@@ -115,11 +115,11 @@ func TestClockDefaultAndResultBounds(t *testing.T) {
 	real := time.Now()
 	var absent *ClockConfig
 	now, err := absent.Now(func() time.Time { return real })
-	if err != nil || now() != real {
+	if err != nil || readClock(t, now) != real {
 		t.Fatal("absent clock changed real time or precision")
 	}
 	now, err = absent.Now(nil)
-	if err != nil || now().Before(real) || now().After(time.Now()) {
+	if err != nil || readClock(t, now).Before(real) || readClock(t, now).After(time.Now()) {
 		t.Fatal("default is not time.Now")
 	}
 	config := ClockConfig{Version: TaskClockVersion, Origin: "9999-12-31T23:59:59.999Z", AnchorEpochMS: 0}
@@ -130,4 +130,13 @@ func TestClockDefaultAndResultBounds(t *testing.T) {
 	if _, err := config.RealTime(time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)); err == nil {
 		t.Fatal("accepted unrepresentable inverse")
 	}
+}
+
+func readClock(t *testing.T, now func() (time.Time, error)) time.Time {
+	t.Helper()
+	value, err := now()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value
 }

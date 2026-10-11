@@ -24,6 +24,11 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 		return protocol.MessageAccepted{}, err
 	}
 
+	now, err := s.now()
+	if err != nil {
+		return protocol.MessageAccepted{}, err
+	}
+
 	messageID := strings.TrimSpace(request.ID)
 	if messageID == "" {
 		messageID = newPrefixedID("msg")
@@ -49,7 +54,7 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 			// enforceTargetWritePolicy failures (e.g. unknown room) are not
 			// write-policy denials and are left unstamped.
 			if errors.Is(err, ErrWriteForbidden) {
-				s.stampMessageDenied(ctx, messageID, request, err.Error())
+				s.stampMessageDenied(ctx, messageID, request, err.Error(), now)
 			}
 			return protocol.MessageAccepted{}, err
 		}
@@ -60,7 +65,6 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 		return protocol.MessageAccepted{}, err
 	}
 
-	now := s.now().UTC()
 	target := s.normalizeTarget(request.Target, from)
 	origin := s.normalizeOrigin(ctx, request.Origin, messageID)
 	message := protocol.Message{

@@ -29,6 +29,7 @@ var DefaultDiscoveryOrder = []string{
 }
 
 type Config struct {
+	Clock       *bridgeconfig.ClockConfig  `json:"clock,omitempty" yaml:"clock,omitempty"`
 	Version     string                     `json:"version" yaml:"version"`
 	Moltnet     bridgeconfig.MoltnetConfig `json:"moltnet" yaml:"moltnet"`
 	Attachments []AttachmentConfig         `json:"attachments" yaml:"attachments"`
@@ -57,6 +58,9 @@ func LoadFile(path string) (Config, error) {
 	}
 
 	var config Config
+	if err := bridgeconfig.ValidateClockField(contents, formatForPath(path) != "json"); err != nil {
+		return Config{}, fmt.Errorf("decode MoltnetNode config: %w", err)
+	}
 	if formatForPath(path) == "json" {
 		decoder := json.NewDecoder(bytes.NewReader(contents))
 		decoder.DisallowUnknownFields()
@@ -120,6 +124,11 @@ func DiscoverPath(explicit string) (string, bool, error) {
 }
 
 func (c Config) Validate() error {
+	if c.Clock != nil {
+		if err := c.Clock.Validate(); err != nil {
+			return err
+		}
+	}
 	if version := strings.TrimSpace(c.Version); version != "" && version != VersionV1 {
 		return fmt.Errorf("unsupported MoltnetNode version %q", version)
 	}
@@ -146,7 +155,7 @@ func (c Config) Validate() error {
 		}
 		seenAgents[agentID] = struct{}{}
 
-		if err := attachment.bridgeConfig(c.Moltnet).Validate(); err != nil {
+		if err := attachment.bridgeConfig(c.Moltnet, c.Clock).Validate(); err != nil {
 			return fmt.Errorf("attachments[%d]: %w", index, err)
 		}
 		if attachment.Runtime.Kind == bridgeconfig.RuntimeDaimon {
@@ -164,7 +173,7 @@ func (c Config) Validate() error {
 func (c Config) BridgeConfigs() []bridgeconfig.Config {
 	configs := make([]bridgeconfig.Config, 0, len(c.Attachments))
 	for _, attachment := range c.Attachments {
-		configs = append(configs, attachment.bridgeConfig(c.Moltnet))
+		configs = append(configs, attachment.bridgeConfig(c.Moltnet, c.Clock))
 	}
 
 	return configs
@@ -178,7 +187,7 @@ func (c Config) ResolveTokenPaths(baseDir string) Config {
 	return c
 }
 
-func (a AttachmentConfig) bridgeConfig(moltnet bridgeconfig.MoltnetConfig) bridgeconfig.Config {
+func (a AttachmentConfig) bridgeConfig(moltnet bridgeconfig.MoltnetConfig, clock *bridgeconfig.ClockConfig) bridgeconfig.Config {
 	if a.Moltnet.HasTokenSource() {
 		moltnet.Token = a.Moltnet.Token
 		moltnet.TokenEnv = a.Moltnet.TokenEnv
@@ -186,6 +195,7 @@ func (a AttachmentConfig) bridgeConfig(moltnet bridgeconfig.MoltnetConfig) bridg
 	}
 
 	return bridgeconfig.Config{
+		Clock:   clock,
 		Version: bridgeconfig.VersionV1,
 		Agent:   a.Agent,
 		Moltnet: moltnet,

@@ -11,10 +11,6 @@ import (
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
-type replayingBroker interface {
-	SubscribeFrom(ctx context.Context, lastEventID string) <-chan protocol.Event
-}
-
 type attachmentDeliveryBroker interface {
 	SubscribeAgent(ctx context.Context, agentID string) (<-chan protocol.Event, error)
 	AcknowledgeAgent(ctx context.Context, agentID string, eventID string) error
@@ -43,7 +39,7 @@ func (s *Service) RegisterDurableAttachmentContext(
 	if err != nil {
 		return protocol.AgentRegistration{}, nil, true, err
 	}
-	return registration, s.filterEvents(ctx, stream), true, nil
+	return registration.AgentRegistration, s.filterEvents(ctx, stream), true, nil
 }
 
 func (s *Service) AcknowledgeAttachmentContext(ctx context.Context, agentID string, eventID string) error {
@@ -52,14 +48,6 @@ func (s *Service) AcknowledgeAttachmentContext(ctx context.Context, agentID stri
 		return nil
 	}
 	return broker.AcknowledgeAgent(ctx, agentID, eventID)
-}
-
-func (s *Service) SubscribeFrom(ctx context.Context, lastEventID string) <-chan protocol.Event {
-	if broker, ok := s.broker.(replayingBroker); ok {
-		return s.filterEvents(ctx, broker.SubscribeFrom(ctx, lastEventID))
-	}
-
-	return s.filterEvents(ctx, s.broker.Subscribe(ctx))
 }
 
 func (s *Service) filterEvents(ctx context.Context, stream <-chan protocol.Event) <-chan protocol.Event {

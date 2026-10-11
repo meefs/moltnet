@@ -86,7 +86,11 @@ func TestClockConfigDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 	now, err := clock.Now(func() time.Time { return time.UnixMilli(clock.AnchorEpochMS + 1500) })
-	if err != nil || now().Format(time.RFC3339Nano) != "2025-10-01T12:00:01.5Z" {
+	if err != nil {
+		t.Fatal(err)
+	}
+	value, err := now()
+	if err != nil || value.Format(time.RFC3339Nano) != "2025-10-01T12:00:01.5Z" {
 		t.Fatalf("clock formula: %v", err)
 	}
 }

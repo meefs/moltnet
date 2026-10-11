@@ -42,7 +42,11 @@ func (s *SQLStore) PrepareAttachmentDeliveryContext(
 	defer rollback(tx)
 
 	id := strings.TrimSpace(agentID)
-	now := formatTime(s.now().UTC())
+	timestamp, err := s.now()
+	if err != nil {
+		return nil, err
+	}
+	now := formatTime(timestamp.UTC())
 	insert := bindQuery(s.dialect, `
 		INSERT INTO attachment_delivery_cursors (agent_id, event_seq, updated_at)
 		SELECT ?, COALESCE(MAX(seq), 0), ? FROM attachment_delivery_events
@@ -103,6 +107,10 @@ func (s *SQLStore) AcknowledgeAttachmentDeliveryContext(
 	agentID string,
 	eventID string,
 ) error {
+	now, err := s.now()
+	if err != nil {
+		return err
+	}
 	query := bindQuery(s.dialect, `
 		INSERT INTO attachment_delivery_cursors (agent_id, event_seq, updated_at)
 		SELECT ?, seq, ? FROM attachment_delivery_events WHERE event_id = ?
@@ -117,7 +125,7 @@ func (s *SQLStore) AcknowledgeAttachmentDeliveryContext(
 		ctx,
 		query,
 		strings.TrimSpace(agentID),
-		formatTime(s.now().UTC()),
+		formatTime(now.UTC()),
 		strings.TrimSpace(eventID),
 	); err != nil {
 		return fmt.Errorf("acknowledge attachment delivery: %w", err)

@@ -18,7 +18,7 @@ func TestClockLifecycleAndRealtimeRetries(t *testing.T) {
 	memory := store.NewMemoryStore()
 	broker := events.NewBroker(memory)
 	pairing := protocol.Pairing{ID: "remote", Status: protocol.PairingStatusConnected}
-	service := NewService(ServiceConfig{Now: func() time.Time { return task }, NetworkID: "local", Store: memory, Messages: memory, Broker: broker, Pairings: []protocol.Pairing{pairing}})
+	service := NewService(ServiceConfig{Now: func() (time.Time, error) { return task, nil }, NetworkID: "local", Store: memory, Messages: memory, Broker: broker, Pairings: []protocol.Pairing{pairing}})
 	defer service.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -91,7 +91,7 @@ func TestClockDeniedCausalTimestamp(t *testing.T) {
 	task := time.Date(2025, 10, 1, 8, 0, 0, 0, time.UTC)
 	memory := store.NewMemoryStore()
 	var output bytes.Buffer
-	service := NewService(ServiceConfig{Now: func() time.Time { return task }, NetworkID: "local", Store: memory, Messages: memory, Broker: events.NewBroker(), CausalWriter: observability.NewCausalWriter(&output)})
+	service := NewService(ServiceConfig{Now: func() (time.Time, error) { return task, nil }, NetworkID: "local", Store: memory, Messages: memory, Broker: events.NewBroker(), CausalWriter: observability.NewCausalWriter(&output)})
 	defer service.Close()
 	if _, err := service.CreateRoom(protocol.CreateRoomRequest{ID: "r", Members: []string{"writer"}}); err != nil {
 		t.Fatal(err)
@@ -110,7 +110,7 @@ func TestClockRoomJoinEvent(t *testing.T) {
 	task := time.Date(2025, 10, 1, 8, 0, 0, 0, time.UTC)
 	memory := store.NewMemoryStore()
 	broker := events.NewBroker(memory)
-	service := NewService(ServiceConfig{Now: func() time.Time { return task }, NetworkID: "local", Store: memory, Messages: memory, Broker: broker})
+	service := NewService(ServiceConfig{Now: func() (time.Time, error) { return task, nil }, NetworkID: "local", Store: memory, Messages: memory, Broker: broker})
 	defer service.Close()
 	if _, err := service.CreateRoomContext(credentialModeContext(), protocol.CreateRoomRequest{ID: "r", Credential: protocol.NewSecretString(joinTestCredential)}); err != nil {
 		t.Fatal(err)

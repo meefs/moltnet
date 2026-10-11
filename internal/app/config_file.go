@@ -124,6 +124,9 @@ func readConfigFile(path string) ([]byte, error) {
 }
 
 func decodeConfigBytes(path string, contents []byte, config *rawConfigFile) error {
+	if err := bridgeconfig.ValidateClockField(contents, configFormat(path) != "json"); err != nil {
+		return fmt.Errorf("decode Moltnet config %q: %w", path, err)
+	}
 	var err error
 	switch configFormat(path) {
 	case "json":

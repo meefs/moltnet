@@ -116,6 +116,12 @@ If a shared non-agent token is used on an open-registration network, set `moltne
 
 ### attachments
 
+The optional top-level [`clock`](/reference/configuration/#clock) applies to every
+attachment. Use the server's exact origin and anchor (`anchor_epoch_ms` in YAML,
+`anchorEpochMs` in JSON). Omission means real time; `clock: null` and per-attachment
+clock overrides are rejected. Preflight checks agreement with the server before
+any attachment starts.
+
 Array of runtime attachments. Each attachment has:
 
 #### agent

@@ -25,7 +25,7 @@ type PairingClient interface {
 
 type ServiceConfig struct {
 	// Now stamps domain data only; operational deadlines always use real time.
-	Now                       func() time.Time
+	Now                       func() (time.Time, error)
 	AllowHumanIngress         bool
 	DebugEvents               bool
 	DisableDirectMessages     bool
@@ -87,7 +87,7 @@ type Service struct {
 	connectedAgents   map[string]bool
 	lifecycleCtx      context.Context
 	lifecycleCancel   context.CancelFunc
-	now               func() time.Time
+	now               func() (time.Time, error)
 }
 
 type pairingStatus struct {
@@ -103,11 +103,18 @@ type pairingStatus struct {
 func NewService(config ServiceConfig) *Service {
 	now := config.Now
 	if now == nil {
-		now = time.Now
+		now = func() (time.Time, error) { return time.Now().UTC(), nil }
+	}
+	readNow := now
+	now = func() (time.Time, error) {
+		value, err := readNow()
+		return value.UTC(), err
 	}
 	// All dependents are configured before serving requests.
 	for _, dependency := range []any{config.Store, config.Messages, config.Broker} {
-		if clocked, ok := dependency.(interface{ SetNow(func() time.Time) }); ok {
+		if clocked, ok := dependency.(interface {
+			SetNow(func() (time.Time, error))
+		}); ok {
 			clocked.SetNow(now)
 		}
 	}

@@ -138,7 +138,7 @@ func (s *MemoryStore) GetAgentContext(_ context.Context, agentID string) (protoc
 func (s *MemoryStore) RegisterAgentContext(
 	_ context.Context,
 	registration protocol.AgentRegistration,
-) (protocol.AgentRegistration, error) {
+) (RegistrationResult, error) {
 	registration.AgentToken = ""
 
 	s.mu.Lock()
@@ -148,18 +148,18 @@ func (s *MemoryStore) RegisterAgentContext(
 	if ok {
 		existing.AgentToken = ""
 		if existing.CredentialKey != registration.CredentialKey {
-			return protocol.AgentRegistration{}, ErrAgentCredential
+			return RegistrationResult{}, ErrAgentCredential
 		}
 		if registration.DisplayName != "" {
 			existing.DisplayName = registration.DisplayName
 		}
 		existing.UpdatedAt = registration.UpdatedAt
 		s.agents[registration.AgentID] = existing
-		return existing, nil
+		return RegistrationResult{AgentRegistration: existing}, nil
 	}
 
 	s.agents[registration.AgentID] = registration
-	return registration, nil
+	return RegistrationResult{AgentRegistration: registration, Created: true}, nil
 }
 
 func (s *MemoryStore) ReconcileRegisteredAgentContext(

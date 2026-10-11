@@ -3,6 +3,7 @@ package bridgeconfig
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -12,6 +13,10 @@ import (
 )
 
 const TaskClockVersion = "noopolis.task-clock.v1"
+
+// ErrClockRange is safe to expose to callers; an exhausted clock cannot stamp
+// new domain data. Existing recorded timestamps remain readable.
+var ErrClockRange = errors.New("clock result is outside years 1..9999 UTC")
 
 // ClockConfig is the explicit cross-process task clock. JSON uses the ecosystem
 // contract; YAML uses the config file's snake_case convention. Omission is real time.
@@ -50,12 +55,13 @@ func (c ClockConfig) Validate() error {
 
 // Now injects the real clock only at this boundary. Like Date.parse/Date.now,
 // task timestamps have millisecond precision. A nil config preserves time.Now.
-func (c *ClockConfig) Now(realNow func() time.Time) (func() time.Time, error) {
+// Each read checks the supported range; callers must stop the operation on error.
+func (c *ClockConfig) Now(realNow func() time.Time) (func() (time.Time, error), error) {
 	if realNow == nil {
 		realNow = time.Now
 	}
 	if c == nil {
-		return realNow, nil
+		return func() (time.Time, error) { return realNow(), nil }, nil
 	}
 	offset, err := c.offsetMS()
 	if err != nil {
@@ -64,7 +70,7 @@ func (c *ClockConfig) Now(realNow func() time.Time) (func() time.Time, error) {
 	if _, err := shiftedClockTime(realNow(), offset); err != nil {
 		return nil, err
 	}
-	return func() time.Time { return time.UnixMilli(realNow().UnixMilli() + offset).UTC() }, nil
+	return func() (time.Time, error) { return shiftedClockTime(realNow(), offset) }, nil
 }
 
 // RealTime reverses the shift for deliverers whose receiver applies task time.
@@ -80,12 +86,13 @@ func (c *ClockConfig) RealTime(taskTime time.Time) (time.Time, error) {
 }
 
 func shiftedClockTime(value time.Time, offset int64) (time.Time, error) {
+	value = value.UTC()
 	if value.Year() < 1 || value.Year() > 9999 {
-		return time.Time{}, fmt.Errorf("clock input is outside years 1..9999 UTC")
+		return time.Time{}, fmt.Errorf("%w: input is outside the supported range", ErrClockRange)
 	}
 	ms := value.UnixMilli() + offset
 	if ms < minClockMS || ms > maxClockMS {
-		return time.Time{}, fmt.Errorf("clock result is outside years 1..9999 UTC")
+		return time.Time{}, ErrClockRange
 	}
 	return time.UnixMilli(ms).UTC(), nil
 }

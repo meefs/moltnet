@@ -118,6 +118,10 @@ or invalid value fails startup. Both forms require all three fields, the exact
 version, an RFC3339 origin with `Z` or a numeric offset, and an integer anchor.
 Unknown fields and out-of-range values fail startup. Origin and anchor must lie
 within years 1–9999 UTC, and the task instant at startup must also fit that range.
+Explicit `clock: null` is invalid in all config files; omit the field for real time.
+If elapsed time later crosses that range, timestamped operations fail with a
+clock-range error before writing invalid times. Background event publication
+logs the error and stops that publication. Previously stored history stays readable.
 Origin fractions beyond milliseconds are truncated, as with `Date.parse`.
 Restart the server to change the clock; `moltnet apply` only reconciles domain state.
 
@@ -126,15 +130,19 @@ latency, TLS and token expiry, leases, retry/backoff and pairing-cache age,
 updater work, relay dial deadlines, and database migration bookkeeping. This
 option does not change the operating system clock or remote peers' clocks.
 
-For a **standalone Daimon bridge**, put the same JSON object under top-level
-`clock` in its `moltnet.bridge.v1` config. Configure it explicitly with the same
-origin and anchor as the server; the bridge does not inherit `MOLTNET_CLOCK`.
+For a **MoltnetNode**, set the same top-level `clock` in its node file; every
+attachment inherits it, and attachment-level clock overrides are rejected.
+For a standalone bridge, put the JSON object under top-level `clock` in its
+`moltnet.bridge.v1` config. Neither loader inherits `MOLTNET_CLOCK`.
+The server advertises a canonical digest of its origin and anchor in the
+`Moltnet-Clock` HTTP response header. Bridge preflight requires both sides to
+be unclocked or to advertise the same identity. A missing header means unclocked;
+a presence mismatch or different origin/anchor fails before delivery.
 Daimon shifts wake timestamps itself, so this adapter reverses the server shift
 before encoding `occurred_at`, using UTC with exactly three fractional digits.
 The canonical wake JSON and receipt digest use that same converted timestamp.
 Receipt polling, expiry and retries remain real time. Other bridge adapters
-retain their existing behavior and do not reverse the clock. MoltnetNode's
-attachment schema does not forward this standalone bridge option.
+retain their existing behavior and do not reverse the clock.
 
 ### auth
 

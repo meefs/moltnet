@@ -12,7 +12,7 @@ import (
 func (s *SQLStore) RegisterAgentContext(
 	ctx context.Context,
 	registration protocol.AgentRegistration,
-) (protocol.AgentRegistration, error) {
+) (RegistrationResult, error) {
 	return s.upsertRegisteredAgentContext(ctx, registration, false)
 }
 
@@ -20,29 +20,30 @@ func (s *SQLStore) ReconcileRegisteredAgentContext(
 	ctx context.Context,
 	registration protocol.AgentRegistration,
 ) (protocol.AgentRegistration, error) {
-	return s.upsertRegisteredAgentContext(ctx, registration, true)
+	result, err := s.upsertRegisteredAgentContext(ctx, registration, true)
+	return result.AgentRegistration, err
 }
 
 func (s *SQLStore) upsertRegisteredAgentContext(
 	ctx context.Context,
 	registration protocol.AgentRegistration,
 	rebindCredential bool,
-) (protocol.AgentRegistration, error) {
+) (RegistrationResult, error) {
 	registration.AgentToken = ""
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return protocol.AgentRegistration{}, fmt.Errorf("begin register agent: %w", err)
+		return RegistrationResult{}, fmt.Errorf("begin register agent: %w", err)
 	}
 	defer rollback(tx)
 
 	existing, ok, err := s.getRegisteredAgentUsingQuerier(ctx, tx, registration.AgentID)
 	if err != nil {
-		return protocol.AgentRegistration{}, err
+		return RegistrationResult{}, err
 	}
 	if ok {
 		if existing.CredentialKey != registration.CredentialKey && !rebindCredential {
-			return protocol.AgentRegistration{}, ErrAgentCredential
+			return RegistrationResult{}, ErrAgentCredential
 		}
 		if registration.DisplayName != "" {
 			existing.DisplayName = registration.DisplayName
@@ -59,12 +60,12 @@ func (s *SQLStore) upsertRegisteredAgentContext(
 			formatTime(existing.UpdatedAt),
 			existing.AgentID,
 		); err != nil {
-			return protocol.AgentRegistration{}, fmt.Errorf("update agent %q: %w", existing.AgentID, err)
+			return RegistrationResult{}, fmt.Errorf("update agent %q: %w", existing.AgentID, err)
 		}
 		if err := tx.Commit(); err != nil {
-			return protocol.AgentRegistration{}, fmt.Errorf("commit update agent: %w", err)
+			return RegistrationResult{}, fmt.Errorf("commit update agent: %w", err)
 		}
-		return existing, nil
+		return RegistrationResult{AgentRegistration: existing}, nil
 	}
 
 	query := bindQuery(s.dialect, `
@@ -87,13 +88,13 @@ func (s *SQLStore) upsertRegisteredAgentContext(
 			_ = tx.Rollback()
 			return s.upsertRegisteredAgentContext(ctx, registration, rebindCredential)
 		}
-		return protocol.AgentRegistration{}, fmt.Errorf("insert agent %q: %w", registration.AgentID, err)
+		return RegistrationResult{}, fmt.Errorf("insert agent %q: %w", registration.AgentID, err)
 	}
 	if err := tx.Commit(); err != nil {
-		return protocol.AgentRegistration{}, fmt.Errorf("commit register agent: %w", err)
+		return RegistrationResult{}, fmt.Errorf("commit register agent: %w", err)
 	}
 
-	return registration, nil
+	return RegistrationResult{AgentRegistration: registration, Created: true}, nil
 }
 
 func (s *SQLStore) ListRegisteredAgentsContext(ctx context.Context) ([]protocol.AgentRegistration, error) {

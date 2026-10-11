@@ -39,3 +39,20 @@ func TestClockBridgeConfigLoad(t *testing.T) {
 		t.Fatal("direct bridge config skipped clock validation")
 	}
 }
+
+func TestClockBridgeFileNull(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bridge.json")
+	base := `{"version":"moltnet.bridge.v1","agent":{"id":"writer"},"moltnet":{"base_url":"http://localhost:8787","network_id":"local"},"runtime":{"kind":"pi","control_url":"http://localhost:9999"}`
+	for _, suffix := range []string{"}", `,"clock":null}`} {
+		if err := os.WriteFile(path, []byte(base+suffix), 0600); err != nil {
+			t.Fatal(err)
+		}
+		_, err := LoadFile(path)
+		if suffix == "}" && err != nil {
+			t.Fatalf("omitted clock: %v", err)
+		}
+		if suffix != "}" && (err == nil || !strings.Contains(err.Error(), "clock")) {
+			t.Fatalf("null clock: %v", err)
+		}
+	}
+}

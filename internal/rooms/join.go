@@ -36,6 +36,10 @@ func (s *Service) JoinRoomContext(
 		return protocol.Room{}, joinForbiddenError()
 	}
 
+	now, err := s.now()
+	if err != nil {
+		return protocol.Room{}, err
+	}
 	updated, err := s.updateRoomMembers(ctx, id, []string{agentID}, nil)
 	if err != nil {
 		if errors.Is(err, store.ErrRoomNotFound) {
@@ -49,7 +53,7 @@ func (s *Service) JoinRoomContext(
 			Type:      protocol.EventTypeRoomMembersUpdated,
 			NetworkID: s.networkID,
 			Room:      &updated,
-			CreatedAt: s.now().UTC(),
+			CreatedAt: now,
 		})
 	}
 

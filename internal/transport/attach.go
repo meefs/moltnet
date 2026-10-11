@@ -96,12 +96,10 @@ func handleAttachment(
 		if supported {
 			durable = candidate
 		} else {
-			stream = service.SubscribeFrom(ctx, session.ResumeCursor())
-			registration, err = service.RegisterAgentContext(request.Context(), registerRequest)
+			registration, stream, err = registerEphemeralAttachment(service, ctx, session.ResumeCursor(), registerRequest)
 		}
 	} else {
-		stream = service.SubscribeFrom(ctx, session.ResumeCursor())
-		registration, err = service.RegisterAgentContext(request.Context(), registerRequest)
+		registration, stream, err = registerEphemeralAttachment(service, ctx, session.ResumeCursor(), registerRequest)
 	}
 	if err != nil {
 		message := err.Error()

@@ -25,6 +25,7 @@ const (
 var defaultPreflightClient = &http.Client{Timeout: preflightTimeout}
 
 type PreflightCacheKey struct {
+	ClockIdentity    string
 	BaseURL          string
 	NetworkID        string
 	TokenFingerprint string
@@ -71,6 +72,10 @@ func Preflight(ctx context.Context, config bridgeconfig.Config) error {
 
 func NewPreflightRequest(config bridgeconfig.Config) (PreflightRequest, error) {
 	config = config.Normalized()
+	clockIdentity, err := config.Clock.Identity()
+	if err != nil {
+		return PreflightRequest{}, fmt.Errorf("moltnet compatibility preflight: %w", err)
+	}
 
 	token, _, err := config.Moltnet.ResolveToken()
 	if err != nil {
@@ -82,6 +87,7 @@ func NewPreflightRequest(config bridgeconfig.Config) (PreflightRequest, error) {
 		baseURL: baseURL,
 		token:   strings.TrimSpace(token),
 		key: PreflightCacheKey{
+			ClockIdentity:    clockIdentity,
 			BaseURL:          baseURL,
 			NetworkID:        strings.TrimSpace(config.Moltnet.NetworkID),
 			TokenFingerprint: tokenFingerprint(token),
@@ -137,6 +143,9 @@ func FetchPreflightNetwork(ctx context.Context, request PreflightRequest) (proto
 		)
 	}
 
+	if err := checkClockIdentity(response.Header, request.key.ClockIdentity); err != nil {
+		return protocol.Network{}, err
+	}
 	var network protocol.Network
 	if err := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&network); err != nil {
 		return protocol.Network{}, fmt.Errorf("decode moltnet compatibility metadata: %w", err)

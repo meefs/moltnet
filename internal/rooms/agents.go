@@ -14,25 +14,28 @@ import (
 func (s *Service) RegisterAgentContext(
 	ctx context.Context,
 	request protocol.RegisterAgentRequest,
-) (protocol.AgentRegistration, error) {
+) (store.RegistrationResult, error) {
 	agentID, err := s.resolveRequestedAgentID(ctx, request)
 	if err != nil {
-		return protocol.AgentRegistration{}, err
+		return store.RegistrationResult{}, err
 	}
 	if claims, ok := authn.ClaimsFromContext(ctx); ok && !claims.AllowsAgent(agentID) {
 		if claims.AgentToken() {
-			return protocol.AgentRegistration{}, agentTokenInvalidForAgentError(agentID)
+			return store.RegistrationResult{}, agentTokenInvalidForAgentError(agentID)
 		}
-		return protocol.AgentRegistration{}, agentForbiddenError(
+		return store.RegistrationResult{}, agentForbiddenError(
 			"requested_agent_id " + agentID + " is not allowed for this token",
 		)
 	}
 	credentialKey, issuedToken, err := registrationCredential(ctx)
 	if err != nil {
-		return protocol.AgentRegistration{}, err
+		return store.RegistrationResult{}, err
 	}
 
-	now := s.now().UTC()
+	now, err := s.now()
+	if err != nil {
+		return store.RegistrationResult{}, err
+	}
 	registration := protocol.AgentRegistration{
 		NetworkID:     s.networkID,
 		AgentID:       agentID,
@@ -45,7 +48,7 @@ func (s *Service) RegisterAgentContext(
 	}
 
 	if existing, ok, err := s.registeredAgent(ctx, agentID); err != nil {
-		return protocol.AgentRegistration{}, err
+		return store.RegistrationResult{}, err
 	} else if ok && existing.CredentialKey != registration.CredentialKey {
 		if claims, hasClaims := authn.ClaimsFromContext(ctx); hasClaims && claims.Allows(authn.ScopeAdmin) {
 			registration.CredentialKey = existing.CredentialKey
@@ -53,9 +56,9 @@ func (s *Service) RegisterAgentContext(
 			registration.ActorURI = existing.ActorURI
 			registration.CreatedAt = existing.CreatedAt
 		} else if strings.TrimSpace(credentialKey) == "anonymous" || issuedToken != "" {
-			return protocol.AgentRegistration{}, agentRegisteredError(agentID)
+			return store.RegistrationResult{}, agentRegisteredError(agentID)
 		} else {
-			return protocol.AgentRegistration{}, agentConflictError(agentID)
+			return store.RegistrationResult{}, agentConflictError(agentID)
 		}
 	}
 
@@ -63,11 +66,11 @@ func (s *Service) RegisterAgentContext(
 	if err != nil {
 		if errors.Is(err, store.ErrAgentCredential) {
 			if issuedToken != "" {
-				return protocol.AgentRegistration{}, agentRegisteredError(agentID)
+				return store.RegistrationResult{}, agentRegisteredError(agentID)
 			}
-			return protocol.AgentRegistration{}, agentConflictError(agentID)
+			return store.RegistrationResult{}, agentConflictError(agentID)
 		}
-		return protocol.AgentRegistration{}, err
+		return store.RegistrationResult{}, err
 	}
 	if issuedToken != "" {
 		registered.AgentToken = issuedToken
@@ -79,9 +82,9 @@ func (s *Service) RegisterAgentContext(
 func (s *Service) registerAgent(
 	ctx context.Context,
 	registration protocol.AgentRegistration,
-) (protocol.AgentRegistration, error) {
+) (store.RegistrationResult, error) {
 	if s.agentRegistry == nil {
-		return registration, nil
+		return store.RegistrationResult{AgentRegistration: registration, Created: true}, nil
 	}
 	return s.agentRegistry.RegisterAgentContext(ctx, registration)
 }
