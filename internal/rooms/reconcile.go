@@ -14,7 +14,7 @@ func (s *Service) ReconcileRoomContext(ctx context.Context, request protocol.Cre
 	if err := validateRoomCredentialMode(ctx, request.Credential); err != nil {
 		return protocol.Room{}, err
 	}
-	room, err := roomFromCreateRequest(s.networkID, request)
+	room, err := roomFromCreateRequest(s.networkID, request, s.now().UTC())
 	if err != nil {
 		return protocol.Room{}, err
 	}
@@ -35,7 +35,7 @@ func (s *Service) ReconcileRoomContext(ctx context.Context, request protocol.Cre
 	return reconciled, nil
 }
 
-func roomFromCreateRequest(networkID string, request protocol.CreateRoomRequest) (protocol.Room, error) {
+func roomFromCreateRequest(networkID string, request protocol.CreateRoomRequest, createdAt time.Time) (protocol.Room, error) {
 	id := strings.TrimSpace(request.ID)
 	roomRequest := protocol.CreateRoomRequest{
 		ID:          id,
@@ -62,7 +62,7 @@ func roomFromCreateRequest(networkID string, request protocol.CreateRoomRequest)
 		WritePolicy: protocol.NormalizeRoomWritePolicy(request.WritePolicy),
 		// Config-time rooms require an explicit stance; runtime-created rooms default safely.
 		Federation: protocol.DefaultRoomFederation(),
-		CreatedAt:  time.Now().UTC(),
+		CreatedAt:  createdAt,
 	}
 	if request.Federation != nil {
 		federation := protocol.NormalizeRoomFederation(request.Federation)

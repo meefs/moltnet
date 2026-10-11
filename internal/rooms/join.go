@@ -49,7 +49,7 @@ func (s *Service) JoinRoomContext(
 			Type:      protocol.EventTypeRoomMembersUpdated,
 			NetworkID: s.networkID,
 			Room:      &updated,
-			CreatedAt: updated.CreatedAt,
+			CreatedAt: s.now().UTC(),
 		})
 	}
 

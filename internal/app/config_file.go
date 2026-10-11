@@ -8,18 +8,20 @@ import (
 	"strings"
 
 	authn "github.com/noopolis/moltnet/internal/auth"
+	"github.com/noopolis/moltnet/pkg/bridgeconfig"
 	"github.com/noopolis/moltnet/pkg/protocol"
 	"go.yaml.in/yaml/v3"
 )
 
 type rawConfigFile struct {
-	Version  string             `json:"version" yaml:"version"`
-	Auth     rawAuthConfig      `json:"auth" yaml:"auth"`
-	Network  rawNetworkConfig   `json:"network" yaml:"network"`
-	Server   rawServerConfig    `json:"server" yaml:"server"`
-	Storage  rawStorageConfig   `json:"storage" yaml:"storage"`
-	Rooms    []RoomConfig       `json:"rooms" yaml:"rooms"`
-	Pairings []protocol.Pairing `json:"pairings" yaml:"pairings"`
+	Clock    *bridgeconfig.ClockConfig `json:"clock,omitempty" yaml:"clock,omitempty"`
+	Version  string                    `json:"version" yaml:"version"`
+	Auth     rawAuthConfig             `json:"auth" yaml:"auth"`
+	Network  rawNetworkConfig          `json:"network" yaml:"network"`
+	Server   rawServerConfig           `json:"server" yaml:"server"`
+	Storage  rawStorageConfig          `json:"storage" yaml:"storage"`
+	Rooms    []RoomConfig              `json:"rooms" yaml:"rooms"`
+	Pairings []protocol.Pairing        `json:"pairings" yaml:"pairings"`
 }
 
 type rawNetworkConfig struct {
@@ -148,6 +150,11 @@ func decodeYAMLConfig(contents []byte, target *rawConfigFile) error {
 }
 
 func validateConfigFile(config rawConfigFile) error {
+	if config.Clock != nil {
+		if err := config.Clock.Validate(); err != nil {
+			return err
+		}
+	}
 	version := strings.TrimSpace(config.Version)
 	if version != "" && version != defaultConfigSchema {
 		return fmt.Errorf("unsupported version %q", version)

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
@@ -43,7 +42,7 @@ func (s *SQLStore) PrepareAttachmentDeliveryContext(
 	defer rollback(tx)
 
 	id := strings.TrimSpace(agentID)
-	now := formatTime(time.Now().UTC())
+	now := formatTime(s.now().UTC())
 	insert := bindQuery(s.dialect, `
 		INSERT INTO attachment_delivery_cursors (agent_id, event_seq, updated_at)
 		SELECT ?, COALESCE(MAX(seq), 0), ? FROM attachment_delivery_events
@@ -118,7 +117,7 @@ func (s *SQLStore) AcknowledgeAttachmentDeliveryContext(
 		ctx,
 		query,
 		strings.TrimSpace(agentID),
-		formatTime(time.Now().UTC()),
+		formatTime(s.now().UTC()),
 		strings.TrimSpace(eventID),
 	); err != nil {
 		return fmt.Errorf("acknowledge attachment delivery: %w", err)

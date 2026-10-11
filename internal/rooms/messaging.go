@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -61,7 +60,7 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 		return protocol.MessageAccepted{}, err
 	}
 
-	now := time.Now().UTC()
+	now := s.now().UTC()
 	target := s.normalizeTarget(request.Target, from)
 	origin := s.normalizeOrigin(ctx, request.Origin, messageID)
 	message := protocol.Message{

@@ -43,6 +43,14 @@ type serviceStore interface {
 }
 
 func New(config Config) (*App, error) {
+	return newWithRealClock(config, time.Now)
+}
+
+func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
+	now, err := config.Clock.Now(realNow)
+	if err != nil {
+		return nil, err
+	}
 	if err := validateRoomCredentials(config.Rooms, config.Auth.Mode); err != nil {
 		return nil, err
 	}
@@ -69,6 +77,7 @@ func New(config Config) (*App, error) {
 	pairingClient := pairings.NewClient()
 	relayClients := newRelayClients(config, pairingClient)
 	service := rooms.NewService(rooms.ServiceConfig{
+		Now:                       now,
 		AllowHumanIngress:         config.AllowHumanIngress,
 		CausalWriter:              causalWriter,
 		TranscriptWriter:          transcriptWriter,

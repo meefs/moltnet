@@ -106,7 +106,7 @@ func (s *Service) publishAgentEvent(ctx context.Context, eventType string, agent
 		Type:      eventType,
 		NetworkID: s.networkID,
 		Agent:     &agent,
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: s.now().UTC(),
 	})
 }
 
@@ -200,7 +200,7 @@ func (s *Service) setPairingError(pairingID string, message string) {
 
 func (s *Service) setPairingRuntime(pairingID string, next pairingStatus, replaceDiagnostics bool) {
 	next.value = normalizePairingStatus(next.value)
-	updatedAt := s.now().UTC()
+	updatedAt := time.Now().UTC()
 
 	s.pairingsMu.Lock()
 	previous := s.pairingStatuses[pairingID]
@@ -256,6 +256,6 @@ func (s *Service) setPairingRuntime(pairingID string, next pairingStatus, replac
 		Type:      protocol.EventTypePairingUpdated,
 		NetworkID: s.networkID,
 		Pairing:   eventPairing,
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: s.now().UTC(),
 	})
 }

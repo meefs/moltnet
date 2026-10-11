@@ -133,6 +133,7 @@ func defaultConfig(version string) Config {
 }
 
 func mergeFileConfig(config Config, fileConfig rawConfigFile) Config {
+	config.Clock = fileConfig.Clock
 	if fileConfig.Network.ID != "" {
 		config.NetworkID = fileConfig.Network.ID
 	}
@@ -193,6 +194,9 @@ func mergeFileConfig(config Config, fileConfig rawConfigFile) Config {
 }
 
 func mergeEnvConfig(config Config) (Config, error) {
+	if err := mergeEnvClock(&config); err != nil {
+		return Config{}, err
+	}
 	if value, ok := envValue("MOLTNET_LISTEN_ADDR"); ok {
 		config.ListenAddr = value
 	}

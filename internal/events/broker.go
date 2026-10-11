@@ -23,6 +23,7 @@ import (
 // second lock: the fan-out below runs inside the critical section and relies
 // on being serialized against subscriber registration/removal.
 type Broker struct {
+	now         func() time.Time
 	mu          sync.Mutex
 	nextID      uint64
 	subscribers map[uint64]brokerSubscriber
@@ -44,6 +45,7 @@ const brokerHistoryLimit = 256
 
 func NewBroker(delivery ...attachmentDeliveryStore) *Broker {
 	broker := &Broker{
+		now:         time.Now,
 		subscribers: make(map[uint64]brokerSubscriber),
 		history:     make([]protocol.Event, 0, brokerHistoryLimit),
 	}
@@ -52,6 +54,9 @@ func NewBroker(delivery ...attachmentDeliveryStore) *Broker {
 	}
 	return broker
 }
+
+// SetNow injects the domain clock before the broker starts serving requests.
+func (b *Broker) SetNow(now func() time.Time) { b.now = now }
 
 // SubscribeAgent establishes a persistent per-agent delivery baseline on the
 // first attachment and replays every stored message event after the last ACK
@@ -204,7 +209,7 @@ func (b *Broker) eventsAfterLocked(lastEventID string) []protocol.Event {
 				OldestEventID:    b.history[0].ID,
 				NewestEventID:    b.history[len(b.history)-1].ID,
 			},
-			CreatedAt: time.Now().UTC(),
+			CreatedAt: b.now().UTC(),
 		}}
 		return append(events, b.history...)
 	}

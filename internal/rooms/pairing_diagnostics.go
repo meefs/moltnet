@@ -105,7 +105,7 @@ func (s *Service) evaluatePairingCompatibility(
 	checkedAt := s.now().UTC()
 	status := pairingStatus{
 		value:            protocol.PairingStatusConnected,
-		updatedAt:        checkedAt,
+		updatedAt:        time.Now().UTC(),
 		directMessages:   network.Capabilities.DirectMessages,
 		cursorPagination: strings.TrimSpace(network.Capabilities.MessagePagination) == "cursor",
 		checked:          true,
@@ -215,7 +215,7 @@ func (s *Service) pairingDiagnosticsNeedRefresh(status pairingStatus) bool {
 	if !status.checked || status.diagnostics == nil || status.updatedAt.IsZero() {
 		return true
 	}
-	return s.now().UTC().Sub(status.updatedAt) >= pairingDiagnosticsTTL
+	return time.Now().UTC().Sub(status.updatedAt) >= pairingDiagnosticsTTL
 }
 
 func pairingDiscoveryError(status pairingStatus) error {

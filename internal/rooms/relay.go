@@ -200,7 +200,7 @@ func (s *Service) pairingRelayAttemptReady(pairing protocol.Pairing, message pro
 		if status.updatedAt.IsZero() {
 			return true
 		}
-		return s.now().UTC().Sub(status.updatedAt) >= pairingRelayErrorRetryAfter
+		return time.Now().UTC().Sub(status.updatedAt) >= pairingRelayErrorRetryAfter
 	}
 	if s.pairingDiagnosticsNeedRefresh(status) {
 		return true

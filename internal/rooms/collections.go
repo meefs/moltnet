@@ -86,7 +86,7 @@ func (s *Service) UpdateRoomMembers(
 		Type:      protocol.EventTypeRoomMembersUpdated,
 		NetworkID: s.networkID,
 		Room:      &room,
-		CreatedAt: room.CreatedAt,
+		CreatedAt: s.now().UTC(),
 	})
 
 	return room, nil

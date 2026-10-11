@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	authn "github.com/noopolis/moltnet/internal/auth"
 	"github.com/noopolis/moltnet/internal/events"
@@ -223,7 +224,7 @@ func TestPairScopedAgentListingIsFilteredByFederation(t *testing.T) {
 func TestRuntimeCreatedRoomsDefaultToNonFederated(t *testing.T) {
 	t.Parallel()
 
-	room, err := roomFromCreateRequest("local", protocol.CreateRoomRequest{ID: "runtime"})
+	room, err := roomFromCreateRequest("local", protocol.CreateRoomRequest{ID: "runtime"}, time.Now())
 	if err != nil {
 		t.Fatalf("roomFromCreateRequest(): %v", err)
 	}
