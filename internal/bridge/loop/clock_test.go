@@ -2,12 +2,14 @@ package loop
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
+	bridgeutil "github.com/noopolis/moltnet/internal/bridge"
 	"github.com/noopolis/moltnet/internal/testutil"
 	"github.com/noopolis/moltnet/pkg/bridgeconfig"
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -66,7 +68,7 @@ func TestAttachmentClockAgreement(t *testing.T) {
 			client.dialer = &websocket.Dialer{NetDialContext: dial}
 			err := client.StreamEventsReady(ctx, config, func() { bootstrap++ }, func(protocol.Event) error { deliveries++; return nil })
 			if test.err != "" {
-				if err == nil || !strings.Contains(err.Error(), test.err) {
+				if !errors.Is(err, bridgeutil.ErrClockMismatch) || !strings.Contains(err.Error(), test.err) {
 					t.Errorf("expected %q, got %v", test.err, err)
 				}
 				if <-identified || ready != 0 || bootstrap != 0 || deliveries != 0 {

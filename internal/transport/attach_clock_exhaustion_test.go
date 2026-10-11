@@ -39,7 +39,7 @@ func TestAttachmentRegistrationClockExhaustionAfterCommit(t *testing.T) {
 		step   int64
 	}{
 		{"9999-12-31T23:59:59.999Z", 1},
-		{"0001-01-01T00:00:00Z", -1},
+		{"0001-01-01T00:00:00.001Z", -1},
 	} {
 		for _, before := range []bool{false, true} {
 			name := bound.origin + "/after_commit"

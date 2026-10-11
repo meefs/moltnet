@@ -126,7 +126,7 @@ func TestClockDefaultAndResultBounds(t *testing.T) {
 	if _, err := config.Now(func() time.Time { return time.UnixMilli(1) }); err == nil {
 		t.Fatal("accepted unrepresentable task result")
 	}
-	config.Origin = "0001-01-01T00:00:00Z"
+	config.Origin = "0001-01-01T00:00:00.001Z"
 	if _, err := config.RealTime(time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)); err == nil {
 		t.Fatal("accepted unrepresentable inverse")
 	}

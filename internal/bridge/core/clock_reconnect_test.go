@@ -3,6 +3,9 @@ package core
 import (
 	"context"
 	"net/http"
+	"path/filepath"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -36,6 +39,7 @@ func (s *clockWakeService) AgentConnected(ctx context.Context, agent protocol.Ac
 }
 
 func TestControlLoopRechecksClockAfterPreflight(t *testing.T) {
+	t.Setenv("DAIMON_CLOCK_TEST_TOKEN", "test-token")
 	clockA := &bridgeconfig.ClockConfig{Version: bridgeconfig.TaskClockVersion, Origin: "2025-10-01T08:00:00Z"}
 	clockB := *clockA
 	clockB.AnchorEpochMS++
@@ -77,11 +81,11 @@ func TestControlLoopRechecksClockAfterPreflight(t *testing.T) {
 				changedHandler := transport.NewHTTPHandler(service, nil, transport.HTTPConfig{ClockIdentity: identityB})
 				var attempts, initialIdentify, readiness, deliveries atomic.Int32
 				changedClosed := make(chan struct{})
+				var closeChanged sync.Once
 				dial := testutil.HTTPDialContext(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/control" {
+					if r.URL.Path == "/control/v2/wakes" {
 						deliveries.Add(1)
 						_, _ = w.Write([]byte(`{"message":""}`))
-						cancel()
 						return
 					}
 					if r.URL.Path != "/v1/attach" {
@@ -106,8 +110,7 @@ func TestControlLoopRechecksClockAfterPreflight(t *testing.T) {
 						}
 						return
 					}
-					defer close(changedClosed)
-					defer cancel()
+					defer closeChanged.Do(func() { close(changedClosed) })
 					changedHandler.ServeHTTP(w, r)
 				}))
 				priorTransport, priorDialer := http.DefaultTransport, websocket.DefaultDialer
@@ -120,13 +123,21 @@ func TestControlLoopRechecksClockAfterPreflight(t *testing.T) {
 				})
 				config := bridgeconfig.Config{Clock: clockA, Agent: bridgeconfig.AgentConfig{ID: "reader"},
 					Moltnet: bridgeconfig.MoltnetConfig{BaseURL: "http://moltnet.test", NetworkID: "local"},
-					Runtime: bridgeconfig.RuntimeConfig{ControlURL: "http://moltnet.test/control"}, Rooms: []bridgeconfig.RoomBinding{{ID: "room", Wake: bridgeconfig.WakeAll}}}
-				if err := Preflight(ctx, config); err != nil {
+					Runtime: bridgeconfig.RuntimeConfig{Kind: bridgeconfig.RuntimeDaimon, ControlURL: "http://moltnet.test/control",
+						TokenEnv: "DAIMON_CLOCK_TEST_TOKEN", ReceiptStorePath: filepath.Join(t.TempDir(), "private", "receipts.json")},
+					Rooms: []bridgeconfig.RoomBinding{{ID: "room", Wake: bridgeconfig.WakeAll}}}
+				runner, err := New(config)
+				if err != nil {
 					t.Fatal(err)
 				}
 				ctx = loop.WithAttachmentReady(ctx, func() { readiness.Add(1) })
-				if err := loop.RunControlLoop(ctx, config); err != nil {
-					t.Fatal(err)
+				err = runner.Run(ctx)
+				if err == nil || !strings.Contains(err.Error(), "clock mismatch") ||
+					!strings.Contains(err.Error(), "configure identical origin and anchor on both") {
+					t.Fatalf("runner lost terminal clock diagnostic: %v", err)
+				}
+				if ctx.Err() != nil {
+					t.Fatalf("runner waited for cancellation instead of terminating: %v", ctx.Err())
 				}
 				select {
 				case <-changedClosed:

@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -108,7 +109,7 @@ func RunControlLoopWithCodec(ctx context.Context, config bridgeconfig.Config, co
 		if ctx.Err() != nil {
 			return nil
 		}
-		if err == nil {
+		if err == nil || errors.Is(err, bridgeutil.ErrClockMismatch) {
 			return err
 		}
 		attempt++

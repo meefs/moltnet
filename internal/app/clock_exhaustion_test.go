@@ -21,7 +21,7 @@ func TestClockHTTPRuntimeExhaustion(t *testing.T) {
 			step   time.Duration
 		}{
 			{"9999-12-31T23:59:59.999Z", time.Millisecond},
-			{"0001-01-01T00:00:00Z", -time.Millisecond},
+			{"0001-01-01T00:00:00.001Z", -time.Millisecond},
 		} {
 			t.Run(kind+"/"+bound.origin, func(t *testing.T) {
 				real := time.UnixMilli(0)
@@ -60,7 +60,7 @@ func TestClockHTTPRuntimeExhaustion(t *testing.T) {
 					req.Header.Set("Last-Event-ID", "missing")
 					response := httptest.NewRecorder()
 					handler.ServeHTTP(response, req)
-					if response.Code != http.StatusInternalServerError || !strings.Contains(response.Body.String(), "clock result is outside years 1..9999 UTC") {
+					if response.Code != http.StatusInternalServerError || !strings.Contains(response.Body.String(), bridgeconfig.ErrClockRange.Error()) {
 						t.Fatalf("%s %s: %d %s", request.method, request.path, response.Code, response.Body)
 					}
 				}

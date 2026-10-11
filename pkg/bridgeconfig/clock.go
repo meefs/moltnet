@@ -14,9 +14,11 @@ import (
 
 const TaskClockVersion = "noopolis.task-clock.v1"
 
+const supportedClockRange = "0001-01-01T00:00:00.001Z..9999-12-31T23:59:59.999Z"
+
 // ErrClockRange is safe to expose to callers; an exhausted clock cannot stamp
 // new domain data. Existing recorded timestamps remain readable.
-var ErrClockRange = errors.New("clock result is outside years 1..9999 UTC")
+var ErrClockRange = errors.New("clock result is outside supported range " + supportedClockRange)
 
 // ClockConfig is the explicit cross-process task clock. JSON uses the ecosystem
 // contract; YAML uses the config file's snake_case convention. Omission is real time.
@@ -26,9 +28,9 @@ type ClockConfig struct {
 	AnchorEpochMS int64  `json:"anchorEpochMs" yaml:"anchor_epoch_ms"`
 }
 
-// Bound both endpoints to years 1..9999 UTC, which our stored/wire timestamps
-// can represent. Millisecond arithmetic avoids time.Duration's 292-year limit.
-const minClockMS int64 = -62135596800000
+// Exclude Go's zero-time sentinel: causal records and wakes require a timestamp.
+// Millisecond arithmetic avoids time.Duration's 292-year limit.
+const minClockMS int64 = -62135596799999
 const maxClockMS int64 = 253402300799999
 
 var clockOriginPattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]([01]\d|2[0-3]):[0-5]\d)$`)
@@ -43,7 +45,7 @@ func (c ClockConfig) offsetMS() (int64, error) {
 	}
 	if origin.UnixMilli() < minClockMS || origin.UnixMilli() > maxClockMS ||
 		c.AnchorEpochMS < minClockMS || c.AnchorEpochMS > maxClockMS {
-		return 0, fmt.Errorf("clock origin and anchor must be within years 1..9999 UTC")
+		return 0, fmt.Errorf("clock origin and anchor must be within %s", supportedClockRange)
 	}
 	return origin.UnixMilli() - c.AnchorEpochMS, nil
 }
@@ -87,7 +89,7 @@ func (c *ClockConfig) RealTime(taskTime time.Time) (time.Time, error) {
 
 func shiftedClockTime(value time.Time, offset int64) (time.Time, error) {
 	value = value.UTC()
-	if value.Year() < 1 || value.Year() > 9999 {
+	if value.Year() < 1 || value.Year() > 9999 || value.UnixMilli() < minClockMS {
 		return time.Time{}, fmt.Errorf("%w: input is outside the supported range", ErrClockRange)
 	}
 	ms := value.UnixMilli() + offset
