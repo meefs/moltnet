@@ -19,6 +19,10 @@ func (s *Service) RemoveAgentContext(ctx context.Context, agentID string) (proto
 	if err != nil {
 		return protocol.RemoveResult{}, err
 	}
+	now, err := s.now()
+	if err != nil {
+		return protocol.RemoveResult{}, err
+	}
 	if err := s.removeAgent(ctx, id); err != nil {
 		return protocol.RemoveResult{}, err
 	}
@@ -30,7 +34,6 @@ func (s *Service) RemoveAgentContext(ctx context.Context, agentID string) (proto
 	delete(s.connectedAgents, id)
 	s.agentPresenceMu.Unlock()
 
-	now := s.now().UTC()
 	s.publishEvent(protocol.Event{
 		ID:        newPrefixedID("evt"),
 		Type:      protocol.EventTypeAgentRemoved,
@@ -61,12 +64,15 @@ func (s *Service) RemoveRoomContext(ctx context.Context, roomID string) (protoco
 	if !ok {
 		return protocol.RemoveResult{}, unknownRoomError(id)
 	}
+	now, err := s.now()
+	if err != nil {
+		return protocol.RemoveResult{}, err
+	}
 	if err := s.removeRoom(ctx, id); err != nil {
 		return protocol.RemoveResult{}, err
 	}
 	s.clearRoomCredential(id)
 
-	now := s.now().UTC()
 	s.publishEvent(protocol.Event{
 		ID:        newPrefixedID("evt"),
 		Type:      protocol.EventTypeRoomRemoved,

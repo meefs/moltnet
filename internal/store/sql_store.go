@@ -10,6 +10,7 @@ import (
 )
 
 type SQLStore struct {
+	now     func() (time.Time, error)
 	db      *sql.DB
 	dialect sqlDialect
 }
@@ -336,8 +337,12 @@ func (s *SQLStore) RemoveRoomContext(ctx context.Context, roomID string) error {
 	}
 	defer rollback(tx)
 
+	now, err := s.now()
+	if err != nil {
+		return err
+	}
 	updateQuery := bindQuery(s.dialect, `UPDATE rooms SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL`)
-	result, err := tx.ExecContext(ctx, updateQuery, formatTime(time.Now().UTC()), roomID)
+	result, err := tx.ExecContext(ctx, updateQuery, formatTime(now.UTC()), roomID)
 	if err != nil {
 		return fmt.Errorf("remove room %q: %w", roomID, err)
 	}

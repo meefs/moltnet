@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/noopolis/moltnet/pkg/bridgeconfig"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
@@ -167,6 +168,9 @@ func responseContext(response http.ResponseWriter) context.Context {
 }
 
 func publicErrorMessage(status int, err error) string {
+	if errors.Is(err, bridgeconfig.ErrClockRange) {
+		return bridgeconfig.ErrClockRange.Error()
+	}
 	if status >= http.StatusInternalServerError || err == nil {
 		if text := strings.TrimSpace(http.StatusText(status)); text != "" {
 			return strings.ToLower(text)

@@ -42,8 +42,15 @@ type ContextAgentStore interface {
 	GetAgentContext(ctx context.Context, agentID string) (protocol.AgentSummary, bool, error)
 }
 
+// RegistrationResult records the outcome of the atomic registration operation.
+// Created is independent of clock precision and is never part of the wire schema.
+type RegistrationResult struct {
+	protocol.AgentRegistration
+	Created bool
+}
+
 type ContextAgentRegistryStore interface {
-	RegisterAgentContext(ctx context.Context, registration protocol.AgentRegistration) (protocol.AgentRegistration, error)
+	RegisterAgentContext(ctx context.Context, registration protocol.AgentRegistration) (RegistrationResult, error)
 	ReconcileRegisteredAgentContext(ctx context.Context, registration protocol.AgentRegistration) (protocol.AgentRegistration, error)
 	ListRegisteredAgentsContext(ctx context.Context) ([]protocol.AgentRegistration, error)
 	GetRegisteredAgentContext(ctx context.Context, agentID string) (protocol.AgentRegistration, bool, error)

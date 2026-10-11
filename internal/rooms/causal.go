@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"strings"
+	"time"
 
 	authn "github.com/noopolis/moltnet/internal/auth"
 	"github.com/noopolis/moltnet/internal/observability"
@@ -101,7 +102,7 @@ func (s *Service) stampMessageAccepted(ctx context.Context, message protocol.Mes
 		// auth layer. It is never request.From: that field is a claimed
 		// display identity and is not trusted for causal attribution.
 		PrincipalID:   causalPrincipal(ctx),
-		RecordedAt:    s.now().UTC(),
+		RecordedAt:    message.CreatedAt,
 		CauseEventIDs: causeEventIDs(request.CauseEventIDs),
 		Payload:       payload,
 	}
@@ -129,6 +130,7 @@ func (s *Service) stampMessageDenied(
 	messageID string,
 	request protocol.SendMessageRequest,
 	reason string,
+	recordedAt time.Time,
 ) {
 	if s.causalWriter == nil {
 		return
@@ -160,7 +162,7 @@ func (s *Service) stampMessageDenied(
 		// principal_id is the authenticated caller identity, exactly as for
 		// stampMessageAccepted above: never request.From.
 		PrincipalID:   causalPrincipal(ctx),
-		RecordedAt:    s.now().UTC(),
+		RecordedAt:    recordedAt,
 		CauseEventIDs: causeEventIDs(request.CauseEventIDs),
 		Payload:       payload,
 	}

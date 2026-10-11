@@ -23,6 +23,7 @@ import (
 // second lock: the fan-out below runs inside the critical section and relies
 // on being serialized against subscriber registration/removal.
 type Broker struct {
+	now         func() (time.Time, error)
 	mu          sync.Mutex
 	nextID      uint64
 	subscribers map[uint64]brokerSubscriber
@@ -44,6 +45,7 @@ const brokerHistoryLimit = 256
 
 func NewBroker(delivery ...attachmentDeliveryStore) *Broker {
 	broker := &Broker{
+		now:         func() (time.Time, error) { return time.Now().UTC(), nil },
 		subscribers: make(map[uint64]brokerSubscriber),
 		history:     make([]protocol.Event, 0, brokerHistoryLimit),
 	}
@@ -52,6 +54,9 @@ func NewBroker(delivery ...attachmentDeliveryStore) *Broker {
 	}
 	return broker
 }
+
+// SetNow injects the domain clock before the broker starts serving requests.
+func (b *Broker) SetNow(now func() (time.Time, error)) { b.now = now }
 
 // SubscribeAgent establishes a persistent per-agent delivery baseline on the
 // first attachment and replays every stored message event after the last ACK
@@ -138,11 +143,25 @@ func (b *Broker) Publish(event protocol.Event) {
 }
 
 func (b *Broker) subscribeFrom(ctx context.Context, lastEventID string) <-chan protocol.Event {
+	stream, err := b.SubscribeFromContext(ctx, lastEventID)
+	if err != nil {
+		observability.Logger(ctx, "events.broker", "error", err).Error("cannot timestamp replay gap")
+		closed := make(chan protocol.Event)
+		close(closed)
+		return closed
+	}
+	return stream
+}
+
+// SubscribeFromContext reports failures before registering a subscriber.
+func (b *Broker) SubscribeFromContext(ctx context.Context, lastEventID string) (<-chan protocol.Event, error) {
 	b.mu.Lock()
-	replay := b.eventsAfterLocked(lastEventID)
-	ch := b.subscribeLocked(ctx, replay, false)
-	b.mu.Unlock()
-	return ch
+	defer b.mu.Unlock()
+	replay, err := b.eventsAfterLocked(lastEventID)
+	if err != nil {
+		return nil, err
+	}
+	return b.subscribeLocked(ctx, replay, false), nil
 }
 
 func (b *Broker) subscribeLocked(ctx context.Context, replay []protocol.Event, durable bool) <-chan protocol.Event {
@@ -178,12 +197,12 @@ func (b *Broker) subscribeLocked(ctx context.Context, replay []protocol.Event, d
 	return ch
 }
 
-func (b *Broker) eventsAfterLocked(lastEventID string) []protocol.Event {
+func (b *Broker) eventsAfterLocked(lastEventID string) ([]protocol.Event, error) {
 	if len(b.history) == 0 || lastEventID == "" {
-		return nil
+		return nil, nil
 	}
 	if strings.HasPrefix(lastEventID, "evt_gap_") {
-		return append([]protocol.Event(nil), b.history...)
+		return append([]protocol.Event(nil), b.history...), nil
 	}
 
 	index := -1
@@ -195,6 +214,10 @@ func (b *Broker) eventsAfterLocked(lastEventID string) []protocol.Event {
 	}
 
 	if index == -1 {
+		now, err := b.now()
+		if err != nil {
+			return nil, err
+		}
 		events := []protocol.Event{{
 			ID:        replayGapEventID(lastEventID),
 			Type:      protocol.EventTypeReplayGap,
@@ -204,15 +227,15 @@ func (b *Broker) eventsAfterLocked(lastEventID string) []protocol.Event {
 				OldestEventID:    b.history[0].ID,
 				NewestEventID:    b.history[len(b.history)-1].ID,
 			},
-			CreatedAt: time.Now().UTC(),
+			CreatedAt: now.UTC(),
 		}}
-		return append(events, b.history...)
+		return append(events, b.history...), nil
 	}
 	if index == len(b.history)-1 {
-		return nil
+		return nil, nil
 	}
 
-	return append([]protocol.Event(nil), b.history[index+1:]...)
+	return append([]protocol.Event(nil), b.history[index+1:]...), nil
 }
 
 func replayGapEventID(requestedEventID string) string {

@@ -19,9 +19,11 @@ type signalingService struct {
 	once       sync.Once
 }
 
-func (s *signalingService) SubscribeFrom(ctx context.Context, lastEventID string) <-chan protocol.Event {
+func (s *signalingService) SubscribeFromContext(
+	ctx context.Context, lastEventID string,
+) (<-chan protocol.Event, error) {
 	s.once.Do(func() { close(s.subscribed) })
-	return s.fakeService.SubscribeFrom(ctx, lastEventID)
+	return s.fakeService.SubscribeFromContext(ctx, lastEventID)
 }
 
 func TestEventStreamHeartbeats(t *testing.T) {

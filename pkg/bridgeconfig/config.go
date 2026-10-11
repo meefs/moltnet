@@ -27,6 +27,7 @@ const (
 )
 
 type Config struct {
+	Clock   *ClockConfig  `json:"clock,omitempty" yaml:"clock,omitempty"`
 	Version string        `json:"version" yaml:"version"`
 	Agent   AgentConfig   `json:"agent" yaml:"agent"`
 	Moltnet MoltnetConfig `json:"moltnet" yaml:"moltnet"`
@@ -118,6 +119,9 @@ func LoadFile(path string) (Config, error) {
 	}
 
 	var config Config
+	if err := ValidateClockField(bytes, false); err != nil {
+		return Config{}, fmt.Errorf("decode bridge config: %w", err)
+	}
 	if err := json.Unmarshal(bytes, &config); err != nil {
 		return Config{}, fmt.Errorf("decode bridge config: %w", err)
 	}
@@ -138,6 +142,11 @@ func LoadFile(path string) (Config, error) {
 
 func (c Config) Validate() error {
 	c = c.Normalized()
+	if c.Clock != nil {
+		if err := c.Clock.Validate(); err != nil {
+			return err
+		}
+	}
 
 	if strings.TrimSpace(c.Version) == "" {
 		return fmt.Errorf("bridge config version is required")

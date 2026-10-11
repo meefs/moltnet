@@ -87,6 +87,7 @@ func newSQLStore(db *sql.DB, dialect sqlDialect) (*SQLStore, error) {
 	}
 
 	store := &SQLStore{
+		now:     func() (time.Time, error) { return time.Now().UTC(), nil },
 		db:      db,
 		dialect: dialect,
 	}

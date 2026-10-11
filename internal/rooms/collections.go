@@ -70,6 +70,10 @@ func (s *Service) UpdateRoomMembers(
 		return protocol.Room{}, unknownRoomError(id)
 	}
 
+	now, err := s.now()
+	if err != nil {
+		return protocol.Room{}, err
+	}
 	room, err := s.updateRoomMembers(ctx, id, request.Add, request.Remove)
 	if err != nil {
 		if errors.Is(err, store.ErrRoomNotFound) {
@@ -86,7 +90,7 @@ func (s *Service) UpdateRoomMembers(
 		Type:      protocol.EventTypeRoomMembersUpdated,
 		NetworkID: s.networkID,
 		Room:      &room,
-		CreatedAt: room.CreatedAt,
+		CreatedAt: now,
 	})
 
 	return room, nil

@@ -99,6 +99,11 @@ func (s *Service) publishAgentEvent(ctx context.Context, eventType string, agent
 	if strings.TrimSpace(agent.AgentID) == "" {
 		return
 	}
+	now, err := s.now()
+	if err != nil {
+		observability.Logger(ctx, "rooms.agent", "error", err).Error("cannot timestamp agent event")
+		return
+	}
 	observability.Logger(ctx, "rooms.agent", "agent_id", agent.AgentID, "event_type", eventType).
 		Info("agent lifecycle event")
 	s.publishEvent(protocol.Event{
@@ -106,7 +111,7 @@ func (s *Service) publishAgentEvent(ctx context.Context, eventType string, agent
 		Type:      eventType,
 		NetworkID: s.networkID,
 		Agent:     &agent,
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: now,
 	})
 }
 
@@ -187,10 +192,15 @@ func (s *Service) setPairingError(pairingID string, message string) {
 	}
 	s.pairingsMu.RUnlock()
 
+	now, err := s.now()
+	if err != nil {
+		observability.Logger(s.lifecycleCtx, "rooms.pairing", "error", err).Error("cannot timestamp pairing error")
+		return
+	}
 	s.setPairingRuntime(pairingID, pairingStatus{
 		value: value,
 		diagnostics: &protocol.PairingDiagnostics{
-			CheckedAt: s.now().UTC(),
+			CheckedAt: now,
 			Reason:    pairingDiagnosticRemoteRequestFailure,
 			Message:   strings.TrimSpace(message),
 		},
@@ -199,8 +209,13 @@ func (s *Service) setPairingError(pairingID string, message string) {
 }
 
 func (s *Service) setPairingRuntime(pairingID string, next pairingStatus, replaceDiagnostics bool) {
+	now, err := s.now()
+	if err != nil {
+		observability.Logger(s.lifecycleCtx, "rooms.pairing", "error", err).Error("cannot timestamp pairing status")
+		return
+	}
 	next.value = normalizePairingStatus(next.value)
-	updatedAt := s.now().UTC()
+	updatedAt := time.Now().UTC()
 
 	s.pairingsMu.Lock()
 	previous := s.pairingStatuses[pairingID]
@@ -256,6 +271,6 @@ func (s *Service) setPairingRuntime(pairingID string, next pairingStatus, replac
 		Type:      protocol.EventTypePairingUpdated,
 		NetworkID: s.networkID,
 		Pairing:   eventPairing,
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: now,
 	})
 }

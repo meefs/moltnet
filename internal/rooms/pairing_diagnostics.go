@@ -60,12 +60,16 @@ func (s *Service) refreshPairingDiagnostics(
 	pairing protocol.Pairing,
 	scope pairingCheckScope,
 ) (protocol.Network, pairingStatus, error) {
+	checkedAt, err := s.now()
+	if err != nil {
+		return protocol.Network{}, pairingStatus{}, err
+	}
 	network, err := s.pairingClient.FetchNetwork(ctx, pairing)
 	if err != nil {
 		status := pairingStatus{
 			value: protocol.PairingStatusError,
 			diagnostics: &protocol.PairingDiagnostics{
-				CheckedAt: s.now().UTC(),
+				CheckedAt: checkedAt,
 				Reason:    pairingDiagnosticRemoteRequestFailure,
 				Message:   "Remote network metadata could not be fetched.",
 			},
@@ -75,7 +79,7 @@ func (s *Service) refreshPairingDiagnostics(
 		return protocol.Network{}, status, err
 	}
 
-	status := s.evaluatePairingCompatibility(pairing, network, scope)
+	status := s.evaluatePairingCompatibility(pairing, network, scope, checkedAt)
 	status = s.preserveStrongerPairingDiagnostics(pairing, status, scope)
 	s.setPairingRuntime(pairing.ID, status, true)
 	return network, status, nil
@@ -101,11 +105,11 @@ func (s *Service) evaluatePairingCompatibility(
 	pairing protocol.Pairing,
 	network protocol.Network,
 	scope pairingCheckScope,
+	checkedAt time.Time,
 ) pairingStatus {
-	checkedAt := s.now().UTC()
 	status := pairingStatus{
 		value:            protocol.PairingStatusConnected,
-		updatedAt:        checkedAt,
+		updatedAt:        time.Now().UTC(),
 		directMessages:   network.Capabilities.DirectMessages,
 		cursorPagination: strings.TrimSpace(network.Capabilities.MessagePagination) == "cursor",
 		checked:          true,
@@ -215,7 +219,7 @@ func (s *Service) pairingDiagnosticsNeedRefresh(status pairingStatus) bool {
 	if !status.checked || status.diagnostics == nil || status.updatedAt.IsZero() {
 		return true
 	}
-	return s.now().UTC().Sub(status.updatedAt) >= pairingDiagnosticsTTL
+	return time.Now().UTC().Sub(status.updatedAt) >= pairingDiagnosticsTTL
 }
 
 func pairingDiscoveryError(status pairingStatus) error {

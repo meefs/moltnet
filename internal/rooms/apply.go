@@ -75,6 +75,10 @@ func (s *Service) applyAgents(
 		}
 		seen[agentID] = struct{}{}
 
+		now, err := s.now()
+		if err != nil {
+			return nil, err
+		}
 		registration, err := s.reconcileAgent(ctx, protocol.AgentRegistration{
 			NetworkID:     s.networkID,
 			AgentID:       agentID,
@@ -82,8 +86,8 @@ func (s *Service) applyAgents(
 			ActorURI:      protocol.AgentFQID(s.networkID, agentID),
 			DisplayName:   strings.TrimSpace(agent.Name),
 			CredentialKey: strings.TrimSpace(agent.CredentialKey),
-			CreatedAt:     s.now().UTC(),
-			UpdatedAt:     s.now().UTC(),
+			CreatedAt:     now,
+			UpdatedAt:     now,
 		})
 		if err != nil {
 			return nil, err

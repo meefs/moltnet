@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	authn "github.com/noopolis/moltnet/internal/auth"
 	"github.com/noopolis/moltnet/internal/observability"
+	"github.com/noopolis/moltnet/pkg/bridgeconfig"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
@@ -38,7 +39,9 @@ func handleAttachment(
 		},
 	}
 
-	connection, err := upgrader.Upgrade(response, request, nil)
+	// Gorilla copies upgrade headers only from this explicit map, not Header().
+	headers := http.Header{bridgeconfig.TaskClockHeader: response.Header().Values(bridgeconfig.TaskClockHeader)}
+	connection, err := upgrader.Upgrade(response, request, headers)
 	if err != nil {
 		observability.Logger(request.Context(), "transport.attach").Error("upgrade attachment websocket", "error", err)
 		return
@@ -96,12 +99,10 @@ func handleAttachment(
 		if supported {
 			durable = candidate
 		} else {
-			stream = service.SubscribeFrom(ctx, session.ResumeCursor())
-			registration, err = service.RegisterAgentContext(request.Context(), registerRequest)
+			registration, stream, err = registerEphemeralAttachment(service, ctx, session.ResumeCursor(), registerRequest)
 		}
 	} else {
-		stream = service.SubscribeFrom(ctx, session.ResumeCursor())
-		registration, err = service.RegisterAgentContext(request.Context(), registerRequest)
+		registration, stream, err = registerEphemeralAttachment(service, ctx, session.ResumeCursor(), registerRequest)
 	}
 	if err != nil {
 		message := err.Error()

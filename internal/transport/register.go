@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"context"
 	"net/http"
 
 	authn "github.com/noopolis/moltnet/internal/auth"
@@ -26,10 +27,10 @@ func handleRegisterAgent(service Service, policy *authn.Policy) http.HandlerFunc
 			return
 		}
 		status := http.StatusCreated
-		if agent.AgentToken == "" && !agent.CreatedAt.Equal(agent.UpdatedAt) {
+		if !agent.Created {
 			status = http.StatusOK
 		}
-		writeJSON(response, status, agent)
+		writeJSON(response, status, agent.AgentRegistration)
 	}
 }
 
@@ -70,4 +71,13 @@ func authenticateRegisterRequest(
 		return request, &authn.Error{Status: http.StatusForbidden, Message: "forbidden"}
 	}
 	return request.WithContext(authn.WithClaims(request.Context(), claims)), nil
+}
+
+func registerEphemeralAttachment(service Service, ctx context.Context, cursor string, request protocol.RegisterAgentRequest) (protocol.AgentRegistration, <-chan protocol.Event, error) {
+	stream, err := service.SubscribeFromContext(ctx, cursor)
+	if err != nil {
+		return protocol.AgentRegistration{}, nil, err
+	}
+	result, err := service.RegisterAgentContext(ctx, request)
+	return result.AgentRegistration, stream, err
 }

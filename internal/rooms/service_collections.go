@@ -27,7 +27,11 @@ func (s *Service) CreateRoomContext(ctx context.Context, request protocol.Create
 	if err := validateRoomCredentialMode(ctx, request.Credential); err != nil {
 		return protocol.Room{}, err
 	}
-	room, err := roomFromCreateRequest(s.networkID, request)
+	now, err := s.now()
+	if err != nil {
+		return protocol.Room{}, err
+	}
+	room, err := roomFromCreateRequest(s.networkID, request, now)
 	if err != nil {
 		return protocol.Room{}, err
 	}

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	authn "github.com/noopolis/moltnet/internal/auth"
+	"github.com/noopolis/moltnet/pkg/bridgeconfig"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
@@ -32,6 +33,7 @@ const (
 )
 
 type Config struct {
+	Clock                 *bridgeconfig.ClockConfig
 	AllowHumanIngress     bool
 	CausalEventsPath      string
 	Console               ConsoleConfig
