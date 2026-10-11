@@ -73,7 +73,7 @@ func (c *MoltnetClient) StreamEventsReady(
 	connection, response, err := c.connect(ctx, config)
 	if err != nil {
 		if response != nil {
-			return fmt.Errorf("request moltnet attach: %s", response.Status)
+			return fmt.Errorf("request moltnet attach: %s: %w", response.Status, err)
 		}
 		return err
 	}
@@ -232,36 +232,6 @@ func (c *MoltnetClient) SendMessage(
 	}
 
 	return accepted, nil
-}
-
-func (c *MoltnetClient) connect(
-	ctx context.Context,
-	config bridgeconfig.Config,
-) (*websocket.Conn, *http.Response, error) {
-	if err := c.resolveTokenErr(); err != nil {
-		return nil, nil, err
-	}
-	if err := c.prepareOpenClaim(config); err != nil {
-		return nil, nil, err
-	}
-
-	endpoint, err := attachmentURL(c.baseURL)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	headers := http.Header{}
-	if token := c.currentToken(); token != "" {
-		headers.Set("Authorization", "Bearer "+token)
-	}
-
-	connection, response, err := c.dialer.DialContext(ctx, endpoint, headers)
-	if err != nil {
-		return nil, response, fmt.Errorf("dial moltnet attachment: %w", err)
-	}
-	connection.SetReadLimit(maxAttachmentFrameBytes)
-
-	return connection, response, nil
 }
 
 func (c *MoltnetClient) expectHello(connection *websocket.Conn) (time.Duration, error) {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
@@ -42,9 +43,12 @@ func (s *SQLStore) PrepareAttachmentDeliveryContext(
 	defer rollback(tx)
 
 	id := strings.TrimSpace(agentID)
-	timestamp, err := s.now()
-	if err != nil {
-		return nil, err
+	timestamp, ok := ctx.Value(attachmentRegistrationTimeKey{}).(time.Time)
+	if !ok {
+		timestamp, err = s.now()
+		if err != nil {
+			return nil, err
+		}
 	}
 	now := formatTime(timestamp.UTC())
 	insert := bindQuery(s.dialect, `

@@ -35,7 +35,8 @@ func (s *Service) RegisterDurableAttachmentContext(
 	if err != nil {
 		return protocol.AgentRegistration{}, nil, true, err
 	}
-	stream, err := broker.SubscribeAgent(ctx, registration.AgentID)
+	subscriptionCtx := store.WithAttachmentRegistrationTime(ctx, registration.UpdatedAt)
+	stream, err := broker.SubscribeAgent(subscriptionCtx, registration.AgentID)
 	if err != nil {
 		return protocol.AgentRegistration{}, nil, true, err
 	}
