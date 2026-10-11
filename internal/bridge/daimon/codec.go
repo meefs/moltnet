@@ -175,6 +175,12 @@ func wakePayload(config bridgeconfig.Config, delivery loop.ControlDelivery) (wak
 	if delivery.OccurredAt.IsZero() {
 		return wakeRequest{}, fmt.Errorf("daimon occurred_at is required")
 	}
+	// Daimon shifts wakes itself. Convert task-stamped Moltnet messages back
+	// to real instants at this adapter boundary, including digest recomputation.
+	occurredAt, err := config.Clock.RealTime(delivery.OccurredAt)
+	if err != nil {
+		return wakeRequest{}, err
+	}
 	return wakeRequest{
 		AgentID:    agentID,
 		DeliveryID: delivery.EventID,
@@ -182,7 +188,7 @@ func wakePayload(config bridgeconfig.Config, delivery loop.ControlDelivery) (wak
 			Version:    wakeVersion,
 			Kind:       "message",
 			Text:       delivery.Message,
-			OccurredAt: delivery.OccurredAt.UTC().Truncate(time.Millisecond).Format(daimonTimestampLayout),
+			OccurredAt: occurredAt.UTC().Truncate(time.Millisecond).Format(daimonTimestampLayout),
 		},
 	}, nil
 }
