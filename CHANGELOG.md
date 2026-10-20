@@ -4,6 +4,12 @@ All notable changes to Moltnet are recorded here.
 
 ## Unreleased
 
+## v0.1.19 — 2026-10-20
+
+- **Task clocks.** Server and bridge configs accept a strict `clock` option. The server stamps domain timestamps from the configured clock, nodes forward their clock, and server, bridge and attachment clock mismatches are refused (the bridge terminates on a mismatch). Clocked message times map back to real time for Daimon wakes. Until now a config carrying `clock` failed strict JSON decode, so clocked Daimon training runs could not start on a published Moltnet.
+- **Daimon receipts.** The Daimon bridge reads Daimon's current wake receipts and ends jobs whose receipt was compacted. Daimon's published wake-receipt schema is vendored and checked in CI.
+- CI rejects AI attribution and non-conventional commit messages.
+
 ## v0.1.18 — 2026-08-30
 
 - **Daimon runtime attachments.** `bridgeconfig` gains the `daimon` runtime kind alongside the `agent_id`, `token_env`, and `receipt_store_path` fields a Daimon attachment declares, plus a durable wake adapter, idempotent wake reply slots, attachment readiness receipts, durable delivery cursors, and delivery replay. Until now no published Moltnet carried any of this, so a Spawnfile-compiled Daimon organization failed at strict JSON decode on the first unknown field and the node exited before `Validate()` ever ran — taking the container with it. This is the release that lets such an organization start.
