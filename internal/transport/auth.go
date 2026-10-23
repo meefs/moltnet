@@ -67,7 +67,7 @@ func authorizedOperatorOrObserver(
 	next http.HandlerFunc,
 ) http.HandlerFunc {
 	return authorizedAnyWithVerifier(policy, verifier, readScopes, func(response http.ResponseWriter, request *http.Request) {
-		if claims, ok := authn.ClaimsFromContext(request.Context()); ok && claims.AgentToken() {
+		if !canReadPairings(policy, request) {
 			writeError(response, http.StatusForbidden, &authn.Error{
 				Status:  http.StatusForbidden,
 				Message: "forbidden",
@@ -114,7 +114,7 @@ func authorizedAttach(
 		return next
 	}
 	if policy.AgentRegistration() != authn.AgentRegistrationOpen {
-		return authorizedWithVerifier(policy, verifier, authn.ScopeAttach, next)
+		return authorizedAnyWithVerifier(policy, verifier, attachScopes, next)
 	}
 
 	return func(response http.ResponseWriter, request *http.Request) {
@@ -140,7 +140,7 @@ func authorizedAttach(
 			})
 			return
 		}
-		if !claims.Allows(authn.ScopeAttach) {
+		if !canAttachAgent(policy, request.WithContext(authn.WithClaims(request.Context(), claims))) {
 			writeError(response, http.StatusForbidden, &authn.Error{
 				Status:  http.StatusForbidden,
 				Message: "forbidden",
@@ -307,7 +307,7 @@ func authenticateAnyWithVerifier(
 			Message: "invalid token",
 		}
 	}
-	if !claims.AllowsAny(scopes) {
+	if !requestAllowsScopes(policy, request.WithContext(authn.WithClaims(request.Context(), claims)), scopes) {
 		return authn.Claims{}, &authn.Error{
 			Status:  http.StatusForbidden,
 			Message: "forbidden",

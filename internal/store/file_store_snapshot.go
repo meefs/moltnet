@@ -182,6 +182,7 @@ func (s *FileStore) restore(state snapshot) {
 	s.MemoryStore.directMessages = cloneMessages(state.DirectMessages)
 	s.MemoryStore.directMembers = cloneMembers(state.DirectMembers)
 	s.MemoryStore.agents = protocolAgents(state.Agents)
+	s.MemoryStore.rebuildRoomActivity()
 	s.MemoryStore.messageIDs = collectMessageIDs(
 		s.MemoryStore.roomMessages,
 		s.MemoryStore.threadMessages,
@@ -220,6 +221,7 @@ func memoryStoreFromSnapshot(state snapshot) *MemoryStore {
 	memory.directMessages = cloneMessages(state.DirectMessages)
 	memory.directMembers = cloneMembers(state.DirectMembers)
 	memory.agents = protocolAgents(state.Agents)
+	memory.rebuildRoomActivity()
 	memory.messageIDs = collectMessageIDs(memory.roomMessages, memory.threadMessages, memory.directMessages)
 	return memory
 }

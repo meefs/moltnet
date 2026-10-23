@@ -152,7 +152,8 @@ func (s *SQLStore) ListRooms() ([]protocol.Room, error) {
 
 func (s *SQLStore) ListRoomsContext(ctx context.Context) ([]protocol.Room, error) {
 	query := bindQuery(s.dialect, `
-		SELECT r.id, r.network_id, r.fqid, r.name, r.visibility, r.write_policy, r.federation, r.created_at, rm.member_id
+		SELECT r.id, r.network_id, r.fqid, r.name, r.visibility, r.write_policy, r.federation, r.created_at, rm.member_id,
+		       `+s.roomActivitySQL()+`
 		FROM rooms r
 		LEFT JOIN room_members rm ON rm.room_id = r.id
 		WHERE r.deleted_at IS NULL
@@ -172,9 +173,10 @@ func (s *SQLStore) ListRoomsContext(ctx context.Context) ([]protocol.Room, error
 			visibility, writePolicy       string
 			federation                    sql.NullString
 			createdAt                     any
+			lastMessageAt                 any
 			memberID                      sql.NullString
 		)
-		if err := rows.Scan(&roomID, &networkID, &fqid, &name, &visibility, &writePolicy, &federation, &createdAt, &memberID); err != nil {
+		if err := rows.Scan(&roomID, &networkID, &fqid, &name, &visibility, &writePolicy, &federation, &createdAt, &memberID, &lastMessageAt); err != nil {
 			return nil, fmt.Errorf("scan room: %w", err)
 		}
 		room, ok := roomsByID[roomID]
@@ -192,6 +194,10 @@ func (s *SQLStore) ListRoomsContext(ctx context.Context) ([]protocol.Room, error
 				WritePolicy: protocol.NormalizeRoomWritePolicy(writePolicy),
 				Federation:  parsedFederation,
 				CreatedAt:   parseTime(createdAt),
+			}
+			if lastMessageAt != nil {
+				at := parseTime(lastMessageAt)
+				room.LastMessageAt = &at
 			}
 			roomsByID[roomID] = room
 			rooms = append(rooms, *room)

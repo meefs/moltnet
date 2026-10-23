@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
@@ -29,6 +30,7 @@ type MemoryStore struct {
 	rooms           map[string]protocol.Room
 	removedRooms    map[string]struct{}
 	roomMessages    map[string][]protocol.Message
+	roomActivity    map[string]time.Time
 	threads         map[string]protocol.Thread
 	roomThreads     map[string]map[string]struct{}
 	threadMessages  map[string][]protocol.Message
@@ -45,6 +47,7 @@ func NewMemoryStore() *MemoryStore {
 		rooms:           make(map[string]protocol.Room),
 		removedRooms:    make(map[string]struct{}),
 		roomMessages:    make(map[string][]protocol.Message),
+		roomActivity:    make(map[string]time.Time),
 		threads:         make(map[string]protocol.Thread),
 		roomThreads:     make(map[string]map[string]struct{}),
 		threadMessages:  make(map[string][]protocol.Message),
@@ -111,6 +114,7 @@ func (s *MemoryStore) ListRoomsContext(_ context.Context) ([]protocol.Room, erro
 
 	rooms := make([]protocol.Room, 0, len(s.rooms))
 	for _, room := range s.rooms {
+		room.LastMessageAt = s.latestRoomMessage(room.ID)
 		rooms = append(rooms, room)
 	}
 

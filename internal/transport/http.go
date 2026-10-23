@@ -83,7 +83,7 @@ func NewHTTPHandler(service Service, policy *authn.Policy, configs ...HTTPConfig
 			"status": "ready",
 		})
 	}))
-	mux.HandleFunc("GET /v1/network", publicInOpen(policy, service, networkScopes, func(response http.ResponseWriter, request *http.Request) {
+	mux.HandleFunc("GET /v1/network", networkDiscoveryAuth(policy, service, func(response http.ResponseWriter, request *http.Request) {
 		writeJSON(response, http.StatusOK, networkForRequest(policy, request, service.Network()))
 	}))
 

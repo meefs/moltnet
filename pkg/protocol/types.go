@@ -34,7 +34,17 @@ type Network struct {
 }
 
 type NetworkConsole struct {
-	CanSendHuman bool `json:"can_send_human"`
+	CanSendHuman    bool          `json:"can_send_human"`
+	Viewer          ConsoleViewer `json:"viewer"`
+	CanReadPairings bool          `json:"can_read_pairings"`
+	CanReadDMs      bool          `json:"can_read_dms"`
+	CanConnectAgent bool          `json:"can_connect_agent"`
+}
+
+// ConsoleViewer identifies the caller without exposing credentials.
+type ConsoleViewer struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id,omitempty"`
 }
 
 type NetworkCapabilities struct {
@@ -117,16 +127,17 @@ type Event struct {
 }
 
 type Room struct {
-	ID          string          `json:"id"`
-	NetworkID   string          `json:"network_id,omitempty"`
-	FQID        string          `json:"fqid,omitempty"`
-	Name        string          `json:"name"`
-	Members     []string        `json:"members,omitempty"`
-	Visibility  string          `json:"visibility,omitempty"`
-	WritePolicy string          `json:"write_policy,omitempty"`
-	Federation  *RoomFederation `json:"federation,omitempty" yaml:"federation,omitempty"`
-	Access      *RoomAccess     `json:"access,omitempty"`
-	CreatedAt   time.Time       `json:"created_at"`
+	ID            string          `json:"id"`
+	NetworkID     string          `json:"network_id,omitempty"`
+	FQID          string          `json:"fqid,omitempty"`
+	Name          string          `json:"name"`
+	Members       []string        `json:"members,omitempty"`
+	Visibility    string          `json:"visibility,omitempty"`
+	WritePolicy   string          `json:"write_policy,omitempty"`
+	Federation    *RoomFederation `json:"federation,omitempty" yaml:"federation,omitempty"`
+	Access        *RoomAccess     `json:"access,omitempty"`
+	CreatedAt     time.Time       `json:"created_at"`
+	LastMessageAt *time.Time      `json:"last_message_at,omitempty"`
 }
 
 type RoomAccess struct {
