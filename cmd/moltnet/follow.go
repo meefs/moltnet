@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/noopolis/moltnet/internal/app"
@@ -49,6 +50,11 @@ func runFollowList(args []string) error {
 }
 
 func runFollowEdit(ctx context.Context, verb string, args []string) error {
+	for _, key := range []string{"MOLTNET_FOLLOWS_JSON", "MOLTNET_FOLLOWS"} {
+		if strings.TrimSpace(os.Getenv(key)) != "" {
+			return fmt.Errorf("cannot edit file follows while %s overrides them; unset it first", key)
+		}
+	}
 	values := map[string]bool{"--id": true, "--config": true, "--network": true, "--base-url": true, "--token-env": true, "--room": true, "--backfill": true, "--visibility": true, "--remote-network-id": true}
 	flagArgs, positional, err := splitSingleRoomIDArgs(args, values, "follow "+verb)
 	if err != nil {

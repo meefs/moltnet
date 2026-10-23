@@ -109,3 +109,24 @@ func TestFollowCLIApplyRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestFollowCLIRefusesEnvironmentOverride(t *testing.T) {
+	for _, key := range []string{"MOLTNET_FOLLOWS_JSON", "MOLTNET_FOLLOWS"} {
+		t.Run(key, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "Moltnet")
+			body := roomCreateTestConfigBody("follower", "127.0.0.1:1", "keep-secret", "  []")
+			writeRoomCreateTestConfig(t, path, body)
+			t.Setenv(key, `[]`)
+			if err := run(context.Background(), []string{"follow", "add", "https://news.example", "--config", path}, ""); err == nil {
+				t.Fatal("env override accepted")
+			}
+			contents, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(contents) != body {
+				t.Fatal("env override changed config")
+			}
+		})
+	}
+}
