@@ -47,6 +47,7 @@ func applyRequestFromConfig(config Config) (protocol.ApplyConfigRequest, error) 
 	}
 	return protocol.ApplyConfigRequest{
 		NetworkID: config.NetworkID,
+		Follows:   followApplyList(config.Follows),
 		Rooms:     rooms,
 		Agents:    agents,
 	}, nil
@@ -75,6 +76,9 @@ func loadApplyFileConfig(path string) (rawConfigFile, error) {
 }
 
 func validateApplyConfigFile(config rawConfigFile) error {
+	if err := validateConfigFollows(config.Follows, config.Rooms); err != nil {
+		return err
+	}
 	version := strings.TrimSpace(config.Version)
 	if version != "" && version != defaultConfigSchema {
 		return fmt.Errorf("unsupported version %q", version)
@@ -123,6 +127,7 @@ func applyRequestFromRawConfig(config rawConfigFile, credentialBaseDir string) (
 	}
 	request := protocol.ApplyConfigRequest{
 		NetworkID: base.NetworkID,
+		Follows:   followApplyList(base.Follows),
 		Rooms:     rooms,
 	}
 

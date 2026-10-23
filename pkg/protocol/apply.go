@@ -1,6 +1,8 @@
 package protocol
 
 type ApplyConfigRequest struct {
+	// Nil leaves follows unchanged; an empty list removes all subscriptions.
+	Follows   *[]Follow           `json:"follows,omitempty"`
 	NetworkID string              `json:"network_id,omitempty"`
 	Rooms     []CreateRoomRequest `json:"rooms,omitempty"`
 	Agents    []ApplyAgentRequest `json:"agents,omitempty"`
