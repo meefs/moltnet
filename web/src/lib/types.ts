@@ -26,6 +26,10 @@ export interface NetworkCapabilities {
 
 export interface NetworkConsole {
   can_send_human?: boolean;
+  viewer?: { kind: "anonymous" | "token" | "agent"; id?: string };
+  can_read_pairings?: boolean;
+  can_read_dms?: boolean;
+  can_connect_agent?: boolean;
 }
 
 export interface Network {
@@ -39,6 +43,7 @@ export interface Network {
 }
 
 export interface Room {
+  last_message_at?: string;
   id: string;
   name: string;
   fqid?: string;

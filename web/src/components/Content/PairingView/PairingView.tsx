@@ -1,3 +1,4 @@
+import { PairingsError } from "../../PairingsError";
 import { useMemo } from "react";
 import { usePairingAgents } from "../../../hooks/usePairingAgents";
 import { usePairingNetwork } from "../../../hooks/usePairingNetwork";
@@ -11,7 +12,7 @@ import { Panel } from "../../Panel";
 
 export function PairingView() {
   const { selected } = useSelection();
-  const { data: pairings = [] } = usePairings();
+  const { data: pairings = [], error, isLoading } = usePairings();
   const pairingId = selected?.kind === "pairing" ? selected.id : null;
 
   const pairing = useMemo(
@@ -23,16 +24,18 @@ export function PairingView() {
   const roomsQuery = usePairingRooms(pairingId);
   const agentsQuery = usePairingAgents(pairingId);
 
-  if (!pairing || !pairingId) {
+  if (error || isLoading || !pairing || !pairingId) {
     return (
       <Panel>
         <Panel.Header>
           <Panel.Title>PAIRING</Panel.Title>
         </Panel.Header>
         <Panel.Body>
-          <p className="text-faint text-xs px-2 py-1.5">
-            pairing not found{pairingId ? ` — ${pairingId}` : ""}.
-          </p>
+          {error ? <PairingsError error={error} /> : (
+            <p className="text-faint text-xs px-2 py-1.5">
+              {isLoading ? "loading…" : `pairing not found${pairingId ? ` — ${pairingId}` : ""}.`}
+            </p>
+          )}
         </Panel.Body>
       </Panel>
     );

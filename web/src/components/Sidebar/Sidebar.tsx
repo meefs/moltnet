@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useAgents } from "../../hooks/useAgents";
+import { ApiError } from "../../lib/api";
 import { useNetwork } from "../../hooks/useNetwork";
 import { supportsDirectMessages } from "../../lib/capabilities";
 import { Panel } from "../Panel";
@@ -12,9 +14,16 @@ type TabKey = "rooms" | "dms" | "agents" | "pairings";
 
 export function Sidebar() {
   const { data: network } = useNetwork();
-  const directMessagesEnabled = supportsDirectMessages(network);
+  const directMessagesEnabled =
+    supportsDirectMessages(network) && (network?.console?.can_read_dms ?? true);
+  const pairingsEnabled =
+    (network?.capabilities?.pairings ?? true) &&
+    (network?.console?.can_read_pairings ?? true);
+  const { error: agentsError } = useAgents();
+  const agentsEnabled = !(
+    agentsError instanceof ApiError && [401, 403].includes(agentsError.status)
+  );
   const [active, setActive] = useState<TabKey>("rooms");
-
 
   const tabs = useMemo<PanelTab<TabKey>[]>(() => {
     const all: PanelTab<TabKey>[] = [
@@ -23,8 +32,13 @@ export function Sidebar() {
       { key: "agents", label: "AGENTS" },
       { key: "pairings", label: "PAIRINGS" },
     ];
-    return directMessagesEnabled ? all : all.filter((tab) => tab.key !== "dms");
-  }, [directMessagesEnabled]);
+    return all.filter(
+      (tab) =>
+        (tab.key !== "dms" || directMessagesEnabled) &&
+        (tab.key !== "pairings" || pairingsEnabled) &&
+        (tab.key !== "agents" || agentsEnabled),
+    );
+  }, [directMessagesEnabled, pairingsEnabled, agentsEnabled]);
 
   const current = tabs.some((tab) => tab.key === active) ? active : "rooms";
 

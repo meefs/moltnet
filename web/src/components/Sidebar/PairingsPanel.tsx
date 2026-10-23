@@ -1,3 +1,4 @@
+import { PairingsError } from "../PairingsError";
 import type { Pairing } from "../../lib/types";
 import { usePairings } from "../../hooks/usePairings";
 import { pairingDisplayStatus, pairingToneClass } from "../../lib/pairingStatus";
@@ -5,8 +6,11 @@ import { useSelection } from "../../providers";
 import { ListItem } from "../ListItem";
 
 export function PairingsList() {
-  const { data: pairings = [] } = usePairings();
+  const { data: pairings = [], error, isLoading } = usePairings();
   const { selected, select } = useSelection();
+
+  if (error) return <PairingsError error={error} />;
+  if (isLoading) return <p className="text-faint text-xs px-2 py-1.5">loading…</p>;
 
   return (
     <>

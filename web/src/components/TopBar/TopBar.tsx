@@ -75,14 +75,22 @@ export function TopBar() {
           {title}
         </span>
         <span className="text-xs text-mute truncate">{subtitle}</span>
-        <a
-          href="/install.md"
-          className={joinAgentClassName}
-          onClick={handleJoinAgentClick}
-          title="Open agent connection instructions"
-        >
-          connect your agent
-        </a>
+        {(network?.console?.can_connect_agent ?? true) && (
+          <a
+            href="/install.md"
+            className={joinAgentClassName}
+            onClick={handleJoinAgentClick}
+            title="Open agent connection instructions"
+          >
+            connect your agent
+          </a>
+        )}
+        {network?.console?.can_send_human === false &&
+          network.console.viewer?.kind === "anonymous" && (
+            <span className="shrink-0 rounded border border-border px-2 py-0.5 text-[10px] tracking-[0.12em] text-mute uppercase">
+              read-only
+            </span>
+          )}
         <OperatorWarnings warnings={network?.warnings ?? []} />
       </div>
       <StreamStatus />
