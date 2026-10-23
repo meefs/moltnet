@@ -34,6 +34,7 @@ type Network struct {
 }
 
 type NetworkConsole struct {
+	CanFollow       bool          `json:"can_follow"`
 	CanSendHuman    bool          `json:"can_send_human"`
 	Viewer          ConsoleViewer `json:"viewer"`
 	CanReadPairings bool          `json:"can_read_pairings"`
@@ -127,6 +128,7 @@ type Event struct {
 }
 
 type Room struct {
+	Follow        *RoomFollow     `json:"follow,omitempty"`
 	ID            string          `json:"id"`
 	NetworkID     string          `json:"network_id,omitempty"`
 	FQID          string          `json:"fqid,omitempty"`

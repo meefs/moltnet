@@ -27,7 +27,7 @@ func (s *SQLStore) CreateRoomContext(ctx context.Context, room protocol.Room) er
 	defer rollback(tx)
 
 	federation := protocol.NormalizeRoomFederation(room.Federation)
-	query := bindQuery(s.dialect, `INSERT INTO rooms (id, network_id, fqid, name, visibility, write_policy, federation, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+	query := bindQuery(s.dialect, `INSERT INTO rooms (id, network_id, fqid, name, visibility, write_policy, federation, follow_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if _, err := tx.ExecContext(
 		ctx,
 		query,
@@ -38,6 +38,7 @@ func (s *SQLStore) CreateRoomContext(ctx context.Context, room protocol.Room) er
 		protocol.NormalizeRoomVisibility(room.Visibility),
 		protocol.NormalizeRoomWritePolicy(room.WritePolicy),
 		marshalJSON(federation),
+		marshalJSON(room.Follow),
 		formatTime(room.CreatedAt),
 	); err != nil {
 		if isDuplicateRoomError(err) {
@@ -61,7 +62,7 @@ func (s *SQLStore) GetRoom(id string) (protocol.Room, bool, error) {
 
 func (s *SQLStore) GetRoomContext(ctx context.Context, id string) (protocol.Room, bool, error) {
 	query := bindQuery(s.dialect, `
-		SELECT r.id, r.network_id, r.fqid, r.name, r.visibility, r.write_policy, r.federation, r.created_at, rm.member_id
+		SELECT r.id, r.network_id, r.fqid, r.name, r.visibility, r.write_policy, r.federation, r.follow_json, r.created_at, rm.member_id
 		FROM rooms r
 		LEFT JOIN room_members rm ON rm.room_id = r.id
 		WHERE r.id = ? AND r.deleted_at IS NULL
@@ -82,10 +83,11 @@ func (s *SQLStore) GetRoomContext(ctx context.Context, id string) (protocol.Room
 			roomID, networkID, fqid, name string
 			visibility, writePolicy       string
 			federation                    sql.NullString
+			followJSON                    string
 			createdAt                     any
 			memberID                      sql.NullString
 		)
-		if err := rows.Scan(&roomID, &networkID, &fqid, &name, &visibility, &writePolicy, &federation, &createdAt, &memberID); err != nil {
+		if err := rows.Scan(&roomID, &networkID, &fqid, &name, &visibility, &writePolicy, &federation, &followJSON, &createdAt, &memberID); err != nil {
 			return protocol.Room{}, false, fmt.Errorf("scan room %q: %w", id, err)
 		}
 		if !found {
@@ -102,6 +104,7 @@ func (s *SQLStore) GetRoomContext(ctx context.Context, id string) (protocol.Room
 				Visibility:  protocol.NormalizeRoomVisibility(visibility),
 				WritePolicy: protocol.NormalizeRoomWritePolicy(writePolicy),
 				Federation:  parsedFederation,
+				Follow:      parseRoomFollow(followJSON),
 				CreatedAt:   parseTime(createdAt),
 			}
 		}
@@ -156,7 +159,7 @@ func (s *SQLStore) ListRoomsContext(ctx context.Context) ([]protocol.Room, error
 			SELECT r.id, `+s.roomActivitySQL()+` AS last_message_at
 			FROM rooms r WHERE r.deleted_at IS NULL
 		)
-		SELECT r.id, r.network_id, r.fqid, r.name, r.visibility, r.write_policy, r.federation, r.created_at, rm.member_id,
+		SELECT r.id, r.network_id, r.fqid, r.name, r.visibility, r.write_policy, r.federation, r.follow_json, r.created_at, rm.member_id,
 		       activity.last_message_at
 		FROM rooms r
 		LEFT JOIN room_activity activity ON activity.id = r.id
@@ -177,11 +180,12 @@ func (s *SQLStore) ListRoomsContext(ctx context.Context) ([]protocol.Room, error
 			roomID, networkID, fqid, name string
 			visibility, writePolicy       string
 			federation                    sql.NullString
+			followJSON                    string
 			createdAt                     any
 			lastMessageAt                 any
 			memberID                      sql.NullString
 		)
-		if err := rows.Scan(&roomID, &networkID, &fqid, &name, &visibility, &writePolicy, &federation, &createdAt, &memberID, &lastMessageAt); err != nil {
+		if err := rows.Scan(&roomID, &networkID, &fqid, &name, &visibility, &writePolicy, &federation, &followJSON, &createdAt, &memberID, &lastMessageAt); err != nil {
 			return nil, fmt.Errorf("scan room: %w", err)
 		}
 		room, ok := roomsByID[roomID]
@@ -198,6 +202,7 @@ func (s *SQLStore) ListRoomsContext(ctx context.Context) ([]protocol.Room, error
 				Visibility:  protocol.NormalizeRoomVisibility(visibility),
 				WritePolicy: protocol.NormalizeRoomWritePolicy(writePolicy),
 				Federation:  parsedFederation,
+				Follow:      parseRoomFollow(followJSON),
 				CreatedAt:   parseTime(createdAt),
 			}
 			if lastMessageAt != nil {
@@ -246,7 +251,7 @@ func (s *SQLStore) ReconcileRoomContext(ctx context.Context, room protocol.Room)
 	}
 
 	federation := protocol.NormalizeRoomFederation(room.Federation)
-	updateQuery := bindQuery(s.dialect, `UPDATE rooms SET name = ?, visibility = ?, write_policy = ?, federation = ? WHERE id = ?`)
+	updateQuery := bindQuery(s.dialect, `UPDATE rooms SET name = ?, visibility = ?, write_policy = ?, federation = ?, follow_json = ? WHERE id = ?`)
 	if _, err := tx.ExecContext(
 		ctx,
 		updateQuery,
@@ -254,6 +259,7 @@ func (s *SQLStore) ReconcileRoomContext(ctx context.Context, room protocol.Room)
 		protocol.NormalizeRoomVisibility(room.Visibility),
 		protocol.NormalizeRoomWritePolicy(room.WritePolicy),
 		marshalJSON(federation),
+		marshalJSON(room.Follow),
 		room.ID,
 	); err != nil {
 		return protocol.Room{}, fmt.Errorf("update room: %w", err)

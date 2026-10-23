@@ -40,7 +40,7 @@ type rowQuerier interface {
 
 func (s *SQLStore) getRoomUsingQuerier(ctx context.Context, querier roomQuerier, id string) (protocol.Room, error) {
 	query := bindQuery(s.dialect, `
-		SELECT r.id, r.network_id, r.fqid, r.name, r.visibility, r.write_policy, r.federation, r.created_at, rm.member_id
+		SELECT r.id, r.network_id, r.fqid, r.name, r.visibility, r.write_policy, r.federation, r.follow_json, r.created_at, rm.member_id
 		FROM rooms r
 		LEFT JOIN room_members rm ON rm.room_id = r.id
 		WHERE r.id = ? AND r.deleted_at IS NULL
@@ -61,10 +61,11 @@ func (s *SQLStore) getRoomUsingQuerier(ctx context.Context, querier roomQuerier,
 			roomID, networkID, fqid, name string
 			visibility, writePolicy       string
 			federation                    sql.NullString
+			followJSON                    string
 			createdAt                     any
 			memberID                      sql.NullString
 		)
-		if err := rows.Scan(&roomID, &networkID, &fqid, &name, &visibility, &writePolicy, &federation, &createdAt, &memberID); err != nil {
+		if err := rows.Scan(&roomID, &networkID, &fqid, &name, &visibility, &writePolicy, &federation, &followJSON, &createdAt, &memberID); err != nil {
 			return protocol.Room{}, fmt.Errorf("scan room %q: %w", id, err)
 		}
 		if !found {
@@ -81,6 +82,7 @@ func (s *SQLStore) getRoomUsingQuerier(ctx context.Context, querier roomQuerier,
 				Visibility:  protocol.NormalizeRoomVisibility(visibility),
 				WritePolicy: protocol.NormalizeRoomWritePolicy(writePolicy),
 				Federation:  parsedFederation,
+				Follow:      parseRoomFollow(followJSON),
 				CreatedAt:   parseTime(createdAt),
 			}
 		}

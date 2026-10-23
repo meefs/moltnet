@@ -106,6 +106,7 @@ func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
 
 	handler := transport.NewHTTPHandler(service, policy, transport.HTTPConfig{
 		ClockIdentity: clockIdentity,
+		PublicBaseURL: config.PublicBaseURL,
 		Console: transport.ConsoleConfig{
 			Analytics: transport.ConsoleAnalyticsConfig{
 				Provider:      config.Console.Analytics.Provider,

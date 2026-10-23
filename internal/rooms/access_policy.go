@@ -17,6 +17,9 @@ func (s *Service) enforceTargetWritePolicy(ctx context.Context, target protocol.
 	if room.ID == "" {
 		return nil
 	}
+	if !s.canWriteRoom(ctx, room, actor) && room.Follow != nil {
+		return followReadOnlyError(room.ID)
+	}
 	if !s.pairScopedWriteAllowed(ctx, room) {
 		return writeForbiddenError(room.ID)
 	}
@@ -47,6 +50,9 @@ func (s *Service) roomForWrite(ctx context.Context, target protocol.Target) (pro
 }
 
 func (s *Service) canWriteRoom(ctx context.Context, room protocol.Room, actor protocol.Actor) bool {
+	if room.Follow != nil {
+		return false
+	}
 	mode := authn.ModeFromContext(ctx)
 	claims, hasClaims := authn.ClaimsFromContext(ctx)
 	if mode == authn.ModeNone && !hasClaims {
