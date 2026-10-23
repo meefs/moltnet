@@ -22,14 +22,14 @@ var installMarkdownTemplate string
 // join guide it renders already adapts its content to auth mode, public
 // read, and registration policy regardless of whether the caller reaching
 // it authenticated.
-func installMarkdownHandler(policy *authn.Policy, service Service) http.HandlerFunc {
+func installMarkdownHandler(policy *authn.Policy, service Service, configs ...HTTPConfig) http.HandlerFunc {
 	return func(response http.ResponseWriter, request *http.Request) {
 		rooms, err := service.ListRoomsContext(request.Context(), protocol.PageRequest{Limit: 100})
 		if err != nil {
 			writeError(response, statusForError(err), err)
 			return
 		}
-		writeMarkdown(response, renderInstallMarkdown(request, policy, service.Network(), rooms.Rooms))
+		writeMarkdown(response, renderInstallMarkdown(request, policy, service.Network(), rooms.Rooms, configs...))
 	}
 }
 
@@ -55,7 +55,13 @@ func installMarkdownHandler(policy *authn.Policy, service Service) http.HandlerF
 // it would to any other unauthenticated one — see
 // TestInstallMarkdownAnonymousLoopbackNeverLeaksPrivateRooms.
 func installMarkdownRoute(policy *authn.Policy, service Service, next http.HandlerFunc) http.HandlerFunc {
-	gated := publicInOpen(policy, service, readScopes, next)
+	guideScopes := append(append([]authn.Scope(nil), readScopes...), authn.ScopeAttach)
+	gated := publicInOpen(policy, service, guideScopes, next)
+	if policy.PublicRead() {
+		// Keep valid caller claims even without read scope, so the CTA and guide
+		// choose the same attach/register policy. Room visibility stays in domain.
+		gated = optionalAuthInOpen(policy, service, nil, next)
+	}
 	return func(response http.ResponseWriter, request *http.Request) {
 		if requestIsDirectLoopback(policy, request) {
 			request = requestWithAuthMode(policy, request)
@@ -70,18 +76,8 @@ func installMarkdownRoute(policy *authn.Policy, service Service, next http.Handl
 	}
 }
 
-// loopbackClaims authenticates request's bearer token, if any, against
-// readScopes for installMarkdownRoute's loopback carve-out (P2, PLAN.md
-// phase 6c review). Before this fix the carve-out always rendered the
-// anonymous branch on a direct-loopback request, even when it carried a
-// perfectly valid operator/observer token — so an operator on loopback saw
-// "Readable rooms: none declared" while the exact same token routed through
-// a reverse proxy (the non-loopback path, `gated`) rendered the full list.
-// This authenticates first and only falls back to the anonymous render
-// (ok=false, never an error) when credentials are absent, malformed, don't
-// match any configured/agent credential, or lack a read scope — the same
-// set of cases a non-loopback caller with no Authorization header would
-// anonymously fall back for.
+// loopbackClaims preserves a valid caller identity on the local guide carve-out.
+// Domain room visibility still controls which rooms the caller may discover.
 func loopbackClaims(policy *authn.Policy, verifier agentTokenVerifier, request *http.Request) (authn.Claims, bool) {
 	token, ok, err := authn.RequestToken(request)
 	if err != nil || !ok {
@@ -89,9 +85,6 @@ func loopbackClaims(policy *authn.Policy, verifier agentTokenVerifier, request *
 	}
 	claims, ok, err := authenticateBearerToken(policy, verifier, request.Context(), token)
 	if err != nil || !ok {
-		return authn.Claims{}, false
-	}
-	if !claims.AllowsAny(readScopes) {
 		return authn.Claims{}, false
 	}
 	return claims, true
@@ -152,8 +145,8 @@ func isLoopbackRemoteAddr(remoteAddr string) bool {
 	return ip.IsLoopback()
 }
 
-func attachDiscoveryRoutes(mux *http.ServeMux, policy *authn.Policy, service Service) {
-	mux.HandleFunc("GET /install.md", installMarkdownRoute(policy, service, installMarkdownHandler(policy, service)))
+func attachDiscoveryRoutes(mux *http.ServeMux, policy *authn.Policy, service Service, configs ...HTTPConfig) {
+	mux.HandleFunc("GET /install.md", installMarkdownRoute(policy, service, installMarkdownHandler(policy, service, configs...)))
 
 	mux.HandleFunc("GET /skill.md", skillDiscoveryRoute(policy, service))
 
@@ -187,7 +180,10 @@ func writeDiscoveryLine(builder *strings.Builder, label string, value string) {
 	fmt.Fprintf(builder, "%s:\n%s\n\n", label, value)
 }
 
-func renderInstallMarkdown(request *http.Request, policy *authn.Policy, network protocol.Network, rooms []protocol.Room) string {
+func renderInstallMarkdown(request *http.Request, policy *authn.Policy, network protocol.Network, rooms []protocol.Room, configs ...HTTPConfig) string {
+	if !canConnectAgent(policy, request) && policy.PublicRead() {
+		return renderFollowMarkdown(request, policy, network, rooms, httpConfigFrom(configs))
+	}
 	baseURL := requestBaseURL(request)
 	networkID := strings.TrimSpace(network.ID)
 	authMode := authn.ModeNone
@@ -360,36 +356,4 @@ func dmsYAML(enabled bool) string {
 		return "    dms:\n      enabled: false"
 	}
 	return "    dms:\n      enabled: true\n      wake: all"
-}
-
-func requestBaseURL(request *http.Request) string {
-	if request == nil {
-		return ""
-	}
-	scheme := "http"
-	if request.TLS != nil {
-		scheme = "https"
-	} else if forwarded := strings.TrimSpace(request.Header.Get("X-Forwarded-Proto")); forwarded != "" {
-		scheme = strings.ToLower(strings.Split(forwarded, ",")[0])
-	}
-	host := strings.TrimSpace(request.Host)
-	if forwardedHost := strings.TrimSpace(request.Header.Get("X-Forwarded-Host")); forwardedHost != "" {
-		host = strings.TrimSpace(strings.Split(forwardedHost, ",")[0])
-	}
-	return scheme + "://" + host
-}
-
-func shellQuote(value string) string {
-	if value == "" {
-		return "''"
-	}
-	if strings.IndexFunc(value, func(r rune) bool {
-		return !(r >= 'A' && r <= 'Z') &&
-			!(r >= 'a' && r <= 'z') &&
-			!(r >= '0' && r <= '9') &&
-			!strings.ContainsRune("._:/,-", r)
-	}) == -1 {
-		return value
-	}
-	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }

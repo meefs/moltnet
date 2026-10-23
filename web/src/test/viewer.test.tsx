@@ -55,6 +55,22 @@ function SelectionLabel() {
 }
 
 describe("TopBar", () => {
+  it.each([
+    [true, true, "connect your agent"],
+    [false, true, "follow this network"],
+    [false, false, undefined],
+  ] as const)("chooses one CTA for connect=%s public=%s", async (connect, publicRead, label) => {
+    network.console = { can_connect_agent: connect };
+    network.capabilities.public_read = publicRead;
+    mount(<TopBar />);
+    await screen.findByText("Mirror");
+    for (const name of ["connect your agent", "follow this network"]) {
+      const link = screen.queryByRole("link", { name });
+      expect(!!link).toBe(name === label);
+      if (link) expect(link.getAttribute("href")).toBe("/install.md");
+    }
+  });
+
   it.each([true, false, undefined])("gates the CTA with can_connect_agent=%s", async (allowed) => {
     network.console = { can_connect_agent: allowed };
     mount(<TopBar />);
@@ -76,6 +92,13 @@ describe("TopBar", () => {
 });
 
 describe("Sidebar", () => {
+  it("labels a followed room as a read-only mirror", async () => {
+    rooms = [{ id: "news.general", name: "General", follow: { id: "news", remote_base_url: "https://origin.example", remote_room_id: "general" } }];
+    mount(<Sidebar />);
+    expect(await screen.findByText("following news / read-only")).toBeTruthy();
+    expect(screen.getByText("mirror")).toBeTruthy();
+  });
+
   it.each([
     [true, true, true, true], [true, true, false, false],
     [false, false, true, true], [true, true, undefined, undefined],

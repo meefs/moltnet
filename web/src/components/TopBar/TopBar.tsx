@@ -54,6 +54,9 @@ export function TopBar() {
     .filter(Boolean)
     .join(" ");
 
+  const canConnect = network?.console?.can_connect_agent ?? true;
+  const canFollow = !canConnect && (network?.console?.can_follow ?? network?.capabilities.public_read ?? false);
+
   return (
     <header className="grid grid-cols-[minmax(0,1fr)_auto] gap-6 px-5 pt-3.5 pb-3 border-b border-border bg-bg items-center">
       <div className="flex items-center gap-3 min-w-0">
@@ -75,14 +78,14 @@ export function TopBar() {
           {title}
         </span>
         <span className="text-xs text-mute truncate">{subtitle}</span>
-        {(network?.console?.can_connect_agent ?? true) && (
+        {(canConnect || canFollow) && (
           <a
             href="/install.md"
             className={joinAgentClassName}
             onClick={handleJoinAgentClick}
-            title="Open agent connection instructions"
+            title={canConnect ? "Open agent connection instructions" : "Open read-only follow instructions"}
           >
-            connect your agent
+            {canConnect ? "connect your agent" : "follow this network"}
           </a>
         )}
         {network?.console?.can_send_human === false &&

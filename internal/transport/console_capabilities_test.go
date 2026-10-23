@@ -58,7 +58,7 @@ func TestConsoleViewerPermissionsMatchRoutes(t *testing.T) {
 					if err := json.Unmarshal(rec.Body.Bytes(), &network); err != nil {
 						t.Fatal(err)
 					}
-					want := protocol.NetworkConsole{Viewer: protocol.ConsoleViewer{Kind: tc.kind, ID: tc.id}, CanReadPairings: tc.pairings, CanReadDMs: tc.dms, CanConnectAgent: tc.connect || registration == authn.AgentRegistrationOpen, CanSendHuman: tc.send}
+					want := protocol.NetworkConsole{CanFollow: !(tc.connect || registration == authn.AgentRegistrationOpen), Viewer: protocol.ConsoleViewer{Kind: tc.kind, ID: tc.id}, CanReadPairings: tc.pairings, CanReadDMs: tc.dms, CanConnectAgent: tc.connect || registration == authn.AgentRegistrationOpen, CanSendHuman: tc.send}
 					if network.Console == nil || *network.Console != want {
 						t.Fatalf("console = %+v, want %+v", network.Console, want)
 					}
@@ -86,12 +86,26 @@ func TestConsoleAnonymousMirrorAndLegacyPermissions(t *testing.T) {
 	}
 	request := httptest.NewRequest(http.MethodGet, "/v1/network", nil)
 	network := networkForRequest(policy, request, protocol.Network{})
-	want := protocol.NetworkConsole{Viewer: protocol.ConsoleViewer{Kind: "anonymous"}}
+	want := protocol.NetworkConsole{CanFollow: true, Viewer: protocol.ConsoleViewer{Kind: "anonymous"}}
 	if *network.Console != want {
 		t.Fatalf("mirror console=%+v, want %+v", network.Console, want)
 	}
 	network = networkForRequest(nil, request, protocol.Network{Capabilities: protocol.NetworkCapabilities{HumanIngress: true}})
 	if !network.Console.CanReadPairings || !network.Console.CanReadDMs || !network.Console.CanConnectAgent || !network.Console.CanSendHuman {
 		t.Fatalf("legacy console=%+v", network.Console)
+	}
+}
+
+func TestConsoleFollowRequiresPublicReadAndNoConnect(t *testing.T) {
+	for _, publicRead := range []bool{false, true} {
+		policy, err := authn.NewPolicy(authn.Config{Mode: authn.ModeBearer, PublicRead: publicRead, Tokens: []authn.TokenConfig{{ID: "operator", Value: "secret", Scopes: []authn.Scope{authn.ScopeAdmin}}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest(http.MethodGet, "/v1/network", nil)
+		network := networkForRequest(policy, req, protocol.Network{})
+		if network.Console.CanFollow != publicRead || network.Console.CanConnectAgent {
+			t.Fatalf("public=%v console=%+v", publicRead, network.Console)
+		}
 	}
 }

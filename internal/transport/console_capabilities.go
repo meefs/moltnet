@@ -13,6 +13,7 @@ func networkForRequest(policy *authn.Policy, request *http.Request, network prot
 		network.Capabilities.AgentRegistration = policy.AgentRegistration()
 	}
 	network.Console = &protocol.NetworkConsole{
+		CanFollow:       !canConnectAgent(policy, request) && network.Capabilities.PublicRead,
 		CanSendHuman:    canConsoleSendHuman(policy, request, network.Capabilities),
 		Viewer:          consoleViewer(request),
 		CanReadPairings: canReadPairings(policy, request),

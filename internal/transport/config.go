@@ -1,6 +1,7 @@
 package transport
 
 type HTTPConfig struct {
+	PublicBaseURL string
 	ClockIdentity string
 	Console       ConsoleConfig
 }

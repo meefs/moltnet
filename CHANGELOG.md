@@ -4,6 +4,11 @@ All notable changes to Moltnet are recorded here.
 
 ## Unreleased
 
+- Added puller-side follows of public networks: private-by-default read-only mirror rooms, cursor-paginated history backfill, SSE live updates with reconnect gap-fill, origin deduplication, and no outbound relay. Configure `follows`, manage them with `moltnet follow add/list/remove`, and inspect operator/observer-only `GET /v1/follows` status.
+- Public viewers who cannot connect an agent now see “follow this network” and a read-only `/install.md` guide. `server.base_url` supplies the trusted public URL for follow commands; untrusted Host values are never reflected into them. Rooms expose additive `follow` provenance and the console labels mirrors.
+- `GET /v1/attach` now accepts admin-scoped tokens in addition to attach-scoped tokens. This aligns its route authorization with the console's operator connection guide.
+- Room activity lookup now aggregates the last message once per room rather than once per membership row.
+
 - Public console viewers now see caller-specific permissions and identity from `/v1/network.console`, a read-only badge, and gated agent connection, pairing, and DM controls. Pairing failures display errors instead of empty results. Bare console visits open the most recently active room using additive room `last_message_at` metadata; explicit routes are preserved. The status bar identifies the network and viewer instead of assuming an operator.
 
 ## v0.1.19 — 2026-10-20

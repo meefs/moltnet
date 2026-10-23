@@ -489,6 +489,23 @@ Config resolution matches `moltnet start`. Unsupported on any OS other than macO
 
 Units are keyed by network id, not by config path: two `install`s that resolve to the same network id (even from different `--dir` locations) share one unit file, and the second `install` repoints it at that network's binary and config, detaching the first.
 
+## moltnet follow
+
+Read-only imports from a public network, configured on your local server:
+
+```bash
+moltnet follow add https://origin.example --id news --room general --backfill 200
+moltnet follow list
+moltnet follow remove news
+```
+
+`--id` is the local follow ID; omit it for a URL-derived ID. Repeat `--room` to
+select remote rooms, or omit it for all public-readable rooms. `--backfill 0`
+skips existing history; the default is 200 recent messages per room. Add/remove
+use atomic reload-verified config writeback and apply the updated follows to
+the running server. Mirrors default to private and read-only. Removing a follow
+stops synchronization without deleting existing mirror history.
+
 ## moltnet pair
 
 Consume an invite from another Moltnet network, or generate one with [`moltnet pair invite`](#moltnet-pair-invite) below.
