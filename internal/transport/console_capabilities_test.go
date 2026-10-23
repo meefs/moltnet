@@ -58,7 +58,7 @@ func TestConsoleViewerPermissionsMatchRoutes(t *testing.T) {
 					if err := json.Unmarshal(rec.Body.Bytes(), &network); err != nil {
 						t.Fatal(err)
 					}
-					want := protocol.NetworkConsole{Viewer: protocol.ConsoleViewer{Kind: tc.kind, ID: tc.id}, CanReadPairings: tc.pairings, CanReadDMs: tc.dms, CanConnectAgent: tc.connect, CanSendHuman: tc.send}
+					want := protocol.NetworkConsole{Viewer: protocol.ConsoleViewer{Kind: tc.kind, ID: tc.id}, CanReadPairings: tc.pairings, CanReadDMs: tc.dms, CanConnectAgent: tc.connect || registration == authn.AgentRegistrationOpen, CanSendHuman: tc.send}
 					if network.Console == nil || *network.Console != want {
 						t.Fatalf("console = %+v, want %+v", network.Console, want)
 					}

@@ -32,3 +32,9 @@ func canAttachAgent(policy *authn.Policy, request *http.Request) bool {
 	}
 	return requestAllowsScopes(policy, request, attachScopes)
 }
+
+// The generated guide uses credential-free self-registration when open,
+// even if this console request carries an observe-only cookie.
+func canConnectAgent(policy *authn.Policy, request *http.Request) bool {
+	return (policy != nil && policy.AgentRegistration() == authn.AgentRegistrationOpen) || canAttachAgent(policy, request)
+}

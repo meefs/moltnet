@@ -17,7 +17,7 @@ func networkForRequest(policy *authn.Policy, request *http.Request, network prot
 		Viewer:          consoleViewer(request),
 		CanReadPairings: canReadPairings(policy, request),
 		CanReadDMs:      requestAllowsScopes(policy, request, readScopes),
-		CanConnectAgent: canAttachAgent(policy, request),
+		CanConnectAgent: canConnectAgent(policy, request),
 	}
 	return network
 }
