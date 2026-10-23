@@ -152,9 +152,14 @@ func (s *SQLStore) ListRooms() ([]protocol.Room, error) {
 
 func (s *SQLStore) ListRoomsContext(ctx context.Context) ([]protocol.Room, error) {
 	query := bindQuery(s.dialect, `
+		WITH room_activity AS MATERIALIZED (
+			SELECT r.id, `+s.roomActivitySQL()+` AS last_message_at
+			FROM rooms r WHERE r.deleted_at IS NULL
+		)
 		SELECT r.id, r.network_id, r.fqid, r.name, r.visibility, r.write_policy, r.federation, r.created_at, rm.member_id,
-		       `+s.roomActivitySQL()+`
+		       activity.last_message_at
 		FROM rooms r
+		LEFT JOIN room_activity activity ON activity.id = r.id
 		LEFT JOIN room_members rm ON rm.room_id = r.id
 		WHERE r.deleted_at IS NULL
 		ORDER BY r.id ASC, rm.member_id ASC
