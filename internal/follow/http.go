@@ -74,6 +74,13 @@ func (w *worker) session(ctx context.Context) error {
 	w.mu.Lock()
 	w.status.RemoteNetworkID = network.ID
 	w.mu.Unlock()
+	// Establish the first-sync cutoff before subscribing. Once these durable
+	// cursors exist, a second history scan after subscription covers every gap,
+	// including messages arriving while the SSE handshake is in progress.
+	w.setState("backfilling", nil)
+	if err = w.sync(ctx, network.ID); err != nil {
+		return err
+	}
 	streamCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	req, err := http.NewRequestWithContext(streamCtx, http.MethodGet, strings.TrimRight(w.config.RemoteBaseURL, "/")+"/v1/events/stream", nil)
@@ -111,7 +118,7 @@ func (w *worker) session(ctx context.Context) error {
 		ended <- err
 	}()
 	defer func() { cancel(); response.Body.Close(); <-ended }()
-	// Subscribe first: messages arriving during backfill cause another scan.
+	// The baseline cursors precede this subscription; scan the gap now.
 	w.setState("backfilling", nil)
 	if err = w.sync(ctx, network.ID); err != nil {
 		return err
