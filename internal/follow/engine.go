@@ -13,9 +13,10 @@ import (
 )
 
 type Checkpoint struct {
-	Cursor      string `json:"cursor"`
-	Initialized bool   `json:"initialized"`
-	Count       int    `json:"count"`
+	Cursor      string    `json:"cursor"`
+	Initialized bool      `json:"initialized"`
+	Count       int       `json:"count"`
+	LatestAt    time.Time `json:"latest_at,omitempty"`
 }
 
 type Sink interface {

@@ -13,15 +13,6 @@ import (
 const pageSize = 200
 
 func (w *worker) sync(ctx context.Context, networkID string) error {
-	sessionKey := w.config.ID + "/" + w.config.RemoteBaseURL + "/" + networkID + "/initialized"
-	initialized, err := w.sink.GetFollowCheckpoint(ctx, sessionKey)
-	if err != nil {
-		return err
-	}
-	backfill := w.config.BackfillLimit()
-	if initialized.Initialized {
-		backfill = math.MaxInt
-	}
 	before := ""
 	statuses := []protocol.FollowRoomStatus{}
 	for {
@@ -45,7 +36,15 @@ func (w *worker) sync(ctx context.Context, networkID string) error {
 			if err := w.sink.EnsureFollowRoom(ctx, w.config, room); err != nil {
 				return err
 			}
-			count, err := w.syncHistory(ctx, networkID, room.ID, "", backfill)
+			roomState, err := w.sink.GetFollowCheckpoint(ctx, w.historyKey(networkID, room.ID, ""))
+			if err != nil {
+				return err
+			}
+			count, err := w.syncHistory(ctx, networkID, room.ID, "", w.config.BackfillLimit())
+			threadBackfill := w.config.BackfillLimit()
+			if roomState.Initialized {
+				threadBackfill = math.MaxInt
+			}
 			if err != nil {
 				return err
 			}
@@ -56,7 +55,7 @@ func (w *worker) sync(ctx context.Context, networkID string) error {
 					return err
 				}
 				for _, thread := range threads.Threads {
-					n, err := w.syncHistory(ctx, networkID, room.ID, thread.ID, backfill)
+					n, err := w.syncHistory(ctx, networkID, room.ID, thread.ID, threadBackfill)
 					if err != nil {
 						return err
 					}
@@ -80,9 +79,6 @@ func (w *worker) sync(ctx context.Context, networkID string) error {
 		}
 		before = page.Page.NextBefore
 	}
-	if err := w.sink.SetFollowCheckpoint(ctx, sessionKey, Checkpoint{Initialized: true}); err != nil {
-		return err
-	}
 	for _, id := range w.config.Rooms {
 		found := false
 		for _, status := range statuses {
@@ -104,7 +100,7 @@ func (w *worker) sync(ctx context.Context, networkID string) error {
 }
 
 func (w *worker) syncHistory(ctx context.Context, networkID, roomID, threadID string, backfill int) (int, error) {
-	key := w.config.ID + "/" + w.config.RemoteBaseURL + "/" + networkID + "/room/" + roomID + "/thread/" + threadID
+	key := w.historyKey(networkID, roomID, threadID)
 	checkpoint, err := w.sink.GetFollowCheckpoint(ctx, key)
 	if err != nil {
 		return 0, err
@@ -118,10 +114,23 @@ func (w *worker) syncHistory(ctx context.Context, networkID, roomID, threadID st
 		err := w.get(ctx, fmt.Sprintf("%s?limit=%d&before=%s&after=%s", path, limit, url.QueryEscape(before), url.QueryEscape(after)), &page)
 		return page, err
 	}
+	initial := !checkpoint.Initialized
+	if initial {
+		if err = w.suppressBaseline(ctx, key, read); err != nil {
+			return 0, err
+		}
+	}
 	ingest := func(messages []protocol.Message) error {
 		for _, message := range messages {
 			if message.Target.RoomID != roomID || threadID != "" && message.Target.ThreadID != threadID {
 				return fmt.Errorf("origin returned message outside requested history")
+			}
+			known, err := w.sink.GetFollowCheckpoint(ctx, knownMessageKey(key, message.ID))
+			if err != nil {
+				return err
+			}
+			if !initial && known.Initialized && known.Cursor == "suppressed" {
+				continue
 			}
 			added, err := w.sink.ImportFollowMessage(ctx, w.config, networkID, message)
 			if err != nil {
@@ -130,7 +139,13 @@ func (w *worker) syncHistory(ctx context.Context, networkID, roomID, threadID st
 			if added {
 				checkpoint.Count++
 			}
-			checkpoint.Cursor = message.ID
+			if err = w.sink.SetFollowCheckpoint(ctx, knownMessageKey(key, message.ID), Checkpoint{Initialized: true, Cursor: "imported"}); err != nil {
+				return err
+			}
+			if checkpoint.Cursor == "" || message.CreatedAt.After(checkpoint.LatestAt) || message.CreatedAt.Equal(checkpoint.LatestAt) && message.ID > checkpoint.Cursor {
+				checkpoint.Cursor = message.ID
+				checkpoint.LatestAt = message.CreatedAt
+			}
 			checkpoint.Initialized = true
 			if err = w.sink.SetFollowCheckpoint(ctx, key, checkpoint); err != nil {
 				return err
@@ -138,6 +153,7 @@ func (w *worker) syncHistory(ctx context.Context, networkID, roomID, threadID st
 		}
 		return nil
 	}
+	initialAfter := ""
 	if checkpoint.Cursor == "" {
 		remaining := backfill
 		if checkpoint.Initialized {
@@ -150,6 +166,7 @@ func (w *worker) syncHistory(ctx context.Context, networkID, roomID, threadID st
 			}
 			if len(page.Messages) > 0 {
 				checkpoint.Cursor = page.Messages[len(page.Messages)-1].ID
+				checkpoint.LatestAt = page.Messages[len(page.Messages)-1].CreatedAt
 			}
 			checkpoint.Initialized = true
 			if err = w.sink.SetFollowCheckpoint(ctx, key, checkpoint); err != nil {
@@ -169,6 +186,9 @@ func (w *worker) syncHistory(ctx context.Context, networkID, roomID, threadID st
 				if err = ingest(page.Messages); err != nil {
 					return 0, err
 				}
+				if len(page.Messages) > 0 {
+					initialAfter = page.Messages[len(page.Messages)-1].ID
+				}
 				if len(page.Messages) == 0 {
 					checkpoint.Initialized = true
 					if err = w.sink.SetFollowCheckpoint(ctx, key, checkpoint); err != nil {
@@ -184,21 +204,45 @@ func (w *worker) syncHistory(ctx context.Context, networkID, roomID, threadID st
 			before = page.Page.NextBefore
 		}
 	}
-	for {
-		page, err := read("", checkpoint.Cursor, pageSize)
+	after := checkpoint.Cursor
+	if initialAfter != "" {
+		after = initialAfter
+	}
+	if !initial && !checkpoint.LatestAt.IsZero() {
+		anchor, seed, err := overlapStart(checkpoint, read)
 		if err != nil {
 			return 0, err
 		}
-		previous := checkpoint.Cursor
+		if len(seed) > 0 {
+			if err = ingest(seed); err != nil {
+				return 0, err
+			}
+			after = seed[len(seed)-1].ID
+		} else if anchor != "" {
+			after = anchor
+		} else {
+			after = checkpoint.Cursor
+		}
+	}
+	for {
+		page, err := read("", after, pageSize)
+		if err != nil {
+			return 0, err
+		}
 		if err = ingest(page.Messages); err != nil {
 			return 0, err
 		}
 		if !page.Page.HasMore {
 			break
 		}
-		if checkpoint.Cursor == previous {
+		if len(page.Messages) == 0 || page.Messages[len(page.Messages)-1].ID == after {
 			return 0, fmt.Errorf("origin returned non-advancing history cursor")
 		}
+		after = page.Messages[len(page.Messages)-1].ID
 	}
 	return checkpoint.Count, nil
+}
+
+func (w *worker) historyKey(networkID, roomID, threadID string) string {
+	return w.config.ID + "/" + w.config.RemoteBaseURL + "/" + networkID + "/room/" + roomID + "/thread/" + threadID
 }
