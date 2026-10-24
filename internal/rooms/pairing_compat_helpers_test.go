@@ -134,26 +134,6 @@ func (c *compatibilityPairingClient) snapshotNetworkCalls() int {
 	return c.networkCalls
 }
 
-func waitForNetworkCalls(t *testing.T, client *recordingPairingClient, want int) {
-	t.Helper()
-
-	deadline := time.Now().Add(500 * time.Millisecond)
-	for time.Now().Before(deadline) {
-		if len(snapshotRecordingNetworkCalls(client)) >= want {
-			return
-		}
-		select {
-		case <-client.notify:
-		case <-time.After(10 * time.Millisecond):
-		}
-	}
-
-	if len(snapshotRecordingNetworkCalls(client)) >= want {
-		return
-	}
-	t.Fatalf("timed out waiting for %d network calls", want)
-}
-
 func snapshotRecordingNetworkCalls(client *recordingPairingClient) []protocol.Pairing {
 	client.mu.Lock()
 	defer client.mu.Unlock()

@@ -112,22 +112,6 @@ func (s *Service) refreshPairingDiagnostics(
 	return network, status, nil
 }
 
-func (s *Service) refreshPairingDiagnosticsIfNeeded(
-	ctx context.Context,
-	pairing protocol.Pairing,
-	scope pairingCheckScope,
-) (pairingStatus, error) {
-	status := s.currentPairingStatus(pairing)
-	if !s.pairingDiagnosticsNeedRefresh(status) {
-		return status, nil
-	}
-	_, refreshed, err := s.refreshPairingDiagnostics(ctx, pairing, scope)
-	if err != nil {
-		return refreshed, err
-	}
-	return refreshed, nil
-}
-
 func (s *Service) evaluatePairingCompatibility(
 	pairing protocol.Pairing,
 	network protocol.Network,
