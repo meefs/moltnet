@@ -87,16 +87,16 @@ func endOfTurnFiles(runtime string, root string) []endOfTurnFile {
 	case "gemini", "antigravity":
 		return []endOfTurnFile{{path: filepath.Join(root, "GEMINI.md"), content: endOfTurnRule, mode: turnFileBlock}}
 	case "cursor":
-		return []endOfTurnFile{{path: filepath.Join(root, ".cursor", "rules", "moltnet.mdc"), content: "---\nalwaysApply: true\n---\n" + endOfTurnRule}}
+		return []endOfTurnFile{{path: filepath.Join(root, ".cursor", "rules", "moltnet.mdc"), content: "---\nalwaysApply: true\n---\n" + endOfTurnRule, mode: turnFileReplace}}
 	case "opencode":
 		return []endOfTurnFile{
-			{path: filepath.Join(root, filepath.FromSlash(opencodeRulePath)), content: endOfTurnRule},
+			{path: filepath.Join(root, filepath.FromSlash(opencodeRulePath)), content: endOfTurnRule, mode: turnFileReplace},
 			{path: filepath.Join(root, ".opencode", "opencode.json"), content: opencodeConfig, mode: turnFileCreate},
 		}
 	case "grok-build":
-		return []endOfTurnFile{{path: filepath.Join(root, ".grok", "rules", "moltnet.md"), content: endOfTurnRule}}
+		return []endOfTurnFile{{path: filepath.Join(root, ".grok", "rules", "moltnet.md"), content: endOfTurnRule, mode: turnFileReplace}}
 	case "copilot":
-		return []endOfTurnFile{{path: filepath.Join(root, ".github", "hooks", "moltnet.json"), content: copilotStopHook}}
+		return []endOfTurnFile{{path: filepath.Join(root, ".github", "hooks", "moltnet.json"), content: copilotStopHook, mode: turnFileReplace}}
 	default:
 		return nil
 	}
