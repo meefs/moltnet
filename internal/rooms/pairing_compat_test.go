@@ -293,27 +293,34 @@ func TestRelaySuppressesIncompatiblePairings(t *testing.T) {
 	service := newRelayCompatibilityService(t, client)
 
 	queueRelayTestMessage(t, service, roomRelayMessage())
-	waitForNetworkCalls(t, client, 1)
-	time.Sleep(20 * time.Millisecond)
-
-	if calls := client.snapshotCalls(); len(calls) != 0 {
-		t.Fatalf("expected incompatible pairing to suppress relay, got %#v", calls)
+	second := roomRelayMessage()
+	second.ID, second.Origin.MessageID = "later-room-message", "later-room-message"
+	queueRelayTestMessage(t, service, second)
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		heads, err := service.pairingDeliveries.ListPairingDeliveryHeadsContext(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		state, err := service.pairingDeliveries.PairingDeliveryStateContext(context.Background(), "pair_b")
+		if err != nil {
+			t.Fatal(err)
+		}
+		pairings, err := service.ListPairings()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(heads) == 1 && heads[0].MessageID == roomRelayMessage().ID && heads[0].Attempts >= 2 &&
+			state.Pending == 2 && state.Rejected == 0 && pairings[0].Status == protocol.PairingStatusError &&
+			pairings[0].Diagnostics != nil && pairings[0].Diagnostics.Reason == pairingDiagnosticUnsupportedPair {
+			if calls := client.snapshotCalls(); len(calls) != 0 {
+				t.Fatalf("incompatible peer received messages: %#v", calls)
+			}
+			return
+		}
+		time.Sleep(time.Millisecond)
 	}
-	pairings, err := service.ListPairings()
-	if err != nil {
-		t.Fatalf("ListPairings() error = %v", err)
-	}
-	if pairings[0].Status != protocol.PairingStatusIncompatible ||
-		pairings[0].Diagnostics == nil ||
-		pairings[0].Diagnostics.Reason != pairingDiagnosticUnsupportedPair {
-		t.Fatalf("unexpected incompatible pairing diagnostics %#v", pairings[0])
-	}
-
-	queueRelayTestMessage(t, service, roomRelayMessage())
-	time.Sleep(20 * time.Millisecond)
-	if calls := snapshotRecordingNetworkCalls(client); len(calls) != 1 {
-		t.Fatalf("expected incompatible pairing to stay cooled down, got network calls %#v", calls)
-	}
+	t.Fatal("compatibility failure did not retry the FIFO head with an errored pairing")
 }
 
 func TestRelayAllowsRoomAndSuppressesDMWhenRemoteDMsDisabled(t *testing.T) {

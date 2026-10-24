@@ -15,7 +15,7 @@ import (
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
-func TestDisabledPeerDMDoesNotBlockRoomDelivery(t *testing.T) {
+func TestDisabledPeerDMKeepsFIFOForCompatibilityRetry(t *testing.T) {
 	peer, receive, _ := deliveryReceiverWithStore(t, true)
 	server := httptest.NewServer(receive)
 	defer server.Close()
@@ -30,15 +30,20 @@ func TestDisabledPeerDMDoesNotBlockRoomDelivery(t *testing.T) {
 	postDeliveryMessage(t, origin.URL, "room-after-DM")
 	waitDelivery(t, func() bool {
 		state := deliveryStatus(t, origin.URL)
-		return state.Pending == 0 && state.Rejected == 1 && state.LastRejectionReason != ""
+		return state.Pending == 2 && state.Rejected == 0 && state.LastError != ""
 	})
-	assertDeliveryTexts(t, peer, "room-after-DM")
+	assertDeliveryTexts(t, peer, []string{}...)
 }
 
 func TestPeerRoom403DoesNotBlockAnotherRoom(t *testing.T) {
 	peer, receive := deliveryReceiver(t)
 	createOtherDeliveryRoom(t, peer)
+	var mu sync.Mutex
+	var routes []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		routes = append(routes, r.URL.Path)
+		mu.Unlock()
 		if r.Method == http.MethodPost && r.URL.Path == "/v1/messages" {
 			raw, _ := io.ReadAll(r.Body)
 			var message protocol.SendMessageRequest
@@ -64,6 +69,13 @@ func TestPeerRoom403DoesNotBlockAnotherRoom(t *testing.T) {
 	if err != nil || len(page.Messages) != 1 {
 		t.Fatalf("other room blocked: %#v %v", page, err)
 	}
+	mu.Lock()
+	got := append([]string(nil), routes...)
+	mu.Unlock()
+	if !reflect.DeepEqual(got, []string{"/v1/network", "/v1/messages", "/v1/network", "/v1/messages"}) {
+		t.Fatalf("each message POST must prove discovery in the same attempt: %v", got)
+	}
+
 }
 
 func TestTransientPeerResponsesKeepFIFO(t *testing.T) {

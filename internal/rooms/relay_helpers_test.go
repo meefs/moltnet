@@ -174,10 +174,14 @@ func TestRelayMessageSelection(t *testing.T) {
 		t.Fatal("expected local-origin room message to relay")
 	}
 	queueRelayTestMessage(t, service, roomMessage)
-	waitForRelayCalls(t, client, 1)
+	waitForRelayCalls(t, client, 2)
+	waitForRelayDone(t, client)
 	waitForRelayDone(t, client)
 	calls := client.snapshotCalls()
-	if len(calls) != 1 || calls[0].ID != "pair_b" {
+	if len(calls) == 2 && calls[0].ID == "pair_c" {
+		calls[0], calls[1] = calls[1], calls[0]
+	}
+	if len(calls) != 2 || calls[0].ID != "pair_b" || calls[1].ID != "pair_c" {
 		t.Fatalf("unexpected relay calls %#v", calls)
 	}
 	if calls[0].Token != "pair-secret" {

@@ -153,7 +153,7 @@ func (s *Service) runDeliveryWorker() {
 		}
 		for _, head := range heads {
 			pairing, ok := current[head.PairingID]
-			if !ok || head.RemoteNetworkID != pairing.RemoteNetworkID || active[head.PairingID] || len(active) >= 8 || head.NextAttempt.After(time.Now()) {
+			if !ok || head.RemoteNetworkID != "" && pairing.RemoteNetworkID != "" && head.RemoteNetworkID != pairing.RemoteNetworkID || active[head.PairingID] || len(active) >= 8 || head.NextAttempt.After(time.Now()) {
 				continue
 			}
 			active[head.PairingID] = true
@@ -172,7 +172,7 @@ func (s *Service) runDeliveryWorker() {
 func (s *Service) deliverQueuedMessage(pairing protocol.Pairing, record store.PairingDelivery) store.PairingDeliveryResult {
 	ctx, cancel := context.WithTimeout(s.lifecycleCtx, s.deliveryTimeout)
 	defer cancel()
-	err := s.sendQueuedMessage(ctx, pairing, record.Message)
+	err := s.sendQueuedMessage(ctx, pairing, &record)
 	result := store.PairingDeliveryResult{Delivery: record}
 	if err == nil {
 		observability.DefaultMetrics.RecordRelay("success")
@@ -194,22 +194,30 @@ func (s *Service) deliverQueuedMessage(pairing protocol.Pairing, record store.Pa
 	record.NextAttempt = time.Now().UTC().Add(s.deliveryBackoff(record.Attempts))
 	result.Delivery, result.Retry, result.LastError = record, true, err.Error()
 	observability.DefaultMetrics.RecordRelay("error")
-	s.setPairingError(pairing.ID, "Remote relay request failed; delivery queued for retry.")
+	s.setPairingStatus(pairing.ID, protocol.PairingStatusError)
 	observability.Logger(s.lifecycleCtx, "rooms.relay", "message_id", record.MessageID, "pairing_id", pairing.ID).
 		Warn("pairing delivery will retry", "attempts", record.Attempts, "next_attempt", record.NextAttempt, "error", err)
 	return result
 }
 
-// Only explicit policy/compatibility refusals and definitive peer 4xx responses
-// are rejected. Unknown failures (including ambiguous acknowledgments) retry.
+// A peer 4xx rejects only a message POST made after successful discovery in
+// this attempt. Authentication and proxy authentication always retry the head.
+type deliveryMessageError struct{ error }
+
+func (e deliveryMessageError) Unwrap() error { return e.error }
+
 func deliveryRejected(err error) bool {
 	if errors.Is(err, errDeliveryRejected) {
 		return true
 	}
+	var messageError deliveryMessageError
+	if !errors.As(err, &messageError) {
+		return false
+	}
 	var response interface{ StatusCode() int }
-	if errors.As(err, &response) {
+	if errors.As(messageError.error, &response) {
 		code := response.StatusCode()
-		return code >= 400 && code < 500 && code != 408 && code != 429
+		return code >= 400 && code < 500 && code != 401 && code != 407 && code != 408 && code != 429
 	}
 	return false
 }
@@ -222,55 +230,6 @@ func (s *Service) reconcileDeliveryDestinations(destinations map[string]string) 
 	for id, count := range dropped {
 		observability.Logger(s.lifecycleCtx, "rooms.relay", "pairing_id", id).
 			Warn("pairing destination removed or changed; backlog purged", "dropped", count)
-	}
-	return nil
-}
-
-func (s *Service) sendQueuedMessage(ctx context.Context, pairing protocol.Pairing, message protocol.Message) error {
-	if message.Target.Kind == protocol.TargetKindDM && s.disableDirectMessages {
-		return fmt.Errorf("%w: local direct messages disabled", errDeliveryRejected)
-	}
-	if message.Origin.NetworkID != s.networkID || message.Origin.ReceivedVia != "" {
-		return fmt.Errorf("%w: invalid relay origin", errDeliveryRejected)
-	}
-	if message.Target.Kind == protocol.TargetKindRoom || message.Target.Kind == protocol.TargetKindThread {
-		room, err := s.roomForWrite(ctx, message.Target)
-		if err != nil {
-			return err // Store failures remain retryable; a missing target is a 404.
-		}
-		if room.Follow != nil || !protocol.RoomFederationAllows(room.Federation, pairing.ID) {
-			return fmt.Errorf("%w: current federation policy", errDeliveryRejected)
-		}
-	} else if !s.pairingMatchesRelayTarget(pairing, message) {
-		return fmt.Errorf("%w: current target policy", errDeliveryRejected)
-	}
-	scope := pairingCheckRelayRoom
-	if message.Target.Kind == protocol.TargetKindDM {
-		scope = pairingCheckRelayDM
-	}
-	status := s.currentPairingStatus(pairing)
-	if s.pairingDiagnosticsNeedRefresh(status) || status.value == protocol.PairingStatusPending {
-		if _, _, err := s.refreshPairingDiagnostics(ctx, pairing, scope); err != nil {
-			return err
-		}
-	}
-	if !s.shouldRelayToPairing(pairing, message) {
-		status = s.currentPairingStatus(pairing)
-		if status.value == protocol.PairingStatusPending || status.value == protocol.PairingStatusError || status.value == protocol.PairingStatusUnknown {
-			return errors.New("peer is not ready for relay")
-		}
-		return fmt.Errorf("%w: %s", errDeliveryRejected, status.diagnosticsMessage("peer does not support this delivery"))
-	}
-	request, ok := s.relayRequest(pairing, message)
-	if !ok {
-		return fmt.Errorf("%w: invalid target", errDeliveryRejected)
-	}
-	accepted, err := s.pairingClient.RelayMessage(ctx, pairing, request)
-	if err != nil {
-		return err
-	}
-	if !accepted.Accepted {
-		return errors.New("peer did not acknowledge message acceptance")
 	}
 	return nil
 }
