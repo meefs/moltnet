@@ -175,3 +175,18 @@ func TestDecodeInviteRejectsExpiredInvite(t *testing.T) {
 		t.Fatal("expected error for expired invite")
 	}
 }
+
+func TestDecodeInviteRejectsFollowNamespace(t *testing.T) {
+	t.Parallel()
+	for _, network := range []string{"follow-peer", "FOLLOW-peer", " follow-peer "} {
+		invite := validInvite()
+		invite.NetworkID = network
+		code, err := EncodeInvite(invite)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := DecodeInvite(code); err == nil || !strings.Contains(err.Error(), "invite network_id") || !strings.Contains(err.Error(), "reserved") {
+			t.Fatalf("network %q: expected reserved namespace error, got %v", network, err)
+		}
+	}
+}

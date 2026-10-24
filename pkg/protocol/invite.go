@@ -101,6 +101,9 @@ func (invite Invite) Validate() error {
 	if strings.TrimSpace(invite.NetworkID) == "" {
 		return errors.New("invite network_id is required")
 	}
+	if err := ValidateNetworkNamespace(invite.NetworkID); err != nil {
+		return fmt.Errorf("invite network_id: %w", err)
+	}
 	if invite.Exp.IsZero() {
 		return errors.New("invite exp is required")
 	}
