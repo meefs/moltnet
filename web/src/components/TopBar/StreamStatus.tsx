@@ -5,12 +5,12 @@ export function StreamStatus() {
 
   const label =
     status === "open"
-      ? "live stream connected."
+      ? "live"
       : status === "unsupported"
-        ? "live stream unsupported."
+        ? "no live stream"
       : status === "error"
-        ? "live stream reconnecting…"
-        : "connecting to live stream…";
+        ? "reconnecting…"
+        : "connecting…";
 
   const error = status === "error";
   const unsupported = status === "unsupported";
@@ -20,8 +20,8 @@ export function StreamStatus() {
 
   return (
     <p
-      className={`text-[11px] ${tone} inline-flex items-center gap-1.5`}
-      title={reason}
+      className={`font-mono text-[12px] ${tone} inline-flex items-center gap-1.5 shrink-0`}
+      title={reason ?? (status === "open" ? "live event stream connected" : undefined)}
     >
       <span className={`w-[7px] h-[7px] rounded-full ${dotColor} ${animate}`} />
       {label}

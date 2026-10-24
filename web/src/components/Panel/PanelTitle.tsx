@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 
 export function PanelTitle({ children }: { children: ReactNode }) {
   return (
-    <span className="bg-bg px-2 text-[11px] tracking-[0.12em] text-green">
-      [ {children} ]
-    </span>
+    <h1 className="text-[17px] font-semibold tracking-[-0.01em] truncate">{children}</h1>
   );
 }

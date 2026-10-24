@@ -6,6 +6,8 @@ import { useSelection } from "../../../providers";
 import { DetailRow } from "../../DetailRow";
 import { ListItem } from "../../ListItem";
 import { Panel } from "../../Panel";
+import { SectionLabel } from "../../SectionLabel";
+import { avatarColor, initials, shortName } from "../../../lib/sender";
 
 export function AgentView() {
   const { selected, select } = useSelection();
@@ -40,7 +42,7 @@ export function AgentView() {
           <Panel.Title>AGENT</Panel.Title>
         </Panel.Header>
         <Panel.Body>
-          <p className="text-faint text-xs px-2 py-1.5">
+          <p className="text-faint text-[13px] px-2 py-1.5">
             agent not found{agentId ? ` — ${agentId}` : ""}.
           </p>
         </Panel.Body>
@@ -50,11 +52,27 @@ export function AgentView() {
 
   return (
     <Panel>
-      <Panel.Header>
-        <Panel.Title>{`AGENT: ${agent.id}`}</Panel.Title>
-      </Panel.Header>
       <Panel.Body>
-        <div className="grid gap-2 text-xs mb-4">
+        <div className="flex items-center gap-4 mb-5">
+          <span
+            aria-hidden="true"
+            className="grid place-items-center w-14 h-14 rounded-xl text-[20px] font-bold text-[#111]"
+            style={{ background: avatarColor(shortName(agent.id)) }}
+          >
+            {initials(agent.id)}
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-[22px] font-semibold tracking-[-0.02em] truncate">{shortName(agent.id)}</h1>
+            <p className="font-mono text-[12px] text-mute">
+              <span className={agent.connected ? "text-green" : "text-faint"}>
+                {agent.connected ? "● connected" : "○ not connected"}
+              </span>
+              {" · "}
+              {agent.network_id ?? "unknown network"}
+            </p>
+          </div>
+        </div>
+        <div className="max-w-2xl">
           <DetailRow label="agent" value={agent.id} />
           <DetailRow
             label="canonical id"
@@ -63,21 +81,19 @@ export function AgentView() {
           <DetailRow label="network" value={agent.network_id ?? "unknown"} />
         </div>
 
-        <div className="text-[11px] tracking-[0.12em] text-green mt-1 mb-1.5">
-          [ ROOMS ] ( {memberRooms.length} )
-        </div>
+        <SectionLabel title="Rooms" count={memberRooms.length} />
         {memberRooms.length === 0 ? (
-          <p className="text-faint text-xs px-2 py-1 mb-4">
+          <p className="text-faint text-[13px] px-2 py-1 mb-4">
             no rooms — this agent is not a member of any room.
           </p>
         ) : (
-          <div className="flex flex-col mb-4">
+          <div className="flex flex-col max-w-2xl mb-4">
             {memberRooms.map((room) => (
               <ListItem
                 key={room.id}
                 showMarker={false}
                 onClick={() => select({ kind: "room", id: room.id })}
-                title={<># {room.name || room.id}</>}
+                title={<><span className="text-faint">#</span> {room.name || room.id}</>}
                 trailing={
                   (room.members ?? []).length > 0
                     ? `${room.members!.length} members`
@@ -90,11 +106,9 @@ export function AgentView() {
 
         {directMessagesEnabled ? (
           <>
-            <div className="text-[11px] tracking-[0.12em] text-green mt-1 mb-1.5">
-              [ DIRECT CHANNELS ] ( {participatingDMs.length} )
-            </div>
+            <SectionLabel title="Direct channels" count={participatingDMs.length} />
             {participatingDMs.length === 0 ? (
-              <p className="text-faint text-xs px-2 py-1">
+              <p className="text-faint text-[13px] px-2 py-1">
                 no direct channels — this agent has no DMs.
               </p>
             ) : (
@@ -116,3 +130,4 @@ export function AgentView() {
     </Panel>
   );
 }
+

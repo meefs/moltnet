@@ -9,7 +9,6 @@ import {
   type Message,
 } from "../../../lib/types";
 import { useSelection } from "../../../providers";
-import { Panel } from "../../Panel";
 import {
   captureScrollAnchor,
   captureScrollSnapshot,
@@ -21,9 +20,10 @@ import {
   type ScrollAnchor,
   type ScrollSnapshot,
 } from "./scroll";
-import { TimelineMessage } from "./TimelineMessage";
+import { continuesFrom, TimelineMessage } from "./TimelineMessage";
+import { TimelineHeader } from "./TimelineHeader";
 
-const ESTIMATED_ROW_HEIGHT = 24;
+const ESTIMATED_ROW_HEIGHT = 64;
 
 export function Timeline() {
   const { selected } = useSelection();
@@ -284,6 +284,24 @@ export function Timeline() {
     selectedKey,
   ]);
 
+  // Rows can grow after they were measured (an image or audio player loading).
+  // The virtualizer only compensates for rows above the viewport, so while the
+  // operator is following the newest message, keep the bottom pinned.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const hasMessages = messages.length > 0;
+  useEffect(() => {
+    const node = contentRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    // scrollToBottom marks the scroll as programmatic, so handleScroll does not
+    // mistake it for the operator scrolling away and turn following off.
+    const observer = new ResizeObserver(() => {
+      if (!autoFollowRef.current || snapshotRef.current) return;
+      scrollToBottom();
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMessages, selectedKey, scrollToBottom]);
+
   // ─── Trigger fetch-older when the user scrolls near the top ─────────────────
   useEffect(() => {
     maybeFetchOlder(parentRef.current);
@@ -291,44 +309,16 @@ export function Timeline() {
 
   if (!isMessageTargetSelection(selected)) {
     const targetLabel = directMessagesEnabled ? "a room or direct channel" : "a room";
-    return (
-      <Panel>
-        <Panel.Header>
-          <Panel.Title>TIMELINE</Panel.Title>
-        </Panel.Header>
-        <Panel.Body>
-          <p className="text-faint text-xs px-2 py-1.5">
-            select {targetLabel}.
-          </p>
-        </Panel.Body>
-      </Panel>
-    );
+    return <EmptyPane text={`select ${targetLabel}.`} />;
   }
 
   if (selected.kind === "dm" && !directMessagesEnabled) {
-    return (
-      <Panel>
-        <Panel.Header>
-          <Panel.Title>TIMELINE</Panel.Title>
-        </Panel.Header>
-        <Panel.Body>
-          <p className="text-faint text-xs px-2 py-1.5">
-            direct channels are disabled for this network.
-          </p>
-        </Panel.Body>
-      </Panel>
-    );
+    return <EmptyPane text="direct channels are disabled for this network." />;
   }
 
-  const title = `${selected.kind === "room" ? "ROOM" : "DM"}: ${selected.id}`;
-
   return (
-    <Panel>
-      <Panel.Header>
-        <Panel.Title>{title}</Panel.Title>
-        <Panel.Count>{messages.length} messages</Panel.Count>
-      </Panel.Header>
-      <Panel.Body className="p-0">
+    <section className="flex flex-col min-h-0 min-w-0">
+      <TimelineHeader selection={selected} loaded={messages.length} hasOlder={!!hasNextPage} />
         <div
           ref={parentRef}
           className="flex-1 overflow-auto"
@@ -341,11 +331,12 @@ export function Timeline() {
           onWheel={handleWheel}
         >
           {messages.length === 0 ? (
-            <p className="text-faint text-xs px-4 py-3">
+            <p className="text-faint text-[14px] px-5 py-6">
               {isLoading ? "loading…" : "no messages yet."}
             </p>
           ) : (
             <div
+              ref={contentRef}
               style={{
                 height: `${virtualizer.getTotalSize()}px`,
                 width: "100%",
@@ -353,7 +344,7 @@ export function Timeline() {
               }}
             >
               {hasNextPage && isFetchingNextPage ? (
-                <div className="absolute top-0 left-0 right-0 text-center text-[11px] text-faint py-2 pointer-events-none">
+                <div className="absolute top-0 left-0 right-0 text-center font-mono text-[11px] text-faint py-2 pointer-events-none">
                   loading older…
                 </div>
               ) : null}
@@ -373,17 +364,28 @@ export function Timeline() {
                       width: "100%",
                       transform: `translateY(${virtualItem.start}px)`,
                       paddingLeft: 16,
-                      paddingRight: 16,
+                      paddingRight: 20,
                     }}
                   >
-                    <TimelineMessage message={message} networkId={network?.id} />
+                    <TimelineMessage
+                      message={message}
+                      continued={continuesFrom(messages[virtualItem.index - 1], message)}
+                    />
                   </div>
                 );
               })}
             </div>
           )}
+          <div className="h-3" aria-hidden="true" />
         </div>
-      </Panel.Body>
-    </Panel>
+    </section>
+  );
+}
+
+function EmptyPane({ text }: { text: string }) {
+  return (
+    <section className="grid place-items-center min-h-0 text-faint text-[14px]">
+      <p>{text}</p>
+    </section>
   );
 }

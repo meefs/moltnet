@@ -10,12 +10,12 @@ export function PairingsList() {
   const { selected, select } = useSelection();
 
   if (error) return <PairingsError error={error} />;
-  if (isLoading) return <p className="text-faint text-xs px-2 py-1.5">loading…</p>;
+  if (isLoading) return <p className="text-faint text-[13px] px-2 py-1">loading…</p>;
 
   return (
     <>
         {pairings.length === 0 ? (
-          <p className="text-faint text-xs px-2 py-1.5">no pairings connected.</p>
+          <p className="text-faint text-[13px] px-2 py-1">no pairings connected.</p>
         ) : (
           <div className="flex flex-col">
             {pairings.map((pairing) => {

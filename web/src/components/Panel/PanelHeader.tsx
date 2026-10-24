@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 export function PanelHeader({ children }: { children: ReactNode }) {
   return (
-    <div className="absolute -top-2 left-0 right-0 flex justify-between pointer-events-none px-4 z-10">
+    <div className="flex items-center justify-between gap-3 h-14 shrink-0 px-5 border-b border-border">
       {children}
     </div>
   );

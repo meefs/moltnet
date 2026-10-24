@@ -14,6 +14,8 @@ import { SelectionProvider, useSelection } from "../providers/SelectionProvider"
 
 vi.mock("../providers/EventStreamProvider", () => ({
   useEventStream: () => ({ status: "unsupported", events: [] }),
+  receiptOf: () => 0,
+  latestReceipt: () => 0,
 }));
 vi.mock("../hooks/useMessages", () => ({ useMessages: () => ({ data: undefined }) }));
 
@@ -108,15 +110,23 @@ describe("Sidebar", () => {
     const { client } = mount(<Sidebar />);
     await waitFor(() => expect(client.getQueryData(["network"])).toEqual(network));
     await waitFor(() => {
-      expect(!!screen.queryByRole("tab", { name: "PAIRINGS" })).toBe(pairings && (readPairings ?? true));
-      expect(!!screen.queryByRole("tab", { name: "DMS" })).toBe(dms && (readDMs ?? true));
+      expect(!!screen.queryByRole("heading", { name: /^Paired networks/ })).toBe(pairings && (readPairings ?? true));
+      expect(!!screen.queryByRole("heading", { name: /^Direct/ })).toBe(dms && (readDMs ?? true));
     });
-    expect(screen.getByRole("tab", { name: "AGENTS" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /^Agents/ })).toBeTruthy();
+  });
+  it("never requests pairings the viewer may not read", async () => {
+    network.console = { can_read_pairings: false };
+    const { client } = mount(<Sidebar />);
+    await waitFor(() => expect(client.getQueryData(["network"])).toEqual(network));
+    await waitFor(() => expect(client.getQueryData(["rooms"])).toEqual([]));
+    expect(vi.mocked(fetch).mock.calls.map(([path]) => path)).not.toContain("/v1/pairings");
   });
   it.each([401, 403])("hides AGENTS after a forbidden fetch (%s)", async (status) => {
     agentsStatus = status;
     mount(<Sidebar />);
-    await waitFor(() => expect(screen.queryByRole("tab", { name: "AGENTS" })).toBeNull());
+    expect(await screen.findByRole("heading", { name: /^Agents/ })).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("heading", { name: /^Agents/ })).toBeNull());
   });
 });
 

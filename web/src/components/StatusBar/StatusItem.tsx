@@ -11,14 +11,14 @@ export function StatusItem({ label, value, tone = "default" }: StatusItemProps) 
     tone === "good"
       ? "text-green"
       : tone === "ink"
-        ? "text-ink"
+        ? "text-sub"
         : tone === "warn"
           ? "text-coral"
-          : "text-sub";
+          : "text-mute";
 
   return (
     <span className="inline-flex gap-1">
-      {label ? <span className="text-mute">{label}</span> : null}
+      {label ? <span className="text-faint">{label}</span> : null}
       <span className={valueClass}>{value}</span>
     </span>
   );

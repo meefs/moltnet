@@ -1,28 +1,37 @@
 @import "tailwindcss";
+/* Never scan the previous build: it would make the output depend on it. */
+@source not "../dist";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
 
-/* Palette + typography tokens. Drives every Tailwind color/font utility:
-   --color-green → bg-green / text-green / border-green / etc.
-   --font-mono   → font-mono */
+/* Noopolis palette: green on near-black, sans for people, mono for anything
+   agents write. Drives every Tailwind color/font utility:
+   --color-green → bg-green / text-green / border-green / etc. */
 @theme {
-  --color-bg: #0b0b0b;
-  --color-surface: #111111;
-  --color-ink: #f3eee7;
-  --color-sub: #d1c7b8;
-  --color-mute: #a59d94;
-  --color-faint: #6b6560;
+  --color-bg: #070908;
+  --color-panel: #0d100e;
+  --color-panel-2: #131714;
+  --color-surface: #0d100e;
+  --color-ink: #eef3ef;
+  --color-sub: #b4beb7;
+  --color-mute: #8a958d;
+  --color-faint: #5e6a62;
   --color-green: #3ddc84;
   --color-green-hi: #6ef5a7;
-  --color-coral: #d4604a;
-  --color-cyan: #00e5cc;
-  --color-line: rgba(61, 220, 132, 0.55);
-  --color-line-soft: rgba(61, 220, 132, 0.18);
-  --color-line-bright: rgba(61, 220, 132, 0.45);
-  --color-tint: rgba(61, 220, 132, 0.06);
-  --color-tint-strong: rgba(61, 220, 132, 0.08);
-  --color-border: rgba(255, 255, 255, 0.07);
-  --color-dashed: rgba(255, 255, 255, 0.05);
+  --color-green-dim: #1f6b43;
+  --color-coral: #ff6a5c;
+  --color-cyan: #8bd3ff;
+  --color-amber: #f5c451;
+  --color-line: #2a322c;
+  --color-line-soft: #1d231f;
+  --color-line-bright: #3a463d;
+  --color-tint: rgba(61, 220, 132, 0.07);
+  --color-tint-strong: rgba(61, 220, 132, 0.12);
+  --color-border: #1d231f;
+  --color-dashed: #1d231f;
 
-  --font-mono: "JetBrains Mono", "SF Mono", "Menlo", "Cascadia Code", "Consolas", ui-monospace, monospace;
+  --font-sans: "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", "SF Mono", "Menlo", "Cascadia Code", "Consolas", ui-monospace, monospace;
 
   --animate-breathe: breathe 2.4s ease-in-out infinite;
 }
@@ -50,8 +59,8 @@
   body {
     background: var(--color-bg);
     color: var(--color-ink);
-    font-family: var(--font-mono);
-    font-size: 13px;
+    font-family: var(--font-sans);
+    font-size: 14px;
     line-height: 1.5;
     height: 100vh;
     overflow: hidden;
@@ -69,14 +78,17 @@
   a { color: inherit; }
   h1, h2, h3, p { margin: 0; }
 
-  *::-webkit-scrollbar { width: 6px; height: 6px; }
-  *::-webkit-scrollbar-thumb { background: var(--color-line-soft); border-radius: 3px; }
-  *::-webkit-scrollbar-thumb:hover { background: var(--color-line); }
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 4px; }
+  *::-webkit-scrollbar-thumb:hover { background: var(--color-line-bright); }
 }
 
 @layer utilities {
   .agent-connect-cta-attention {
     animation: agent-connect-wiggle 3.8s ease-in-out infinite;
     transform-origin: center;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .agent-connect-cta-attention, .animate-breathe { animation: none; }
   }
 }

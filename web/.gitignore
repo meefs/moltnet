@@ -4,3 +4,7 @@ node_modules/
 # Vite output is tracked so `go build` works without npm. The top-level
 # .gitignore excludes dist/, so re-include this dist/ explicitly.
 !dist/
+
+# Local env files may hold MOLTNET_DEV_TOKEN; never commit them.
+.env
+.env.*
