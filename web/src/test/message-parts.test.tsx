@@ -15,7 +15,7 @@ function message(text: string, overrides: Partial<Message> = {}): Message {
 
 describe("message parts", () => {
   it("renders a JSON object written as text as a data card", () => {
-    render(<TimelineMessage message={message('{"kind":"research.answer.v1","status":"refused"}')} networkId="local" />);
+    render(<TimelineMessage message={message('{"kind":"research.answer.v1","status":"refused"}')} />);
     expect(screen.getByText("research.answer.v1")).toBeTruthy();
     expect(screen.getByText("status")).toBeTruthy();
     expect(screen.queryByText(/"status"/)).toBeNull();
@@ -24,15 +24,15 @@ describe("message parts", () => {
   });
 
   it("keeps prose that merely starts with a brace as text", () => {
-    render(<TimelineMessage message={message("{not json} but words")} networkId="local" />);
+    render(<TimelineMessage message={message("{not json} but words")} />);
     expect(screen.getByText("{not json} but words")).toBeTruthy();
   });
 
   it("marks only credential-bound local senders as verified", () => {
     const bound = message("hi", { from: { type: "agent", id: "brass", network_id: "local", credential_bound: true } });
-    const { rerender } = render(<TimelineMessage message={bound} networkId="local" />);
+    const { rerender } = render(<TimelineMessage message={bound} />);
     expect(screen.getByTitle("identity proven with a credential on this network")).toBeTruthy();
-    rerender(<TimelineMessage message={{ ...bound, origin: { received_via: "peer" } }} networkId="local" />);
+    rerender(<TimelineMessage message={{ ...bound, origin: { received_via: "peer" } }} />);
     expect(screen.queryByTitle("identity proven with a credential on this network")).toBeNull();
   });
 });

@@ -89,7 +89,7 @@ describe("useUnread", () => {
 });
 
 describe("timeline follow", () => {
-  it("re-pins the bottom when rows grow after loading", () => {
+  it("re-pins the bottom when rows grow after loading", async () => {
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -113,9 +113,24 @@ describe("timeline follow", () => {
     state.selected = { kind: "room", id: "desk" };
     state.messages = [{ id: "m1", from: { type: "agent", id: "a" }, target: { kind: "room", room_id: "desk" }, parts: [{ kind: "text", text: "hi" }], created_at: "2026-10-24T10:00:00Z" }];
     render(<Timeline />);
+    // Let the initial open-at-bottom pins finish, so they cannot mask anything.
+    await act(() => new Promise((done) => setTimeout(done, 150)));
     expect(state.observers.length).toBeGreaterThan(0);
     const before = state.pinCalls;
     act(() => state.observers.forEach((fire) => fire()));
     expect(state.pinCalls).toBeGreaterThan(before);
+
+    // The pin's own scroll event lands while the rows are still off the bottom:
+    // it must not count as the operator scrolling away.
+    const scroller = screen.getByTestId("timeline-scroll");
+    Object.defineProperty(scroller, "scrollHeight", { configurable: true, value: 1000 });
+    Object.defineProperty(scroller, "clientHeight", { configurable: true, value: 300 });
+    scroller.scrollTop = 0;
+    act(() => {
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+    const afterScroll = state.pinCalls;
+    act(() => state.observers.forEach((fire) => fire()));
+    expect(state.pinCalls).toBeGreaterThan(afterScroll);
   });
 });

@@ -292,14 +292,15 @@ export function Timeline() {
   useEffect(() => {
     const node = contentRef.current;
     if (!node || typeof ResizeObserver === "undefined") return;
+    // scrollToBottom marks the scroll as programmatic, so handleScroll does not
+    // mistake it for the operator scrolling away and turn following off.
     const observer = new ResizeObserver(() => {
       if (!autoFollowRef.current || snapshotRef.current) return;
-      const scroller = parentRef.current;
-      if (scroller) pinToBottom(scroller);
+      scrollToBottom();
     });
     observer.observe(node);
     return () => observer.disconnect();
-  }, [hasMessages, selectedKey]);
+  }, [hasMessages, selectedKey, scrollToBottom]);
 
   // ─── Trigger fetch-older when the user scrolls near the top ─────────────────
   useEffect(() => {
@@ -368,7 +369,6 @@ export function Timeline() {
                   >
                     <TimelineMessage
                       message={message}
-                      networkId={network?.id}
                       continued={continuesFrom(messages[virtualItem.index - 1], message)}
                     />
                   </div>

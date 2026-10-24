@@ -4,9 +4,6 @@ import { MessageParts } from "./MessageParts";
 
 interface TimelineMessageProps {
   message: Message;
-  /** This console's own network id, used to tell local senders from remote
-   *  ones. Without it every sender renders as local. */
-  networkId?: string;
   /** Same sender as the row above, within a few minutes: skip the header. */
   continued?: boolean;
 }
