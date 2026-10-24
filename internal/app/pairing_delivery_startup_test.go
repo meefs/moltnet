@@ -32,7 +32,7 @@ func TestAppResumesPairingDeliveryAfterApplyingRoomPolicy(t *testing.T) {
 				t.Fatal(err)
 			}
 			message := protocol.Message{ID: "pending-at-startup", NetworkID: "origin", Origin: protocol.MessageOrigin{NetworkID: "origin", MessageID: "pending-at-startup"}, Target: protocol.Target{Kind: protocol.TargetKindRoom, RoomID: "research"}, From: protocol.Actor{Type: "agent", ID: "writer", NetworkID: "origin"}, Parts: []protocol.Part{{Kind: "text", Text: "retained"}}, CreatedAt: time.Now().UTC()}
-			if _, err := storage.AppendMessageWithPairingDeliveriesContext(context.Background(), message, nil, []string{"peer"}); err != nil {
+			if _, err := storage.AppendMessageWithPairingDeliveriesContext(store.WithPairingDeliveryLimits(context.Background(), map[string]store.PairingDeliveryLimits{"peer": {RemoteNetworkID: "peer"}}), message, nil, []string{"peer"}); err != nil {
 				t.Fatal(err)
 			}
 			if err := storage.Close(); err != nil {
@@ -75,7 +75,7 @@ func TestAppResumesPairingDeliveryAfterApplyingRoomPolicy(t *testing.T) {
 					if allowed && state.Pending == 0 && posts.Load() == 1 {
 						return
 					}
-					if !allowed && state.Pending == 1 && state.LastError != "" {
+					if !allowed && state.Pending == 0 && state.Rejected == 1 && state.LastRejectionReason != "" {
 						if posts.Load() != 0 {
 							t.Fatal("delivery escaped the newly applied room policy")
 						}

@@ -31,13 +31,15 @@ describe("pairing delivery status", () => {
     expect(section.textContent).toContain("last delivery error :relay is not connected");
   });
 
-  it("keeps the cumulative drop count visible after the queue drains", () => {
-    pairing.delivery = { pending: 0, oldest_pending_age_seconds: 0, dropped: 5 };
+  it("keeps cumulative drops and rejections visible after the queue drains", () => {
+    pairing.delivery = { pending: 0, oldest_pending_age_seconds: 0, dropped: 5, rejected: 2, last_rejection_reason: "paired network returned HTTP 403 Forbidden" };
     render(<PairingView />);
     const section = screen.getByRole("region", { name: "Outbound delivery" });
     expect(section.textContent).toContain("pending messages :0");
     expect(section.textContent).toContain("oldest pending :—");
     expect(section.textContent).toContain("dropped messages :5");
     expect(section.textContent).not.toContain("last delivery error :");
+    expect(section.textContent).toContain("rejected messages :2");
+    expect(section.textContent).toContain("last rejection reason :paired network returned HTTP 403 Forbidden");
   });
 });

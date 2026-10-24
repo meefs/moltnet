@@ -51,10 +51,12 @@ type PairingDeliveryLimits struct {
 }
 
 // PairingDeliveryStatus describes the local outbound queue, including drops
-// caused by its configured retention bounds.
+// caused by retention or destination changes, and definitive rejections.
 type PairingDeliveryStatus struct {
 	Pending                 int     `json:"pending" yaml:"pending"`
 	OldestPendingAgeSeconds float64 `json:"oldest_pending_age_seconds" yaml:"oldest_pending_age_seconds"`
 	LastError               string  `json:"last_error,omitempty" yaml:"last_error,omitempty"`
+	Rejected                int64   `json:"rejected" yaml:"rejected"`
+	LastRejectionReason     string  `json:"last_rejection_reason,omitempty" yaml:"last_rejection_reason,omitempty"`
 	Dropped                 int64   `json:"dropped" yaml:"dropped"`
 }

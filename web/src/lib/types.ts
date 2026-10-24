@@ -96,6 +96,8 @@ export interface Pairing {
 }
 
 export interface PairingDeliveryStatus {
+  rejected?: number;
+  last_rejection_reason?: string;
   pending: number;
   oldest_pending_age_seconds: number;
   last_error?: string;

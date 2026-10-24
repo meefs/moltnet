@@ -15,7 +15,7 @@ func TestPairingBacklogWaitsForReadyConfiguration(t *testing.T) {
 	if err := memory.CreateRoom(protocol.Room{ID: "research", NetworkID: "net_a", Federation: &protocol.RoomFederation{Mode: protocol.RoomFederationAll}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := memory.AppendMessageWithPairingDeliveriesContext(context.Background(), roomRelayMessage(), nil, []string{"pair_b"}); err != nil {
+	if _, err := memory.AppendMessageWithPairingDeliveriesContext(store.WithPairingDeliveryLimits(context.Background(), map[string]store.PairingDeliveryLimits{"pair_b": {RemoteNetworkID: "net_b"}}), roomRelayMessage(), nil, []string{"pair_b"}); err != nil {
 		t.Fatal(err)
 	}
 	client := &recordingPairingClient{notify: make(chan struct{}, 2)}
@@ -36,9 +36,9 @@ func TestPairingBacklogWaitsForReadyConfiguration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if state.LastError != "" {
-			if state.Pending != 1 || len(client.snapshotCalls()) != 0 {
-				t.Fatalf("new federation policy did not retain blocked backlog: %#v", state)
+		if state.Rejected == 1 {
+			if state.Pending != 0 || len(client.snapshotCalls()) != 0 {
+				t.Fatalf("new federation policy did not reject blocked backlog: %#v", state)
 			}
 			return
 		}

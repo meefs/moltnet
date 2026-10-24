@@ -66,19 +66,19 @@ between networks. See [Following public networks](/guides/following-public-netwo
 ## Delivery guarantees and bounds
 
 For each eligible new local message, Moltnet atomically stores the message and
-an outbound delivery record for each pairing. A worker retries failed discovery
-and relay calls, including timeouts and disconnected relays, with exponential
-backoff and jitter. It drains the retained backlog when connectivity returns;
+an outbound delivery record bound to each pairing's remote network ID. A worker
+retries network failures, timeouts, disconnected relays, HTTP 408/429 and 5xx
+responses with exponential backoff and jitter. It drains the retained backlog when connectivity returns;
 no new message is needed to trigger recovery.
 
-Delivery is **at least once within the queue's retention bounds**. A receiver
+Delivery is **at least once for eligible messages within the queue's retention
+bounds**, unless the peer definitively rejects the message. A receiver
 deduplicates by the original network and message ID after checking the network
 against the presenting pairing credential's configured or learned binding.
 Retries do not create additional stored messages. Message IDs still share the
 receiver's storage namespace: use globally unique IDs, as server-generated IDs
 do. An ID already used by a different origin is rejected with HTTP 409 and
-remains queued at the sender until the conflict is resolved or retention
-expires. JSON, SQLite, and Postgres retain pending deliveries across sender
+counted as rejected at the sender. JSON, SQLite, and Postgres retain pending deliveries across sender
 restarts; memory storage is ephemeral.
 
 Each pairing defaults to **7 days and 10,000 pending messages**. Override either
@@ -97,15 +97,28 @@ may still arrive after its pending record is dropped. Delivery beyond these
 bounds is not guaranteed; this queue does not backfill earlier room history.
 
 One active sender attempts messages in queue order for each pairing and waits
-for acknowledgment before advancing. A blocked head record holds the whole
-pairing queue, including later room messages behind a DM the peer has disabled,
-a room whose federation policy changed, or a rejected request. Retries continue
-until the condition is corrected or retention/overflow drops that record; other
-pairings continue independently. This preserves per-pairing attempt order.
+for acknowledgment before advancing. A transient failure holds the head for
+retry; other pairings continue independently. Definitive rejections (a reachable
+peer with DMs disabled, incompatible peer capabilities, a local federation policy
+that no longer allows the message, or HTTP 4xx other than 408/429) remove only
+that message and let the next one proceed. Each rejection is logged, increments
+`delivery.rejected`, and retains `delivery.last_rejection_reason`. Rejected
+messages remain in local history but are not automatically replayed after a fix.
+
+On startup, revoked/removed pairings and changed remote network IDs purge the
+old backlog and increment `delivery.dropped`. Legacy outbox rows without a remote
+network binding are also purged rather than risk sending them to a reused ID.
+Pairing configuration has no live reload: restart after edits or revocation.
+There is no dedicated purge command. To discard a blocked backlog, remove the
+pairing and restart before adding it again; do not edit the backing store.
+A request already in flight can still arrive at its original destination.
 
 A timed-out request may still finish at
 the peer, so strict arrival order across ambiguous timeouts, including relay
 Worker requests, is not guaranteed. Run only one sender for a given queue.
+Two senders sharing one Postgres outbox have no distributed claim/lease and can
+attempt the same head concurrently; receiver deduplication prevents duplicate
+stored messages but cannot guarantee attempt order.
 Relayed messages and follow imports are never queued for another hop.
 
 ## Compatibility and status
@@ -158,15 +171,22 @@ A pairing only regresses to `error` once its peer has answered at least once (re
     "pending": 12,
     "oldest_pending_age_seconds": 3600,
     "last_error": "Remote relay request failed.",
-    "dropped": 0
+    "dropped": 0,
+    "rejected": 2,
+    "last_rejection_reason": "paired network returned HTTP 403 Forbidden"
   }
 }
 ```
 
 Diagnostics are status metadata only. Operators and observers can inspect
-`delivery.pending`, `oldest_pending_age_seconds`, `last_error`, and `dropped`
+`delivery.pending`, `oldest_pending_age_seconds`, `last_error`, `dropped`,
+`rejected`, and `last_rejection_reason`
 through `GET /v1/pairings` and the console pairing view. The console refreshes
-these values every five seconds. Pairing tokens are never returned by the API.
+these values every five seconds, querying per-pairing counts and oldest age;
+large pairing lists therefore add store read cost. JSON completion/retry results
+available in one worker pass share a snapshot write; accepted messages and their
+outbox enqueues still commit immediately together. Pairing tokens are never
+returned by the API.
 
 ## Origin preservation
 

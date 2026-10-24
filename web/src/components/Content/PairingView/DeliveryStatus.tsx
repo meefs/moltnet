@@ -13,6 +13,10 @@ export function DeliveryStatus({ delivery }: { delivery: PairingDeliveryStatus }
           label="oldest pending"
           value={delivery.pending > 0 ? formatPendingAge(delivery.oldest_pending_age_seconds) : "—"}
         />
+        <DetailRow label="rejected messages" value={String(delivery.rejected ?? 0)} />
+        {delivery.last_rejection_reason ? (
+          <DetailRow label="last rejection reason" value={delivery.last_rejection_reason} />
+        ) : null}
         <DetailRow label="dropped messages" value={String(delivery.dropped)} />
         {delivery.last_error ? (
           <DetailRow label="last delivery error" value={delivery.last_error} />

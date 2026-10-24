@@ -143,7 +143,7 @@ func (s *Service) appendAndPublishMessage(
 		limits := make(map[string]store.PairingDeliveryLimits)
 		for _, pairing := range s.snapshotRelayPairings() {
 			age, size := deliveryBounds(pairing)
-			limits[pairing.ID] = store.PairingDeliveryLimits{MaxAge: age, MaxPending: size}
+			limits[pairing.ID] = store.PairingDeliveryLimits{MaxAge: age, MaxPending: size, RemoteNetworkID: pairing.RemoteNetworkID}
 		}
 		appendCtx := store.WithPairingDeliveryLimits(ctx, limits)
 		lifecycle, err = s.pairingDeliveries.AppendMessageWithPairingDeliveriesContext(appendCtx, message, durableEvent, pairingIDs)

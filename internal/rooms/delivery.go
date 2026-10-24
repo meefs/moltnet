@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"sync"
 	"time"
@@ -16,7 +17,7 @@ import (
 const defaultDeliveryMaxAge = 7 * 24 * time.Hour
 const defaultDeliveryMaxPending = 10000
 
-var errDeliveryBlocked = errors.New("pairing delivery blocked")
+var errDeliveryRejected = errors.New("pairing delivery rejected")
 
 func (s *Service) configureDelivery(config ServiceConfig) {
 	s.deliveryRetryMin = positiveDuration(config.DeliveryRetryMin, time.Second)
@@ -78,13 +79,24 @@ func (s *Service) runDeliveryWorker() {
 	var jobs sync.WaitGroup
 	defer jobs.Wait()
 	active := make(map[string]bool)
-	finished := make(chan string, 8)
+	finished := make(chan store.PairingDeliveryResult, 8)
+	var configuredDestinations map[string]string
 	for {
 		select {
 		case <-s.lifecycleCtx.Done():
 			return
-		case id := <-finished:
-			delete(active, id)
+		case result := <-finished:
+			results := []store.PairingDeliveryResult{result}
+			// Persist all completed sends available in this worker pass together.
+			for len(finished) > 0 {
+				results = append(results, <-finished)
+			}
+			if err := s.pairingDeliveries.ApplyPairingDeliveryResultsContext(s.lifecycleCtx, results); err != nil {
+				s.logDeliveryStoreError(err)
+			}
+			for _, result := range results {
+				delete(active, result.Delivery.PairingID)
+			}
 		case <-ticker.C:
 		case <-s.relayWake:
 		}
@@ -92,6 +104,17 @@ func (s *Service) runDeliveryWorker() {
 			return
 		}
 		pairings := s.snapshotRelayPairings()
+		destinations := make(map[string]string, len(pairings))
+		for _, pairing := range pairings {
+			destinations[pairing.ID] = pairing.RemoteNetworkID
+		}
+		if configuredDestinations == nil || !maps.Equal(configuredDestinations, destinations) {
+			if err := s.reconcileDeliveryDestinations(destinations); err != nil {
+				s.logDeliveryStoreError(err)
+				continue // Fail closed: never send before stale destinations are purged.
+			}
+			configuredDestinations = destinations
+		}
 		current := make(map[string]protocol.Pairing, len(pairings))
 		for _, pairing := range pairings {
 			current[pairing.ID] = pairing
@@ -106,23 +129,16 @@ func (s *Service) runDeliveryWorker() {
 		}
 		for _, head := range heads {
 			pairing, ok := current[head.PairingID]
-			if !ok {
-				// Removed/revoked pairings must not transmit; retained rows
-				// still age out even when no active pairing references them.
-				if err := s.pruneDelivery(s.lifecycleCtx, protocol.Pairing{ID: head.PairingID}); err != nil {
-					s.logDeliveryStoreError(err)
-				}
-			}
-			if !ok || active[head.PairingID] || len(active) >= 8 || head.NextAttempt.After(time.Now()) {
+			if !ok || head.RemoteNetworkID != pairing.RemoteNetworkID || active[head.PairingID] || len(active) >= 8 || head.NextAttempt.After(time.Now()) {
 				continue
 			}
 			active[head.PairingID] = true
 			jobs.Add(1)
 			go func(pairing protocol.Pairing, head store.PairingDelivery) {
 				defer jobs.Done()
-				s.deliverQueuedMessage(pairing, head)
+				result := s.deliverQueuedMessage(pairing, head)
 				select {
-				case finished <- pairing.ID:
+				case finished <- result:
 				case <-s.lifecycleCtx.Done():
 				}
 			}(pairing, head)
@@ -130,40 +146,73 @@ func (s *Service) runDeliveryWorker() {
 	}
 }
 
-func (s *Service) deliverQueuedMessage(pairing protocol.Pairing, record store.PairingDelivery) {
+func (s *Service) deliverQueuedMessage(pairing protocol.Pairing, record store.PairingDelivery) store.PairingDeliveryResult {
 	ctx, cancel := context.WithTimeout(s.lifecycleCtx, s.deliveryTimeout)
 	defer cancel()
 	err := s.sendQueuedMessage(ctx, pairing, record.Message)
-	// A canceled lifecycle must leave the head intact for restart. Use the
-	// lifecycle context for persistence, never the expired network deadline.
-	if s.lifecycleCtx.Err() != nil {
-		return
-	}
+	result := store.PairingDeliveryResult{Delivery: record}
 	if err == nil {
-		if err := s.pairingDeliveries.CompletePairingDeliveryContext(s.lifecycleCtx, pairing.ID, record.MessageID); err != nil {
-			s.logDeliveryStoreError(err)
-			return
-		}
 		observability.DefaultMetrics.RecordRelay("success")
 		s.setPairingRelaySuccess(pairing.ID)
-		return
+		return result
+	}
+	if deliveryRejected(err) {
+		result.RejectedReason = err.Error()
+		observability.DefaultMetrics.RecordRelay("rejected")
+		observability.Logger(s.lifecycleCtx, "rooms.relay", "message_id", record.MessageID, "pairing_id", pairing.ID).
+			Warn("pairing delivery rejected", "reason", result.RejectedReason)
+		return result
 	}
 	record.Attempts++
 	record.NextAttempt = time.Now().UTC().Add(s.deliveryBackoff(record.Attempts))
-	if updateErr := s.pairingDeliveries.UpdatePairingDeliveryContext(s.lifecycleCtx, record, err.Error()); updateErr != nil {
-		s.logDeliveryStoreError(updateErr)
-	}
+	result.Delivery, result.Retry, result.LastError = record, true, err.Error()
 	observability.DefaultMetrics.RecordRelay("error")
-	if !errors.Is(err, errDeliveryBlocked) {
-		s.setPairingError(pairing.ID, "Remote relay request failed; delivery queued for retry.")
-	}
+	s.setPairingError(pairing.ID, "Remote relay request failed; delivery queued for retry.")
 	observability.Logger(s.lifecycleCtx, "rooms.relay", "message_id", record.MessageID, "pairing_id", pairing.ID).
 		Warn("pairing delivery will retry", "attempts", record.Attempts, "next_attempt", record.NextAttempt, "error", err)
+	return result
+}
+
+// Only explicit policy/compatibility refusals and definitive peer 4xx responses
+// are rejected. Unknown failures (including ambiguous acknowledgments) retry.
+func deliveryRejected(err error) bool {
+	if errors.Is(err, errDeliveryRejected) {
+		return true
+	}
+	var response interface{ StatusCode() int }
+	if errors.As(err, &response) {
+		code := response.StatusCode()
+		return code >= 400 && code < 500 && code != 408 && code != 429
+	}
+	return false
+}
+
+func (s *Service) reconcileDeliveryDestinations(destinations map[string]string) error {
+	dropped, err := s.pairingDeliveries.ReconcilePairingDeliveriesContext(s.lifecycleCtx, destinations)
+	if err != nil {
+		return err
+	}
+	for id, count := range dropped {
+		observability.Logger(s.lifecycleCtx, "rooms.relay", "pairing_id", id).
+			Warn("pairing destination removed or changed; backlog purged", "dropped", count)
+	}
+	return nil
 }
 
 func (s *Service) sendQueuedMessage(ctx context.Context, pairing protocol.Pairing, message protocol.Message) error {
-	if !s.shouldRelayMessage(message) || !s.pairingMatchesRelayTarget(pairing, message) {
-		return fmt.Errorf("%w: current federation policy", errDeliveryBlocked)
+	if message.Origin.NetworkID != s.networkID || message.Origin.ReceivedVia != "" {
+		return fmt.Errorf("%w: invalid relay origin", errDeliveryRejected)
+	}
+	if message.Target.Kind == protocol.TargetKindRoom || message.Target.Kind == protocol.TargetKindThread {
+		room, err := s.roomForWrite(ctx, message.Target)
+		if err != nil {
+			return err // Store failures remain retryable; a missing target is a 404.
+		}
+		if room.Follow != nil || !protocol.RoomFederationAllows(room.Federation, pairing.ID) {
+			return fmt.Errorf("%w: current federation policy", errDeliveryRejected)
+		}
+	} else if !s.pairingMatchesRelayTarget(pairing, message) {
+		return fmt.Errorf("%w: current target policy", errDeliveryRejected)
 	}
 	scope := pairingCheckRelayRoom
 	if message.Target.Kind == protocol.TargetKindDM {
@@ -176,11 +225,15 @@ func (s *Service) sendQueuedMessage(ctx context.Context, pairing protocol.Pairin
 		}
 	}
 	if !s.shouldRelayToPairing(pairing, message) {
-		return fmt.Errorf("%w: peer compatibility", errDeliveryBlocked)
+		status = s.currentPairingStatus(pairing)
+		if status.value == protocol.PairingStatusPending || status.value == protocol.PairingStatusError || status.value == protocol.PairingStatusUnknown {
+			return errors.New("peer is not ready for relay")
+		}
+		return fmt.Errorf("%w: %s", errDeliveryRejected, status.diagnosticsMessage("peer does not support this delivery"))
 	}
 	request, ok := s.relayRequest(pairing, message)
 	if !ok {
-		return errors.New("queued delivery has invalid target")
+		return fmt.Errorf("%w: invalid target", errDeliveryRejected)
 	}
 	accepted, err := s.pairingClient.RelayMessage(ctx, pairing, request)
 	if err != nil {
@@ -240,7 +293,7 @@ func (s *Service) populateDeliveryStatus(ctx context.Context, pairing *protocol.
 	if !state.OldestPendingAt.IsZero() {
 		age = max(0, time.Since(state.OldestPendingAt).Seconds())
 	}
-	pairing.Delivery = &protocol.PairingDeliveryStatus{Pending: state.Pending, OldestPendingAgeSeconds: age, LastError: state.LastError, Dropped: state.Dropped}
+	pairing.Delivery = &protocol.PairingDeliveryStatus{Pending: state.Pending, OldestPendingAgeSeconds: age, LastError: state.LastError, Dropped: state.Dropped, Rejected: state.Rejected, LastRejectionReason: state.LastRejectionReason}
 	return nil
 }
 

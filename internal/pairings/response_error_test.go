@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
@@ -21,5 +22,28 @@ func TestHTTPPreservesPeerResponseStatus(t *testing.T) {
 				t.Fatalf("lost status %d: %v", code, err)
 			}
 		})
+	}
+}
+
+func TestRelayPreservesPeerResponseStatus(t *testing.T) {
+	server, connected := newRelayTransportServer(t, func(relayTransportRequest) (int, []byte) {
+		return http.StatusForbidden, []byte(`{"error":"private body"}`)
+	})
+	defer server.Close()
+	relayClient, stop := startRelayTransportClient(t, server.URL)
+	defer stop()
+	select {
+	case <-connected:
+	case <-time.After(time.Second):
+		t.Fatal("relay did not connect")
+	}
+	waitForRelayTransportConnection(t, relayClient)
+	client := NewClient()
+	pairing := protocol.Pairing{ID: "peer", Relay: &protocol.PairingRelay{URL: server.URL}}
+	client.RegisterRelay(pairing.ID, relayClient)
+	_, err := client.RelayMessage(context.Background(), pairing, protocol.SendMessageRequest{})
+	var response *ResponseError
+	if !errors.As(err, &response) || response.StatusCode() != http.StatusForbidden {
+		t.Fatalf("lost relay status: %v", err)
 	}
 }

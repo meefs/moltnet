@@ -183,11 +183,12 @@ func deliveryReceiver(t *testing.T) (*rooms.Service, http.Handler) {
 	return service, handler
 }
 
-func deliveryReceiverWithStore(t *testing.T) (*rooms.Service, http.Handler, *store.MemoryStore) {
+func deliveryReceiverWithStore(t *testing.T, disableDM ...bool) (*rooms.Service, http.Handler, *store.MemoryStore) {
 	t.Helper()
 	memory := store.NewMemoryStore()
 	service := rooms.NewService(rooms.ServiceConfig{
-		NetworkID: "peer", Store: memory, Messages: memory, Broker: events.NewBroker(),
+		DisableDirectMessages: len(disableDM) > 0 && disableDM[0],
+		NetworkID:             "peer", Store: memory, Messages: memory, Broker: events.NewBroker(),
 		RequirePairNetworkBinding: true,
 		Pairings:                  []protocol.Pairing{{ID: "origin", RemoteNetworkID: "origin", RemoteBaseURL: "http://127.0.0.1:1"}},
 		PairingClient:             pairings.NewClient(),
