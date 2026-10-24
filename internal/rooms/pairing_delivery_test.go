@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -250,24 +249,21 @@ func createDeliveryRoom(t *testing.T, service *rooms.Service) {
 	}
 }
 
+// stoppedDeliveryPeer serves a peer that refuses every request until start is
+// called. It keeps its port for the whole test: closing the listener and
+// re-binding the same address later raced with other tests taking that port.
 func stoppedDeliveryPeer(t *testing.T, handler http.Handler) (string, func()) {
 	t.Helper()
-	server := httptest.NewServer(handler)
-	url := server.URL
-	address := server.Listener.Addr().String()
-	server.Close()
-	return url, func() {
-		t.Helper()
-		listener, err := net.Listen("tcp", address)
-		if err != nil {
-			t.Fatal(err)
+	var up atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if !up.Load() {
+			http.Error(response, "peer is down", http.StatusServiceUnavailable)
+			return
 		}
-		restarted := httptest.NewUnstartedServer(handler)
-		_ = restarted.Listener.Close()
-		restarted.Listener = listener
-		restarted.Start()
-		t.Cleanup(restarted.Close)
-	}
+		handler.ServeHTTP(response, request)
+	}))
+	t.Cleanup(server.Close)
+	return server.URL, func() { up.Store(true) }
 }
 
 func postDeliveryMessage(t *testing.T, url, text string) {
