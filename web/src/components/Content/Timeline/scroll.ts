@@ -4,8 +4,18 @@ export const SCROLL_BOTTOM_STICKY_PX = 32;
 export interface ScrollSnapshot {
   scrollTop: number;
   scrollHeight: number;
-  /** The row the operator was looking at, when one was visible. */
-  anchor?: ScrollAnchor | null;
+  /** The row at the top of the viewport when older messages were requested. */
+  prepend?: PrependAnchor | null;
+}
+
+/**
+ * A row's bottom edge, relative to the viewport top. The bottom, not the top:
+ * loading older messages can remove the day divider or the sender header at
+ * the top of this very row, and the text being read sits below them.
+ */
+export interface PrependAnchor {
+  rowKey: string;
+  endOffset: number;
 }
 
 export interface ScrollAnchor {
@@ -34,7 +44,7 @@ export function captureScrollSnapshot(node: HTMLElement): ScrollSnapshot {
 
 /**
  * Where to scroll after older messages load above the row the operator was
- * reading. `anchorStart` is that row's position in the virtualizer's own
+ * reading. `anchorEnd` is that row's bottom in the virtualizer's own
  * measurements: an absolute answer that stays right while rows above are
  * still being measured, where DOM height deltas double-count the
  * virtualizer's own scroll corrections. The delta is only a fallback.
@@ -42,10 +52,10 @@ export function captureScrollSnapshot(node: HTMLElement): ScrollSnapshot {
 export function prependRestoreTop(
   node: HTMLElement,
   snapshot: ScrollSnapshot,
-  anchorStart: number | undefined,
+  anchorEnd: number | undefined,
 ): number {
-  if (snapshot.anchor && anchorStart !== undefined) {
-    return Math.max(0, anchorStart - snapshot.anchor.offsetTop);
+  if (snapshot.prepend && anchorEnd !== undefined) {
+    return Math.max(0, anchorEnd - snapshot.prepend.endOffset);
   }
   return snapshot.scrollTop + Math.max(0, node.scrollHeight - snapshot.scrollHeight);
 }

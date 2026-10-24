@@ -108,9 +108,21 @@ export function continuesFrom(previous: Message | undefined, message: Message): 
   return senderOf(previous).key === senderOf(message).key;
 }
 
-/** Stable identity for remembering per-message UI choices. */
+/**
+ * Stable identity for remembering per-message UI choices, namespaced by the
+ * channel. Without a server id, sender + time + content stand in for one.
+ */
 export function rowKeyOf(message: Message): string {
-  return message.id || `${message.from?.id ?? "?"}@${message.created_at}`;
+  const target = message.target;
+  const channel = `${target?.kind ?? "?"}:${target?.room_id ?? target?.dm_id ?? "?"}`;
+  const id = message.id || `${message.from?.network_id ?? ""}/${message.from?.id ?? "?"}@${message.created_at}#${hash(JSON.stringify(message.parts ?? []))}`;
+  return `${channel}|${id}`;
+}
+
+function hash(text: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return (h >>> 0).toString(36);
 }
 
 /** A new calendar day starts at this message. */

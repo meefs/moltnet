@@ -20,7 +20,7 @@ import {
   type ScrollAnchor,
   type ScrollSnapshot,
 } from "./scroll";
-import { continuesFrom, startsDay, TimelineMessage } from "./TimelineMessage";
+import { continuesFrom, rowKeyOf, startsDay, TimelineMessage } from "./TimelineMessage";
 import { DayDivider, EmptyPane } from "./TimelinePlaceholders";
 import { TimelineHeader } from "./TimelineHeader";
 
@@ -148,10 +148,10 @@ export function Timeline() {
       // measurements: right after a fast scroll the DOM may not hold the
       // rows for this offset yet.
       const item = virtualizer.getVirtualItemForOffset(node.scrollTop);
-      const id = item ? messages[item.index]?.id : undefined;
+      const message = item ? messages[item.index] : undefined;
       snapshotRef.current = {
         ...captureScrollSnapshot(node),
-        anchor: item && id ? { messageID: id, offsetTop: item.start - node.scrollTop } : null,
+        prepend: item && message ? { rowKey: rowKeyOf(message), endOffset: item.end - node.scrollTop } : null,
       };
       void fetchNextPage();
     },
@@ -216,14 +216,14 @@ export function Timeline() {
     if (isFetchingNextPage || !node || !snapshot) return;
     anchorRestoreTokenRef.current += 1;
 
-    const anchorIndex = snapshot.anchor
-      ? messages.findIndex((message) => message.id === snapshot.anchor?.messageID)
+    const anchorIndex = snapshot.prepend
+      ? messages.findIndex((message) => rowKeyOf(message) === snapshot.prepend?.rowKey)
       : -1;
     const restore = () => {
       const current = parentRef.current;
       if (!current) return;
-      const anchorStart = anchorIndex >= 0 ? virtualizer.measurementsCache[anchorIndex]?.start : undefined;
-      current.scrollTop = prependRestoreTop(current, snapshot, anchorStart);
+      const anchorEnd = anchorIndex >= 0 ? virtualizer.measurementsCache[anchorIndex]?.end : undefined;
+      current.scrollTop = prependRestoreTop(current, snapshot, anchorEnd);
       const nearBottom = isTimelineAtBottom(current);
       nearBottomRef.current = nearBottom;
       if (nearBottom) autoFollowRef.current = true;

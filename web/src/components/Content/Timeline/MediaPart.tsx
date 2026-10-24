@@ -12,9 +12,10 @@ import { useRowFlag } from "./rowState";
 export function MediaPart({ part, stateKey }: { part: MessagePart; stateKey?: string }) {
   const { data: network } = useNetwork();
   const autoload = !!network?.console?.viewer && network.console.viewer.kind !== "anonymous";
-  const [requested, setRequested] = useRowFlag(stateKey && `${stateKey}:load`);
-  const [failed, setFailed] = useRowFlag(stateKey && `${stateKey}:failed`);
   const url = safeUrl(part.url);
+  // Consent and failure belong to this exact resource, never just a position.
+  const [requested, setRequested] = useRowFlag(stateKey && url ? `${stateKey}:load:${url}` : undefined);
+  const [failed, setFailed] = useRowFlag(stateKey && url ? `${stateKey}:failed:${url}` : undefined);
   const label = part.filename || fileName(part.url) || part.kind;
 
   if (!url || failed) return <FileChip part={part} broken={failed} />;
