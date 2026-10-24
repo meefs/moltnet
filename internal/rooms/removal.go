@@ -2,6 +2,8 @@ package rooms
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -52,6 +54,8 @@ func (s *Service) RemoveAgentContext(ctx context.Context, agentID string) (proto
 }
 
 func (s *Service) RemoveRoomContext(ctx context.Context, roomID string) (protocol.RemoveResult, error) {
+	s.followApplyMu.Lock()
+	defer s.followApplyMu.Unlock()
 	id := strings.TrimSpace(roomID)
 	if err := protocol.ValidateRoomID(id); err != nil {
 		return protocol.RemoveResult{}, invalidRoomIDError()
@@ -63,6 +67,13 @@ func (s *Service) RemoveRoomContext(ctx context.Context, roomID string) (protoco
 	}
 	if !ok {
 		return protocol.RemoveResult{}, unknownRoomError(id)
+	}
+	if room.Follow != nil {
+		for _, configured := range s.follows.Status() {
+			if configured.ID == room.Follow.ID {
+				return protocol.RemoveResult{}, &Error{status: http.StatusConflict, msg: fmt.Sprintf("room %q is a follow mirror; remove follow %q first", id, room.Follow.ID)}
+			}
+		}
 	}
 	now, err := s.now()
 	if err != nil {

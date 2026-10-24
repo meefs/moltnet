@@ -88,6 +88,9 @@ func (s *Service) ImportFollowMessage(ctx context.Context, config protocol.Follo
 	if !exists || room.Follow == nil || room.Follow.ID != config.ID || room.Follow.RemoteBaseURL != config.RemoteBaseURL {
 		return false, fmt.Errorf("follow mirror room is missing or changed")
 	}
+	if networkID == "" || networkID == s.networkID {
+		return false, fmt.Errorf("follow origin must have a non-local network identity")
+	}
 	if remote.ID == "" {
 		return false, fmt.Errorf("origin returned an empty message id")
 	}
@@ -100,7 +103,7 @@ func (s *Service) ImportFollowMessage(ctx context.Context, config protocol.Follo
 	}
 	origin.ReceivedVia = "follow:" + config.ID
 	message := remote
-	message.ID = followMessageID(origin.NetworkID, origin.MessageID)
+	message.ID = followMessageID(networkID, remote.ID)
 	message.NetworkID = s.networkID
 	message.Origin = origin
 	message.Target.RoomID = room.ID
@@ -118,16 +121,20 @@ func (s *Service) ImportFollowMessage(ctx context.Context, config protocol.Follo
 	} else if remote.Target.Kind != protocol.TargetKindRoom {
 		return false, fmt.Errorf("follow only imports room and thread messages")
 	}
-	message.From = protocol.NormalizeActor(networkID, remote.From)
+	// Claims from an anonymous origin cannot establish a local or third-party identity.
+	claimedAuthor := remote.From
+	message.Origin.ClaimedAuthor = &claimedAuthor
+	message.From = remote.From
+	message.From.NetworkID = networkID
+	message.From.FQID = protocol.AgentFQID(networkID, remote.From.ID)
+	message.From.CredentialBound = false
 	event := protocol.Event{ID: eventIDForMessage(message.ID), Type: protocol.EventTypeMessageCreated, NetworkID: s.networkID, Message: &message, CreatedAt: message.CreatedAt}
 	_, err = s.appendAndPublishMessage(ctx, protocol.SendMessageRequest{}, message, event)
 	duplicate := errors.Is(err, store.ErrDuplicateMessage)
 	if err != nil && !duplicate {
 		return false, err
 	}
-	if err = s.SetFollowCheckpoint(ctx, followSourceKey(config, networkID, remote.ID), follow.Checkpoint{Initialized: true, Cursor: message.ID}); err != nil {
-		return false, err
-	}
+
 	return !duplicate, nil
 }
 
@@ -135,16 +142,6 @@ func followReadOnlyError(roomID string) error {
 	return &Error{status: http.StatusForbidden, msg: "room " + roomID + " is a read-only follow mirror", cause: ErrWriteForbidden}
 }
 
-func followSourceKey(config protocol.Follow, networkID, messageID string) string {
-	return "source/" + config.ID + "/" + config.RemoteBaseURL + "/" + networkID + "/" + messageID
-}
-func (s *Service) followSourceMessageID(ctx context.Context, config protocol.Follow, networkID, messageID string) (string, error) {
-	value, err := s.GetFollowCheckpoint(ctx, followSourceKey(config, networkID, messageID))
-	if err != nil {
-		return "", err
-	}
-	if value.Initialized {
-		return value.Cursor, nil
-	}
+func (s *Service) followSourceMessageID(_ context.Context, _ protocol.Follow, networkID, messageID string) (string, error) {
 	return followMessageID(networkID, messageID), nil
 }

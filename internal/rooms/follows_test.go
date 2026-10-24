@@ -55,14 +55,14 @@ func TestFollowMirrorNeverRelays(t *testing.T) {
 	}
 }
 
-func TestFollowImportDeduplicatesOriginAndMapsForeignThreadParent(t *testing.T) {
+func TestFollowImportDeduplicatesServedIDAndMapsForeignThreadParent(t *testing.T) {
 	service, config := followTestService(t)
 	parent := protocol.Message{ID: "remote-copy", Origin: protocol.MessageOrigin{NetworkID: "original", MessageID: "original-root"}, Target: protocol.Target{Kind: protocol.TargetKindRoom, RoomID: "public"}, From: protocol.Actor{Type: "agent", ID: "alice"}, Parts: []protocol.Part{{Kind: "text", Text: "root"}}, CreatedAt: time.Now().UTC()}
 	added, err := service.ImportFollowMessage(t.Context(), config, "origin", parent)
 	if err != nil || !added {
 		t.Fatalf("first import %v %v", added, err)
 	}
-	parent.ID = "different-remote-copy"
+	// Repeating the served ID must deduplicate, independently of claimed origin.
 	added, err = service.ImportFollowMessage(t.Context(), config, "origin", parent)
 	if err != nil || added {
 		t.Fatalf("duplicate import %v %v", added, err)
@@ -71,7 +71,7 @@ func TestFollowImportDeduplicatesOriginAndMapsForeignThreadParent(t *testing.T) 
 	if _, err = service.ImportFollowMessage(t.Context(), config, "origin", reply); err != nil {
 		t.Fatal(err)
 	}
-	rootID := followMessageID("original", "original-root")
+	rootID := followMessageID("origin", "remote-copy")
 	thread, exists, err := service.getThread(t.Context(), rootID)
 	if err != nil || !exists || thread.ParentMessageID != rootID {
 		t.Fatalf("foreign parent mapping %#v %v %v", thread, exists, err)

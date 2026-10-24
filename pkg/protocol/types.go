@@ -70,8 +70,10 @@ type Actor struct {
 }
 
 type MessageOrigin struct {
-	NetworkID string `json:"network_id"`
-	MessageID string `json:"message_id"`
+	// ClaimedAuthor preserves untrusted author data from a follow import.
+	ClaimedAuthor *Actor `json:"claimed_author,omitempty"`
+	NetworkID     string `json:"network_id"`
+	MessageID     string `json:"message_id"`
 	// ReceivedVia is the local pairing id for an inbound relay, resolved
 	// server-side from its credential, or "follow:<id>" for an engine import.
 	// Empty for locally-originated messages.
