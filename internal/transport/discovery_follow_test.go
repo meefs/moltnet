@@ -76,3 +76,44 @@ func TestFollowGuideURLTrust(t *testing.T) {
 		})
 	}
 }
+
+func TestFollowInstallGuideExcludesMirrorRooms(t *testing.T) {
+	policy, err := authn.NewPolicy(authn.Config{Mode: authn.ModeBearer, PublicRead: true, Tokens: []authn.TokenConfig{{ID: "operator", Value: "operator-secret", Scopes: []authn.Scope{authn.ScopeAdmin}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name  string
+		rooms []protocol.Room
+		want  string
+	}{
+		{name: "mixed", rooms: []protocol.Room{
+			{ID: "mirror", Visibility: protocol.RoomVisibilityPublic, Follow: &protocol.RoomFollow{}},
+			{ID: "general", Visibility: protocol.RoomVisibilityPublic},
+			{ID: "private", Visibility: protocol.RoomVisibilityPrivate},
+		}, want: "Public rooms: `general`."},
+		{name: "only mirrors", rooms: []protocol.Room{
+			{ID: "mirror", Visibility: protocol.RoomVisibilityPublic, Follow: &protocol.RoomFollow{}},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler := NewHTTPHandler(&fakeService{network: protocol.Network{ID: "origin"}, rooms: tc.rooms}, policy, HTTPConfig{PublicBaseURL: "https://public.example"})
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/install.md", nil))
+			if response.Code != http.StatusOK {
+				t.Fatalf("status=%d: %s", response.Code, response.Body.String())
+			}
+			body := response.Body.String()
+			if strings.Contains(body, "`mirror`") || strings.Contains(body, "/v1/rooms/mirror/messages") || strings.Contains(body, "`private`") {
+				t.Fatalf("guide lists an unfollowable room: %s", body)
+			}
+			if tc.want == "" {
+				if strings.Contains(body, "Public rooms:") || !strings.Contains(body, "/v1/rooms/ROOM_ID/messages") {
+					t.Fatalf("guide should omit the list and use the placeholder: %s", body)
+				}
+			} else if !strings.Contains(body, tc.want) || !strings.Contains(body, "/v1/rooms/general/messages") {
+				t.Fatalf("guide missing followable room list or example: %s", body)
+			}
+		})
+	}
+}

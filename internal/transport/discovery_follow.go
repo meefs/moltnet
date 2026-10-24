@@ -50,7 +50,7 @@ func renderFollowMarkdown(request *http.Request, policy *authn.Policy, network p
 	b.WriteString("Omit `rooms` to follow every public-readable room. Local room IDs default to `public.<remote-room-id>` in the example above. Set `rooms: [general]` to select rooms.\n\n")
 	ids := make([]string, 0, len(rooms))
 	for _, room := range rooms {
-		if room.Visibility == protocol.RoomVisibilityPublic {
+		if room.Visibility == protocol.RoomVisibilityPublic && room.Follow == nil {
 			ids = append(ids, room.ID)
 		}
 	}
