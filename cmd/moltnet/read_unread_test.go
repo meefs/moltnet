@@ -198,9 +198,35 @@ func TestRenderUnreadBlockMarksMoreAndEmptyMessages(t *testing.T) {
 		Messages: []protocol.Message{{ID: "m1", From: protocol.Actor{ID: "bob"}, Parts: []protocol.Part{{Kind: "data"}}}},
 		Page:     protocol.PageInfo{HasMore: true},
 	}
-	got := renderUnreadBlock(targetRef{kind: protocol.TargetKindRoom, id: "research"}, page, false)
+	got, ok := renderUnreadBlock(targetRef{kind: protocol.TargetKindRoom, id: "research"}, page, false, "alpha")
 	want := "room:research (showing 1 of more; run moltnet read --since-last room:research again)\n  bob: (no text content)"
-	if got != want {
-		t.Fatalf("renderUnreadBlock() = %q, want %q", got, want)
+	if !ok || got != want {
+		t.Fatalf("renderUnreadBlock() = %q, %v, want %q", got, ok, want)
+	}
+}
+
+func TestRunReadSinceLastWithoutTargetHidesOwnMessages(t *testing.T) {
+	workspace, add, _ := unreadFixture(t, false)
+	cwd := mustGetwd(t)
+	defer func() { _ = os.Chdir(cwd) }()
+	if err := os.Chdir(workspace); err != nil {
+		t.Fatal(err)
+	}
+
+	// Only the agent's own reply is new: silence, and the cursor moves past it.
+	add("/v1/rooms/research/messages", textMessage("m1", "alpha", "my own reply"))
+	if own := runReadArgs(t, "--since-last"); own != "" {
+		t.Fatalf("own-only unread output = %q, want silence", own)
+	}
+	if targeted := runReadArgs(t, "--since-last", "room:research"); strings.Contains(targeted, `"m1"`) {
+		t.Fatalf("targeted read after own-only unread read = %q, want the cursor past m1", targeted)
+	}
+	add("/v1/rooms/research/messages", textMessage("m2", "bob", "answer"))
+	add("/v1/rooms/research/messages", textMessage("m3", "alpha", "thanks"))
+	if got := runReadArgs(t, "--since-last"); got != untrustedMessagesHeader+"\nroom:research (1 new)\n  bob: answer\n" {
+		t.Fatalf("mixed unread output = %q", got)
+	}
+	if again := runReadArgs(t, "--since-last"); again != "" {
+		t.Fatalf("unread output after own messages = %q, want silence", again)
 	}
 }
