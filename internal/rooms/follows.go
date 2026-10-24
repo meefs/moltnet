@@ -8,30 +8,10 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/noopolis/moltnet/internal/follow"
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
-type followCheckpointStore interface {
-	GetFollowCheckpoint(context.Context, string) (follow.Checkpoint, error)
-	SetFollowCheckpoint(context.Context, string, follow.Checkpoint) error
-}
-
-func (s *Service) GetFollowCheckpoint(ctx context.Context, key string) (follow.Checkpoint, error) {
-	storage, ok := s.store.(followCheckpointStore)
-	if !ok {
-		return follow.Checkpoint{}, fmt.Errorf("store does not support durable follow checkpoints")
-	}
-	return storage.GetFollowCheckpoint(ctx, key)
-}
-func (s *Service) SetFollowCheckpoint(ctx context.Context, key string, value follow.Checkpoint) error {
-	storage, ok := s.store.(followCheckpointStore)
-	if !ok {
-		return fmt.Errorf("store does not support durable follow checkpoints")
-	}
-	return storage.SetFollowCheckpoint(ctx, key, value)
-}
 func (s *Service) ListFollowsContext(context.Context) (protocol.FollowPage, error) {
 	values := s.follows.Status()
 	sort.Slice(values, func(i, j int) bool { return values[i].ID < values[j].ID })
@@ -108,15 +88,9 @@ func (s *Service) ImportFollowMessage(ctx context.Context, config protocol.Follo
 	message.Origin = origin
 	message.Target.RoomID = room.ID
 	if remote.Target.Kind == protocol.TargetKindThread {
-		message.Target.ThreadID, err = s.followSourceMessageID(ctx, config, networkID, remote.Target.ThreadID)
-		if err != nil {
-			return false, err
-		}
+		message.Target.ThreadID = followMessageID(networkID, remote.Target.ThreadID)
 		if remote.Target.ParentMessageID != "" {
-			message.Target.ParentMessageID, err = s.followSourceMessageID(ctx, config, networkID, remote.Target.ParentMessageID)
-			if err != nil {
-				return false, err
-			}
+			message.Target.ParentMessageID = followMessageID(networkID, remote.Target.ParentMessageID)
 		}
 	} else if remote.Target.Kind != protocol.TargetKindRoom {
 		return false, fmt.Errorf("follow only imports room and thread messages")
@@ -140,8 +114,4 @@ func (s *Service) ImportFollowMessage(ctx context.Context, config protocol.Follo
 
 func followReadOnlyError(roomID string) error {
 	return &Error{status: http.StatusForbidden, msg: "room " + roomID + " is a read-only follow mirror", cause: ErrWriteForbidden}
-}
-
-func (s *Service) followSourceMessageID(_ context.Context, _ protocol.Follow, networkID, messageID string) (string, error) {
-	return followMessageID(networkID, messageID), nil
 }

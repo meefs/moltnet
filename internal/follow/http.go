@@ -1,7 +1,6 @@
 package follow
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -98,25 +97,9 @@ func (w *worker) session(ctx context.Context) error {
 	if !strings.HasPrefix(response.Header.Get("Content-Type"), "text/event-stream") {
 		return fmt.Errorf("origin did not return SSE")
 	}
-	wake := make(chan struct{}, 1)
+	pending := newPendingScans()
 	ended := make(chan error, 1)
-	go func() {
-		scanner := bufio.NewScanner(response.Body)
-		scanner.Buffer(make([]byte, 4096), 1<<20)
-		for scanner.Scan() {
-			if strings.HasPrefix(scanner.Text(), "data:") {
-				select {
-				case wake <- struct{}{}:
-				default:
-				}
-			}
-		}
-		err := scanner.Err()
-		if err == nil {
-			err = io.EOF
-		}
-		ended <- err
-	}()
+	go func() { ended <- readEvents(response.Body, pending) }()
 	defer func() { cancel(); response.Body.Close(); <-ended }()
 	// The baseline cursors precede this subscription; scan the gap now.
 	w.setState("backfilling", nil)
@@ -126,6 +109,15 @@ func (w *worker) session(ctx context.Context) error {
 	w.setState("live", nil)
 	ticker := time.NewTicker(time.Duration(w.config.PollIntervalSeconds) * time.Second)
 	defer ticker.Stop()
+	// One scan runs at a time per follow. A fixed window coalesces bursts
+	// without letting a continuous event stream postpone work indefinitely.
+	var debounce <-chan time.Time
+	var timer *time.Timer
+	defer func() {
+		if timer != nil {
+			timer.Stop()
+		}
+	}()
 	for {
 		select {
 		case <-ctx.Done():
@@ -133,11 +125,20 @@ func (w *worker) session(ctx context.Context) error {
 		case err := <-ended:
 			ended <- err
 			return err
-		case <-wake:
+		case <-pending.wake:
+			if debounce == nil {
+				timer = time.NewTimer(50 * time.Millisecond)
+				debounce = timer.C
+			}
+		case <-debounce:
+			debounce = nil
+			for _, target := range pending.take() {
+				w.syncTarget(ctx, network.ID, target)
+			}
 		case <-ticker.C:
-		}
-		if err = w.sync(ctx, network.ID); err != nil {
-			return err
+			if err = w.sync(ctx, network.ID); err != nil {
+				return err
+			}
 		}
 	}
 }

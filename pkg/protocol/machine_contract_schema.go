@@ -157,6 +157,7 @@ func machineContractShapes() []MachineContractShape {
 			f("mentions", "member_id_array", false, "max_read_mentions"), f("created_at", "rfc3339_timestamp", true, ""),
 		}},
 		{Name: "message_origin", Fields: []MachineContractField{
+			f("claimed_author", "message_actor", false, ""),
 			f("network_id", "identifier", true, "max_target_bytes"), f("message_id", "identifier", true, "max_target_bytes"),
 			f("received_via", "identifier", false, "max_target_bytes"),
 		}},
@@ -215,9 +216,7 @@ func machineContractShapes() []MachineContractShape {
 	}
 }
 
-// machineContractShape is the single declarative source used both to publish
-// the external contract and to admit wire envelopes in the production codec.
-// Keep all machine wire-key declarations in machineContractShapes above.
+// machineContractShape publishes and admits wire envelopes from the declarations above.
 func machineContractShape(name string) (MachineContractShape, bool) {
 	for _, shape := range machineContractShapes() {
 		if shape.Name == name {

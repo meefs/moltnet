@@ -2,6 +2,7 @@ package follow
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -9,12 +10,17 @@ import (
 
 type historyReader func(before, after string, limit int) (protocol.MessagePage, error)
 
-func knownMessageKey(key, id string) string { return key + "/baseline/" + id }
-
-// suppressBaseline records the existing newest timestamp group. A later insert
-// can sort anywhere within that group; the durable IDs distinguish it from
-// history deliberately excluded by the configured backfill limit.
+// suppressBaseline snapshots the existing newest timestamp group. Excluded
+// IDs share one durable record, so old imported markers need not accumulate.
 func (w *worker) suppressBaseline(ctx context.Context, key string, read historyReader) error {
+	baselineKey := key + "/baseline"
+	baseline, err := w.sink.GetFollowCheckpoint(ctx, baselineKey)
+	if err != nil {
+		return err
+	}
+	if baseline.Initialized {
+		return nil
+	}
 	newest, err := read("", "", 1)
 	if err != nil {
 		return err
@@ -23,11 +29,13 @@ func (w *worker) suppressBaseline(ctx context.Context, key string, read historyR
 		return nil
 	}
 	latest := newest.Messages[len(newest.Messages)-1]
-	mark := func(message protocol.Message) error {
-		return w.sink.SetFollowCheckpoint(ctx, knownMessageKey(key, message.ID), Checkpoint{Initialized: true, Cursor: "suppressed"})
-	}
-	if err = mark(latest); err != nil {
-		return err
+	excluded := map[string]bool{latest.ID: true}
+	save := func(complete bool) error {
+		encoded, err := json.Marshal(excluded)
+		if err != nil {
+			return err
+		}
+		return w.sink.SetFollowCheckpoints(ctx, map[string]Checkpoint{baselineKey: {Initialized: complete, Cursor: string(encoded), LatestAt: latest.CreatedAt}}, []string{baselineKey + "/"})
 	}
 	before := latest.ID
 	for {
@@ -35,16 +43,19 @@ func (w *worker) suppressBaseline(ctx context.Context, key string, read historyR
 		if err != nil {
 			return err
 		}
+		complete := !page.Page.HasMore
 		for i := len(page.Messages) - 1; i >= 0; i-- {
 			message := page.Messages[i]
 			if !message.CreatedAt.Equal(latest.CreatedAt) {
-				return nil
+				complete = true
+				break
 			}
-			if err = mark(message); err != nil {
-				return err
-			}
+			excluded[message.ID] = true
 		}
-		if !page.Page.HasMore {
+		if err = save(complete); err != nil {
+			return err
+		}
+		if complete {
 			return nil
 		}
 		if page.Page.NextBefore == "" || page.Page.NextBefore == before {

@@ -63,6 +63,7 @@ type FollowStatus struct {
 }
 
 type FollowRoomStatus struct {
+	LastError    string `json:"last_error,omitempty"`
 	RemoteRoomID string `json:"remote_room_id"`
 	LocalRoomID  string `json:"local_room_id"`
 	MessageCount int    `json:"message_count"`

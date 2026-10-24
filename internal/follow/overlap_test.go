@@ -2,7 +2,9 @@ package follow
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,6 +24,21 @@ func (s *checkpointSink) GetFollowCheckpoint(_ context.Context, key string) (Che
 }
 func (s *checkpointSink) SetFollowCheckpoint(_ context.Context, key string, value Checkpoint) error {
 	s.values[key] = value
+	return nil
+}
+
+func (s *checkpointSink) SetFollowCheckpoints(_ context.Context, values map[string]Checkpoint, prefixes []string) error {
+	for key := range s.values {
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(key, prefix) {
+				delete(s.values, key)
+				break
+			}
+		}
+	}
+	for key, value := range values {
+		s.values[key] = value
+	}
 	return nil
 }
 
@@ -61,10 +78,14 @@ func TestOverlapTraversesLargeTimestampGroup(t *testing.T) {
 	if err := worker.suppressBaseline(t.Context(), "stream", read); err != nil {
 		t.Fatal(err)
 	}
-	if len(sink.values) != 301 {
-		t.Fatalf("baseline contains %d IDs, want301", len(sink.values))
+	var excluded map[string]bool
+	if err := json.Unmarshal([]byte(sink.values["stream/baseline"].Cursor), &excluded); err != nil {
+		t.Fatal(err)
 	}
-	if _, exists := sink.values[knownMessageKey("stream", "older")]; exists {
+	if len(excluded) != 301 || len(sink.values) != 1 {
+		t.Fatalf("baseline has %d IDs in %d records", len(excluded), len(sink.values))
+	}
+	if excluded["older"] {
 		t.Fatal("older timestamp suppressed")
 	}
 	anchor, seed, err := overlapStart(Checkpoint{Cursor: "same_300", LatestAt: latest}, read)

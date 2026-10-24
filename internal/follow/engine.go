@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"math/rand/v2"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -24,6 +25,7 @@ type Sink interface {
 	ImportFollowMessage(context.Context, protocol.Follow, string, protocol.Message) (bool, error)
 	GetFollowCheckpoint(context.Context, string) (Checkpoint, error)
 	SetFollowCheckpoint(context.Context, string, Checkpoint) error
+	SetFollowCheckpoints(context.Context, map[string]Checkpoint, []string) error
 }
 
 type Manager struct {
@@ -40,6 +42,7 @@ type worker struct {
 	done   chan struct{}
 	mu     sync.RWMutex
 	status protocol.FollowStatus
+	rooms  map[string]protocol.Room
 }
 
 func New(sink Sink) *Manager { return &Manager{sink: sink, workers: make(map[string]*worker)} }
@@ -57,7 +60,7 @@ func (m *Manager) Apply(ctx context.Context, configs []protocol.Follow) {
 	for _, cfg := range configs {
 		cfg = cfg.WithDefaults()
 		runCtx, cancel := context.WithCancel(ctx)
-		w := &worker{config: cfg, sink: m.sink, client: &http.Client{Transport: &http.Transport{ResponseHeaderTimeout: 15 * time.Second}, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, cancel: cancel, done: make(chan struct{}), status: protocol.FollowStatus{ID: cfg.ID, RemoteBaseURL: cfg.RemoteBaseURL, RemoteNetworkID: cfg.RemoteNetworkID, Status: "connecting", Rooms: []protocol.FollowRoomStatus{}}}
+		w := &worker{config: cfg, sink: m.sink, client: newHTTPClient(), cancel: cancel, done: make(chan struct{}), rooms: make(map[string]protocol.Room), status: protocol.FollowStatus{ID: cfg.ID, RemoteBaseURL: cfg.RemoteBaseURL, RemoteNetworkID: cfg.RemoteNetworkID, Status: "connecting", Rooms: []protocol.FollowRoomStatus{}}}
 		m.workers[cfg.ID] = w
 		go w.run(runCtx)
 	}
@@ -129,5 +132,17 @@ func (w *worker) run(ctx context.Context) {
 			return
 		case <-timer.C:
 		}
+	}
+}
+
+// The same transport bounds connection setup for both JSON and long-lived SSE.
+func newHTTPClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			DialContext:           (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 15 * time.Second,
+		},
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse },
 	}
 }

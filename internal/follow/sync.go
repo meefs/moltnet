@@ -10,74 +10,36 @@ import (
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
-const pageSize = 200
+func (w *worker) selected(id string) bool {
+	if len(w.config.Rooms) == 0 {
+		return true
+	}
+	for _, selected := range w.config.Rooms {
+		if selected == id {
+			return true
+		}
+	}
+	return false
+}
 
+// Full discovery is reserved for subscription/reconnect and periodic polling.
+// Room failures are diagnostics, not a reason to stop healthy room streams.
 func (w *worker) sync(ctx context.Context, networkID string) error {
 	before := ""
-	statuses := []protocol.FollowRoomStatus{}
+	found := map[string]bool{}
 	for {
 		var page protocol.RoomPage
 		if err := w.get(ctx, "/v1/rooms?limit=200&before="+url.QueryEscape(before), &page); err != nil {
 			return err
 		}
 		for _, room := range page.Rooms {
-			if protocol.NormalizeRoomVisibility(room.Visibility) != protocol.RoomVisibilityPublic || room.Follow != nil {
+			if !w.selected(room.ID) || protocol.NormalizeRoomVisibility(room.Visibility) != protocol.RoomVisibilityPublic || room.Follow != nil {
 				continue
 			}
-			selected := len(w.config.Rooms) == 0
-			for _, id := range w.config.Rooms {
-				if id == room.ID {
-					selected = true
-				}
-			}
-			if !selected {
-				continue
-			}
-			if err := w.sink.EnsureFollowRoom(ctx, w.config, room); err != nil {
-				return err
-			}
-			threadBaselineKey := w.historyKey(networkID, room.ID, "") + "/threads-baselined"
-			threadBaseline, err := w.sink.GetFollowCheckpoint(ctx, threadBaselineKey)
-			if err != nil {
-				return err
-			}
-			count, err := w.syncHistory(ctx, networkID, room.ID, "", w.config.BackfillLimit())
-			threadBackfill := w.config.BackfillLimit()
-			if threadBaseline.Initialized {
-				threadBackfill = math.MaxInt
-			}
-			if err != nil {
-				return err
-			}
-			threadBefore := ""
-			for {
-				var threads protocol.ThreadPage
-				if err := w.get(ctx, "/v1/rooms/"+escaped(room.ID)+"/threads?limit=200&before="+url.QueryEscape(threadBefore), &threads); err != nil {
-					return err
-				}
-				for _, thread := range threads.Threads {
-					n, err := w.syncHistory(ctx, networkID, room.ID, thread.ID, threadBackfill)
-					if err != nil {
-						return err
-					}
-					count += n
-				}
-				if !threads.Page.HasMore {
-					break
-				}
-				if threads.Page.NextBefore == "" || threads.Page.NextBefore == threadBefore {
-					return fmt.Errorf("origin returned non-advancing thread cursor")
-				}
-				threadBefore = threads.Page.NextBefore
-			}
-			// Room history can finish before thread discovery fails. Only a complete
-			// thread pass establishes which future threads should use live semantics.
-			if !threadBaseline.Initialized {
-				if err := w.sink.SetFollowCheckpoint(ctx, threadBaselineKey, Checkpoint{Initialized: true}); err != nil {
-					return err
-				}
-			}
-			statuses = append(statuses, protocol.FollowRoomStatus{RemoteRoomID: room.ID, LocalRoomID: w.config.LocalRoomID(room.ID), MessageCount: count})
+			found[room.ID] = true
+			w.rooms[room.ID] = room
+			count, err := w.syncRoom(ctx, networkID, room)
+			w.roomStatus(room.ID, count, err)
 		}
 		if !page.Page.HasMore {
 			break
@@ -87,170 +49,150 @@ func (w *worker) sync(ctx context.Context, networkID string) error {
 		}
 		before = page.Page.NextBefore
 	}
-	for _, id := range w.config.Rooms {
-		found := false
-		for _, status := range statuses {
-			if status.RemoteRoomID == id {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("configured room %q is not public-readable", id)
+	for id := range w.rooms {
+		if !found[id] {
+			delete(w.rooms, id)
+			w.roomStatus(id, -1, fmt.Errorf("room %q is not public-readable", id))
 		}
 	}
-	now := time.Now().UTC()
-	w.mu.Lock()
-	w.status.Rooms = statuses
-	w.status.LastSynced = &now
-	w.mu.Unlock()
-	return nil
+	for _, id := range w.config.Rooms {
+		if !found[id] {
+			w.roomStatus(id, -1, fmt.Errorf("configured room %q is not public-readable", id))
+		}
+	}
+	w.synced()
+	return ctx.Err()
 }
 
-func (w *worker) syncHistory(ctx context.Context, networkID, roomID, threadID string, backfill int) (int, error) {
-	key := w.historyKey(networkID, roomID, threadID)
-	checkpoint, err := w.sink.GetFollowCheckpoint(ctx, key)
+func (w *worker) syncRoom(ctx context.Context, networkID string, room protocol.Room) (int, error) {
+	if err := w.sink.EnsureFollowRoom(ctx, w.config, room); err != nil {
+		return -1, err
+	}
+	threadKey := w.historyKey(networkID, room.ID, "") + "/threads-baselined"
+	baseline, err := w.sink.GetFollowCheckpoint(ctx, threadKey)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
-	path := "/v1/rooms/" + escaped(roomID) + "/messages"
-	if threadID != "" {
-		path = "/v1/threads/" + escaped(threadID) + "/messages"
+	count, err := w.syncHistory(ctx, networkID, room.ID, "", w.config.BackfillLimit())
+	if err != nil {
+		return -1, err
 	}
-	read := func(before, after string, limit int) (protocol.MessagePage, error) {
-		var page protocol.MessagePage
-		err := w.get(ctx, fmt.Sprintf("%s?limit=%d&before=%s&after=%s", path, limit, url.QueryEscape(before), url.QueryEscape(after)), &page)
-		return page, err
+	backfill := w.config.BackfillLimit()
+	if baseline.Initialized {
+		backfill = math.MaxInt
 	}
-	initial := !checkpoint.Initialized
-	if initial {
-		if err = w.suppressBaseline(ctx, key, read); err != nil {
-			return 0, err
-		}
-	}
-	ingest := func(messages []protocol.Message) error {
-		for _, message := range messages {
-			if message.Target.RoomID != roomID || threadID != "" && message.Target.ThreadID != threadID {
-				return fmt.Errorf("origin returned message outside requested history")
-			}
-			known, err := w.sink.GetFollowCheckpoint(ctx, knownMessageKey(key, message.ID))
-			if err != nil {
-				return err
-			}
-			if !initial && known.Initialized && known.Cursor == "suppressed" {
-				continue
-			}
-			added, err := w.sink.ImportFollowMessage(ctx, w.config, networkID, message)
-			if err != nil {
-				return err
-			}
-			if added {
-				checkpoint.Count++
-			}
-			if err = w.sink.SetFollowCheckpoint(ctx, knownMessageKey(key, message.ID), Checkpoint{Initialized: true, Cursor: "imported"}); err != nil {
-				return err
-			}
-			if checkpoint.Cursor == "" || message.CreatedAt.After(checkpoint.LatestAt) || message.CreatedAt.Equal(checkpoint.LatestAt) && message.ID > checkpoint.Cursor {
-				checkpoint.Cursor = message.ID
-				checkpoint.LatestAt = message.CreatedAt
-			}
-			checkpoint.Initialized = true
-			if err = w.sink.SetFollowCheckpoint(ctx, key, checkpoint); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	initialAfter := ""
-	if checkpoint.Cursor == "" {
-		remaining := backfill
-		if checkpoint.Initialized {
-			remaining = math.MaxInt
-		}
-		if remaining == 0 {
-			page, err := read("", "", 1)
-			if err != nil {
-				return 0, err
-			}
-			if len(page.Messages) > 0 {
-				checkpoint.Cursor = page.Messages[len(page.Messages)-1].ID
-				checkpoint.LatestAt = page.Messages[len(page.Messages)-1].CreatedAt
-			}
-			checkpoint.Initialized = true
-			if err = w.sink.SetFollowCheckpoint(ctx, key, checkpoint); err != nil {
-				return 0, err
-			}
-			return checkpoint.Count, nil
-		}
-		before := ""
-		for {
-			limit := min(remaining, pageSize)
-			page, err := read(before, "", limit)
-			if err != nil {
-				return 0, err
-			}
-			remaining -= len(page.Messages)
-			if remaining == 0 || !page.Page.HasMore || len(page.Messages) == 0 {
-				if err = ingest(page.Messages); err != nil {
-					return 0, err
-				}
-				if len(page.Messages) > 0 {
-					initialAfter = page.Messages[len(page.Messages)-1].ID
-				}
-				if len(page.Messages) == 0 {
-					checkpoint.Initialized = true
-					if err = w.sink.SetFollowCheckpoint(ctx, key, checkpoint); err != nil {
-						return 0, err
-					}
-					return checkpoint.Count, nil
-				}
-				break
-			}
-			if page.Page.NextBefore == "" || page.Page.NextBefore == before {
-				return 0, fmt.Errorf("origin returned non-advancing history cursor")
-			}
-			before = page.Page.NextBefore
-		}
-	}
-	after := checkpoint.Cursor
-	if initialAfter != "" {
-		after = initialAfter
-	}
-	if !initial && !checkpoint.LatestAt.IsZero() {
-		anchor, seed, err := overlapStart(checkpoint, read)
-		if err != nil {
-			return 0, err
-		}
-		if len(seed) > 0 {
-			if err = ingest(seed); err != nil {
-				return 0, err
-			}
-			after = seed[len(seed)-1].ID
-		} else if anchor != "" {
-			after = anchor
-		} else {
-			after = checkpoint.Cursor
-		}
-	}
+	before := ""
 	for {
-		page, err := read("", after, pageSize)
-		if err != nil {
-			return 0, err
+		var page protocol.ThreadPage
+		if err := w.get(ctx, "/v1/rooms/"+escaped(room.ID)+"/threads?limit=200&before="+url.QueryEscape(before), &page); err != nil {
+			return -1, err
 		}
-		if err = ingest(page.Messages); err != nil {
-			return 0, err
+		for _, thread := range page.Threads {
+			n, err := w.syncHistory(ctx, networkID, room.ID, thread.ID, backfill)
+			if err != nil {
+				return -1, err
+			}
+			count += n
 		}
 		if !page.Page.HasMore {
 			break
 		}
-		if len(page.Messages) == 0 || page.Messages[len(page.Messages)-1].ID == after {
-			return 0, fmt.Errorf("origin returned non-advancing history cursor")
+		if page.Page.NextBefore == "" || page.Page.NextBefore == before {
+			return -1, fmt.Errorf("origin returned non-advancing thread cursor")
 		}
-		after = page.Messages[len(page.Messages)-1].ID
+		before = page.Page.NextBefore
 	}
-	return checkpoint.Count, nil
+	if !baseline.Initialized {
+		err = w.sink.SetFollowCheckpoint(ctx, threadKey, Checkpoint{Initialized: true})
+	}
+	return count, err
 }
 
-func (w *worker) historyKey(networkID, roomID, threadID string) string {
-	return w.config.ID + "/" + w.config.RemoteBaseURL + "/" + networkID + "/room/" + roomID + "/thread/" + threadID
+func (w *worker) roomStatus(id string, count int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	index := -1
+	for i := range w.status.Rooms {
+		if w.status.Rooms[i].RemoteRoomID == id {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		w.status.Rooms = append(w.status.Rooms, protocol.FollowRoomStatus{RemoteRoomID: id, LocalRoomID: w.config.LocalRoomID(id)})
+		index = len(w.status.Rooms) - 1
+	}
+	value := &w.status.Rooms[index]
+	if count >= 0 {
+		value.MessageCount = count
+	}
+	value.LastError = ""
+	if err != nil {
+		value.LastError = err.Error()
+	}
+}
+func (w *worker) synced() {
+	now := time.Now().UTC()
+	w.mu.Lock()
+	w.status.LastSynced = &now
+	w.mu.Unlock()
+}
+
+func (w *worker) syncTarget(ctx context.Context, networkID string, target scanTarget) {
+	if !w.selected(target.room) {
+		return
+	}
+	// Re-check anonymous visibility for just this room; event payloads are hints.
+	var room protocol.Room
+	if err := w.get(ctx, "/v1/rooms/"+escaped(target.room), &room); err != nil {
+		w.roomStatus(target.room, -1, err)
+		return
+	}
+	if room.ID != target.room || protocol.NormalizeRoomVisibility(room.Visibility) != protocol.RoomVisibilityPublic || room.Follow != nil {
+		w.roomStatus(target.room, -1, fmt.Errorf("room %q is not public-readable", target.room))
+		return
+	}
+	if _, known := w.rooms[room.ID]; !known {
+		w.rooms[room.ID] = room
+		count, err := w.syncRoom(ctx, networkID, room)
+		w.roomStatus(room.ID, count, err)
+		return
+	}
+	if err := w.sink.EnsureFollowRoom(ctx, w.config, room); err != nil {
+		w.roomStatus(room.ID, -1, err)
+		return
+	}
+	key := w.historyKey(networkID, room.ID, target.thread)
+	previous, err := w.sink.GetFollowCheckpoint(ctx, key)
+	if err != nil {
+		w.roomStatus(room.ID, -1, err)
+		return
+	}
+	backfill := w.config.BackfillLimit()
+	if target.thread != "" {
+		baseline, err := w.sink.GetFollowCheckpoint(ctx, w.historyKey(networkID, room.ID, "")+"/threads-baselined")
+		if err != nil {
+			w.roomStatus(room.ID, -1, err)
+			return
+		}
+		if baseline.Initialized {
+			backfill = math.MaxInt
+		}
+	}
+	count, err := w.syncHistory(ctx, networkID, room.ID, target.thread, backfill)
+	if err != nil {
+		w.roomStatus(room.ID, -1, err)
+		return
+	}
+	w.mu.RLock()
+	total := 0
+	for _, status := range w.status.Rooms {
+		if status.RemoteRoomID == room.ID {
+			total = status.MessageCount
+			break
+		}
+	}
+	w.mu.RUnlock()
+	w.roomStatus(room.ID, total+count-previous.Count, nil)
+	w.synced()
 }
