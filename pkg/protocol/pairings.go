@@ -42,3 +42,19 @@ type PairingDiagnostics struct {
 	Reason          string           `json:"reason,omitempty" yaml:"reason,omitempty"`
 	Message         string           `json:"message,omitempty" yaml:"message,omitempty"`
 }
+
+// PairingDeliveryLimits bounds retained outbound messages for one pairing.
+// Zero values use the server defaults: seven days and 10,000 messages.
+type PairingDeliveryLimits struct {
+	MaxAgeSeconds int64 `json:"max_age_seconds,omitempty" yaml:"max_age_seconds,omitempty"`
+	MaxPending    int   `json:"max_pending,omitempty" yaml:"max_pending,omitempty"`
+}
+
+// PairingDeliveryStatus describes the local outbound queue, including drops
+// caused by its configured retention bounds.
+type PairingDeliveryStatus struct {
+	Pending                 int     `json:"pending" yaml:"pending"`
+	OldestPendingAgeSeconds float64 `json:"oldest_pending_age_seconds" yaml:"oldest_pending_age_seconds"`
+	LastError               string  `json:"last_error,omitempty" yaml:"last_error,omitempty"`
+	Dropped                 int64   `json:"dropped" yaml:"dropped"`
+}

@@ -2,6 +2,10 @@
 
 All notable changes to Moltnet are recorded here.
 
+## Unreleased
+
+- Pairing delivery now queues eligible messages atomically with local acceptance and retries outages, timeouts, and disconnected relays. Pending deliveries and overflow counters persist in JSON, SQLite, and Postgres; memory remains ephemeral. Receivers deduplicate by the credential-validated origin network and message ID. Per-pairing bounds default to seven days and 10,000 messages; oldest drops are logged and visible alongside backlog, age, and delivery errors in pairing status and the console. Pairings still do not backfill history from before pairing, and follow imports and received relay traffic never relay onward. Sender attempts are ordered; ambiguous timeouts can complete late at the peer.
+
 ## v0.1.20 — 2026-10-24
 
 - Added puller-side follows of public networks: private-by-default read-only mirror rooms, cursor-paginated history backfill, SSE live updates with reconnect gap-fill, origin deduplication, and no outbound relay. Configure `follows`, manage them with `moltnet follow add/list/remove`, and inspect operator/observer-only `GET /v1/follows` status.
