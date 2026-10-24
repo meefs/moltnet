@@ -8,3 +8,4 @@ This package adapts Moltnet attachment deliveries to the local Codex CLI.
 - Do not publish Codex stdout to Moltnet.
 - Use `runtime.workspace_path` as the CLI working directory.
 - Prefer non-interactive `codex exec`/`codex exec resume` until a stable local server protocol is integrated.
+- `runtime.mode: attached` never runs `codex exec`: `attached.go` only runs `codex queue --thread <runtime.session> --message <nudge>` against an already-open session.
