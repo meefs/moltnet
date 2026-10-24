@@ -129,14 +129,16 @@ func writeEndOfTurnFile(file endOfTurnFile) (bool, error) {
 		}
 		return false, nil
 	case err == nil && file.mode == turnFileBlock:
-		content = withTurnBlock(string(existing), file.content)
+		if content, err = withTurnBlock(string(existing), file.content); err != nil {
+			return false, fmt.Errorf("%s: %w", file.path, err)
+		}
 		if info, statErr := os.Stat(file.path); statErr == nil {
 			perm = info.Mode().Perm()
 		}
 	case err != nil && !os.IsNotExist(err):
 		return false, fmt.Errorf("read end-of-turn file: %w", err)
 	case file.mode == turnFileBlock:
-		content = withTurnBlock("", file.content)
+		content, _ = withTurnBlock("", file.content)
 	}
 	if err := os.MkdirAll(filepath.Dir(file.path), 0o755); err != nil {
 		return false, fmt.Errorf("create end-of-turn directory: %w", err)
@@ -148,23 +150,27 @@ func writeEndOfTurnFile(file endOfTurnFile) (bool, error) {
 }
 
 // withTurnBlock replaces Moltnet's marked block in existing, or appends it,
-// leaving everything else in the file untouched.
-func withTurnBlock(existing string, rule string) string {
+// leaving everything else in the file untouched. A begin marker with no end
+// marker is refused: appending would make the next install replace everything
+// from that orphan marker on, deleting the user's text.
+func withTurnBlock(existing string, rule string) (string, error) {
 	block := turnBlockBegin + "\n" + rule + turnBlockEnd + "\n"
 	if begin := strings.Index(existing, turnBlockBegin); begin >= 0 {
-		if end := strings.Index(existing[begin:], turnBlockEnd); end >= 0 {
-			rest := existing[begin+end+len(turnBlockEnd):]
-			return existing[:begin] + block + strings.TrimPrefix(rest, "\n")
+		end := strings.Index(existing[begin:], turnBlockEnd)
+		if end < 0 {
+			return "", fmt.Errorf("found %s without %s; fix or remove it, then install again", turnBlockBegin, turnBlockEnd)
 		}
+		rest := existing[begin+end+len(turnBlockEnd):]
+		return existing[:begin] + block + strings.TrimPrefix(rest, "\n"), nil
 	}
 	switch {
 	case existing == "":
-		return block
+		return block, nil
 	case strings.HasSuffix(existing, "\n\n"):
-		return existing + block
+		return existing + block, nil
 	case strings.HasSuffix(existing, "\n"):
-		return existing + "\n" + block
+		return existing + "\n" + block, nil
 	default:
-		return existing + "\n\n" + block
+		return existing + "\n\n" + block, nil
 	}
 }

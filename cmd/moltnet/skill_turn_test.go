@@ -125,8 +125,25 @@ func TestWithTurnBlockReplacesOnlyTheMarkedBlock(t *testing.T) {
 	t.Parallel()
 	existing := "intro\n" + turnBlockBegin + "\nold rule\n" + turnBlockEnd + "\noutro\n"
 	want := "intro\n" + turnBlockBegin + "\nnew rule\n" + turnBlockEnd + "\noutro\n"
-	if got := withTurnBlock(existing, "new rule\n"); got != want {
-		t.Fatalf("withTurnBlock() = %q, want %q", got, want)
+	if got, err := withTurnBlock(existing, "new rule\n"); err != nil || got != want {
+		t.Fatalf("withTurnBlock() = %q, %v, want %q", got, err, want)
+	}
+}
+
+func TestInstallMoltnetSkillRefusesOrphanTurnBlockMarker(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	path := filepath.Join(root, "GEMINI.md")
+	original := "intro\n" + turnBlockBegin + "\nhalf-deleted block\nuser text\n"
+	if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := installMoltnetSkill("antigravity", root, "skill")
+	if err == nil || !strings.Contains(err.Error(), path) || !strings.Contains(err.Error(), "without "+turnBlockEnd) {
+		t.Fatalf("installMoltnetSkill() error = %v, want an orphan-marker error naming %s", err, path)
+	}
+	if got, _ := os.ReadFile(path); string(got) != original {
+		t.Fatalf("GEMINI.md changed despite the error: %q", got)
 	}
 }
 
