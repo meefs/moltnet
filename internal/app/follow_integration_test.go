@@ -123,6 +123,9 @@ func TestFollowTwoServersRejectIncompatibleOrigins(t *testing.T) {
 			if status.LastError == "" {
 				t.Fatal("incompatibility lacks diagnostics")
 			}
+			if tc.public && (status.RemoteNetworkID != tc.pin || status.ClaimedNetworkID != "origin") {
+				t.Fatalf("pin and discovery claim conflated: %+v", status)
+			}
 			if followMessageCount(follower.Handler(), "news.public") > 0 {
 				t.Fatal("incompatible follow imported messages")
 			}
