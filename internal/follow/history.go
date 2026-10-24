@@ -112,6 +112,18 @@ func (w *worker) syncHistory(ctx context.Context, networkID, roomID, threadID st
 			}
 			remaining -= len(page.Messages)
 			if remaining == 0 || !page.Page.HasMore || len(page.Messages) == 0 {
+				if initial && len(page.Messages) > 0 {
+					// The backward walk fixed the requested window. Only IDs
+					// strictly before its first message were deliberately skipped.
+					// Persist that boundary with the first imported page, so a
+					// reconnect cannot suppress the remainder of the backfill.
+					first := page.Messages[0]
+					for id := range excluded {
+						if first.CreatedAt.Before(baseline.LatestAt) || id >= first.ID {
+							delete(excluded, id)
+						}
+					}
+				}
 				if err = ingest(page.Messages); err != nil {
 					return 0, err
 				}

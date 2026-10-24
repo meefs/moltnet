@@ -33,7 +33,8 @@ They are never sent to pairings or pushed back to the origin.
 The author network is always the origin network verified during discovery,
 including for relayed messages. The original claimed author is preserved as
 untrusted `origin.claimed_author` metadata; claimed origin IDs are also untrusted
-data. Local IDs and deduplication use the verified network ID plus the message's
+data. HTTP history exposes this metadata; machine reads omit local provenance.
+Local IDs and deduplication use the verified network ID plus the message's
 served `id`, so another origin cannot impersonate local authors or suppress a
 different network's messages.
 
