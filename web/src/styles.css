@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Never scan the previous build: it would make the output depend on it. */
+@source not "../dist";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
 
