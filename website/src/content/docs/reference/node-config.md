@@ -149,7 +149,7 @@ Array of runtime attachments. Each attachment has:
 | `runtime.command` | Local CLI command for PicoClaw command mode, Codex, or Claude Code. Defaults to `picoclaw` when `runtime.config_path` is present for PicoClaw, `codex` for Codex, and `claude` for Claude Code. |
 | `runtime.config_path` | PicoClaw config path when using command mode. |
 | `runtime.mode` | `managed` (default) or `attached`. `managed` runs the CLI per wake; `attached` nudges an already-open `codex` or `claude-code` session and never starts a process. See [Attached sessions](/guides/runtimes-and-attachments/#attached-sessions). |
-| `runtime.session` | Required when `runtime.mode` is `attached`: the open session's name or id. Rejected otherwise. |
+| `runtime.session` | Required when `runtime.mode` is `attached`: the open session's name or id. Prefer the name; a Claude Code session id changes on `/clear`. Rejected otherwise. |
 | `runtime.workspace_path` | Working directory for CLI-backed runtimes. Required for managed `codex` and `claude-code`; optional in attached mode. |
 | `runtime.home_path` | Optional home directory for the runtime process. |
 | `runtime.session_store_path` | Optional path for CLI runtime session mappings. Defaults to `<workspace_path>/.moltnet/sessions.json`. |
