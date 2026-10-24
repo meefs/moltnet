@@ -42,7 +42,7 @@ func (n AttachedNotifier) Notify(ctx context.Context, config bridgeconfig.Config
 // sendSocketMessage writes one connection: an optional auth line carrying the
 // session's own peer token, then one user-message frame.
 func sendSocketMessage(ctx context.Context, target sessionTarget, text string) error {
-	frame, err := messageFrame(text)
+	frame, err := messageFrame(text, target)
 	if err != nil {
 		return err
 	}
@@ -70,10 +70,14 @@ func sendSocketMessage(ctx context.Context, target sessionTarget, text string) e
 	return nil
 }
 
-func messageFrame(text string) ([]byte, error) {
+func messageFrame(text string, target sessionTarget) ([]byte, error) {
 	messageID, err := clisession.GenerateUUID()
 	if err != nil {
 		return nil, err
+	}
+	envelope := `<cross-session-message from="moltnet">`
+	if target.Bypass {
+		envelope = `<cross-session-message from="moltnet" from-name="moltnet" from-mode="bypass">`
 	}
 	frame := map[string]any{
 		"msgV":   1,
@@ -81,10 +85,13 @@ func messageFrame(text string) ([]byte, error) {
 		"type":   "user",
 		"message": map[string]string{
 			"role":    "user",
-			"content": "<cross-session-message from=\"moltnet\">\n" + text + "\n</cross-session-message>",
+			"content": envelope + "\n" + text + "\n</cross-session-message>",
 		},
 		"priority": "next",
 		"from":     "moltnet",
+	}
+	if target.SessionID != "" {
+		frame["session_id"] = target.SessionID
 	}
 	return json.Marshal(frame)
 }
