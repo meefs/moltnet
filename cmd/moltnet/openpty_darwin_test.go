@@ -30,16 +30,17 @@ func openTestPTY() (master, slave *os.File, err error) {
 	}
 	master = os.NewFile(uintptr(masterFD), "ptmx")
 
-	if _, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(masterFD), uintptr(unix.TIOCPTYGRANT), 0); errno != 0 {
+	if err := unix.IoctlSetInt(masterFD, unix.TIOCPTYGRANT, 0); err != nil {
 		_ = master.Close()
-		return nil, nil, fmt.Errorf("grant pty: %w", errno)
+		return nil, nil, fmt.Errorf("grant pty: %w", err)
 	}
-	if _, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(masterFD), uintptr(unix.TIOCPTYUNLK), 0); errno != 0 {
+	if err := unix.IoctlSetInt(masterFD, unix.TIOCPTYUNLK, 0); err != nil {
 		_ = master.Close()
-		return nil, nil, fmt.Errorf("unlock pty: %w", errno)
+		return nil, nil, fmt.Errorf("unlock pty: %w", err)
 	}
 
 	var nameBuf [128]byte
+	//lint:ignore SA1019 x/sys/unix has no wrapper for the TIOCPTYGNAME output buffer.
 	if _, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(masterFD), uintptr(unix.TIOCPTYGNAME), uintptr(unsafe.Pointer(&nameBuf[0]))); errno != 0 {
 		_ = master.Close()
 		return nil, nil, fmt.Errorf("get pty slave name: %w", errno)

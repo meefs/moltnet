@@ -97,7 +97,7 @@ func runFollowEdit(ctx context.Context, verb string, args []string) error {
 		return err
 	}
 	if !found {
-		return fmt.Errorf("Moltnet config not found; run `moltnet init` first")
+		return fmt.Errorf("moltnet config not found; run `moltnet init` first")
 	}
 	before, err := app.LoadConfigForPath(path, "")
 	if err != nil {
