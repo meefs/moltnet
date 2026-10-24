@@ -313,4 +313,7 @@ var sqlMigrations = []migration{
 		`ALTER TABLE rooms ADD COLUMN follow_json TEXT NOT NULL DEFAULT 'null'`,
 		`CREATE TABLE follow_checkpoints (key TEXT PRIMARY KEY, checkpoint_json TEXT NOT NULL)`,
 	}},
+	pairingDeliveryMigration(),
+	pairingDeliveryOutcomeMigration(),
+	pairingDeliveryBindingMigration(),
 }

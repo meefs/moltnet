@@ -31,7 +31,18 @@ func (s *MemoryStore) AppendMessageWithLifecycleContext(_ context.Context, messa
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	return s.appendMessageLocked(message)
+}
+func (s *MemoryStore) appendMessageLocked(message protocol.Message) (AppendLifecycle, error) {
+	if key := messageOriginReceipt(message); key != "" {
+		if id, exists := s.originReceipts[key]; exists {
+			return AppendLifecycle{}, &DuplicateMessageError{MessageID: id}
+		}
+	}
 	_, duplicate := s.messageIDs[message.ID]
+	if duplicate && s.messageOrigins[message.ID] != messageOriginReceipt(message) {
+		return AppendLifecycle{}, ErrMessageIDConflict
+	}
 
 	lifecycle := AppendLifecycle{}
 
@@ -102,6 +113,10 @@ func (s *MemoryStore) AppendMessageWithLifecycleContext(_ context.Context, messa
 		}
 	}
 	s.messageIDs[message.ID] = struct{}{}
+	s.messageOrigins[message.ID] = messageOriginReceipt(message)
+	if key := messageOriginReceipt(message); key != "" {
+		s.originReceipts[key] = message.ID
+	}
 	s.recordRoomActivity(message)
 
 	return lifecycle, nil
@@ -112,15 +127,7 @@ func (s *MemoryStore) AppendMessageEventWithLifecycleContext(
 	message protocol.Message,
 	event protocol.Event,
 ) (AppendLifecycle, error) {
-	lifecycle, err := s.AppendMessageWithLifecycleContext(ctx, message)
-	if err != nil {
-		return AppendLifecycle{}, err
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.deliveryEvents = append(s.deliveryEvents, event)
-	return lifecycle, nil
+	return s.AppendMessageWithPairingDeliveriesContext(ctx, message, &event, nil)
 }
 
 func (s *MemoryStore) PrepareAttachmentDeliveryContext(

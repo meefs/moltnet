@@ -97,7 +97,7 @@ func (r *relayTransport) callJSON(
 		return fmt.Errorf("call relay pairing %q: %w", pairing.ID, err)
 	}
 	if status < http.StatusOK || status >= http.StatusMultipleChoices {
-		return fmt.Errorf("relay pairing %q returned HTTP status %d", pairing.ID, status)
+		return &ResponseError{Code: status}
 	}
 	if err := json.NewDecoder(io.LimitReader(bytes.NewReader(responseBody), maxPairingResponseBytes)).Decode(target); err != nil {
 		return fmt.Errorf("decode relay pairing %q response: %w", pairing.ID, err)

@@ -1,3 +1,4 @@
+import { DeliveryStatus } from "./DeliveryStatus";
 import { PairingsError } from "../../PairingsError";
 import { useMemo } from "react";
 import { usePairingAgents } from "../../../hooks/usePairingAgents";
@@ -67,6 +68,8 @@ export function PairingView() {
           ) : null}
           <DetailRow label="status" value={status} />
         </div>
+
+        {pairing.delivery ? <DeliveryStatus delivery={pairing.delivery} /> : null}
 
         {diagnostics ? (
           <>

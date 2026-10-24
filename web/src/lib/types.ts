@@ -92,6 +92,16 @@ export interface Pairing {
   remote_base_url?: string;
   status?: string;
   diagnostics?: PairingDiagnostics;
+  delivery?: PairingDeliveryStatus;
+}
+
+export interface PairingDeliveryStatus {
+  rejected?: number;
+  last_rejection_reason?: string;
+  pending: number;
+  oldest_pending_age_seconds: number;
+  last_error?: string;
+  dropped: number;
 }
 
 export interface PairingDiagnostics {

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/noopolis/moltnet/internal/observability"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
@@ -79,26 +80,36 @@ func (s *Service) refreshPairingDiagnostics(
 		return protocol.Network{}, status, err
 	}
 
+	// Discovery owns the durable destination binding, including on the invite
+	// side whose configuration cannot know the peer's identity ahead of time.
+	// A configured identity is authoritative: a different discovered identity
+	// is a compatibility failure, not permission to replace the destination.
+	expected := strings.TrimSpace(pairing.RemoteNetworkID)
+	if remote := strings.TrimSpace(network.ID); remote != "" && (expected == "" || expected == remote) && s.pairingDeliveries != nil {
+		dropped, err := s.pairingDeliveries.BindPairingDeliveryDestinationContext(ctx, pairing.ID, remote)
+		if err != nil {
+			status := pairingStatus{
+				value: protocol.PairingStatusError,
+				diagnostics: &protocol.PairingDiagnostics{
+					CheckedAt: checkedAt,
+					Reason:    pairingDiagnosticRemoteRequestFailure,
+					Message:   "Remote destination binding could not be persisted.",
+				},
+				checked: true,
+			}
+			s.setPairingRuntime(pairing.ID, status, true)
+			return network, status, err
+		}
+		if dropped > 0 {
+			observability.Logger(ctx, "rooms.relay", "pairing_id", pairing.ID).
+				Warn("discovered pairing destination changed; backlog purged", "dropped", dropped)
+		}
+	}
+
 	status := s.evaluatePairingCompatibility(pairing, network, scope, checkedAt)
 	status = s.preserveStrongerPairingDiagnostics(pairing, status, scope)
 	s.setPairingRuntime(pairing.ID, status, true)
 	return network, status, nil
-}
-
-func (s *Service) refreshPairingDiagnosticsIfNeeded(
-	ctx context.Context,
-	pairing protocol.Pairing,
-	scope pairingCheckScope,
-) (pairingStatus, error) {
-	status := s.currentPairingStatus(pairing)
-	if !s.pairingDiagnosticsNeedRefresh(status) {
-		return status, nil
-	}
-	_, refreshed, err := s.refreshPairingDiagnostics(ctx, pairing, scope)
-	if err != nil {
-		return refreshed, err
-	}
-	return refreshed, nil
 }
 
 func (s *Service) evaluatePairingCompatibility(

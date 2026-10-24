@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -26,7 +27,11 @@ func NewSQLiteStore(path string) (*SQLStore, error) {
 		}
 	}
 
-	db, err := sql.Open(string(dialectSQLite), path)
+	dsn, err := sqliteStoreDSN(path)
+	if err != nil {
+		return nil, err
+	}
+	db, err := sql.Open(string(dialectSQLite), dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite store: %w", err)
 	}
@@ -104,4 +109,16 @@ func (s *SQLStore) Close() error {
 
 func (s *SQLStore) Health(ctx context.Context) error {
 	return s.db.PingContext(ctx)
+}
+
+func sqliteStoreDSN(path string) (string, error) {
+	pragmas := url.Values{"_pragma": {"busy_timeout(5000)", "foreign_keys(1)"}}
+	if path == ":memory:" {
+		return path + "?" + pragmas.Encode(), nil
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve sqlite path: %w", err)
+	}
+	return (&url.URL{Scheme: "file", Path: absolute, RawQuery: pragmas.Encode()}).String(), nil
 }

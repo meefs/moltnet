@@ -12,51 +12,48 @@ import (
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
-type RoomStore interface {
-	CreateRoom(room protocol.Room) error
-	GetRoom(id string) (protocol.Room, bool, error)
-	GetThread(id string) (protocol.Thread, bool, error)
-	ListRooms() ([]protocol.Room, error)
-	RemoveAgent(agentID string) error
-	RemoveRoom(roomID string) error
-	ReconcileRoom(room protocol.Room) (protocol.Room, error)
-	UpdateRoomMembers(roomID string, add []string, remove []string) (protocol.Room, error)
-}
-
 type MemoryStore struct {
-	mu                sync.RWMutex
-	followCheckpoints map[string]follow.Checkpoint
-	deliveryCursors   map[string]int
-	deliveryEvents    []protocol.Event
-	messageIDs        map[string]struct{}
-	rooms             map[string]protocol.Room
-	removedRooms      map[string]struct{}
-	roomMessages      map[string][]protocol.Message
-	roomActivity      map[string]time.Time
-	threads           map[string]protocol.Thread
-	roomThreads       map[string]map[string]struct{}
-	threadMessages    map[string][]protocol.Message
-	directMessages    map[string][]protocol.Message
-	directMembers     map[string]map[string]struct{}
-	agents            map[string]protocol.AgentRegistration
+	pairingDeliveries       []PairingDelivery
+	pairingDeliverySequence int64
+	pairingDeliveryStates   map[string]PairingDeliveryState
+	originReceipts          map[string]string
+	messageOrigins          map[string]string
+	mu                      sync.RWMutex
+	followCheckpoints       map[string]follow.Checkpoint
+	deliveryCursors         map[string]int
+	deliveryEvents          []protocol.Event
+	messageIDs              map[string]struct{}
+	rooms                   map[string]protocol.Room
+	removedRooms            map[string]struct{}
+	roomMessages            map[string][]protocol.Message
+	roomActivity            map[string]time.Time
+	threads                 map[string]protocol.Thread
+	roomThreads             map[string]map[string]struct{}
+	threadMessages          map[string][]protocol.Message
+	directMessages          map[string][]protocol.Message
+	directMembers           map[string]map[string]struct{}
+	agents                  map[string]protocol.AgentRegistration
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		followCheckpoints: make(map[string]follow.Checkpoint),
-		deliveryCursors:   make(map[string]int),
-		deliveryEvents:    make([]protocol.Event, 0),
-		messageIDs:        make(map[string]struct{}),
-		rooms:             make(map[string]protocol.Room),
-		removedRooms:      make(map[string]struct{}),
-		roomMessages:      make(map[string][]protocol.Message),
-		roomActivity:      make(map[string]time.Time),
-		threads:           make(map[string]protocol.Thread),
-		roomThreads:       make(map[string]map[string]struct{}),
-		threadMessages:    make(map[string][]protocol.Message),
-		directMessages:    make(map[string][]protocol.Message),
-		directMembers:     make(map[string]map[string]struct{}),
-		agents:            make(map[string]protocol.AgentRegistration),
+		pairingDeliveryStates: make(map[string]PairingDeliveryState),
+		originReceipts:        make(map[string]string),
+		messageOrigins:        make(map[string]string),
+		followCheckpoints:     make(map[string]follow.Checkpoint),
+		deliveryCursors:       make(map[string]int),
+		deliveryEvents:        make([]protocol.Event, 0),
+		messageIDs:            make(map[string]struct{}),
+		rooms:                 make(map[string]protocol.Room),
+		removedRooms:          make(map[string]struct{}),
+		roomMessages:          make(map[string][]protocol.Message),
+		roomActivity:          make(map[string]time.Time),
+		threads:               make(map[string]protocol.Thread),
+		roomThreads:           make(map[string]map[string]struct{}),
+		threadMessages:        make(map[string][]protocol.Message),
+		directMessages:        make(map[string][]protocol.Message),
+		directMembers:         make(map[string]map[string]struct{}),
+		agents:                make(map[string]protocol.AgentRegistration),
 	}
 }
 

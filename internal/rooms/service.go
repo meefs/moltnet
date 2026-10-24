@@ -39,6 +39,10 @@ type ServiceConfig struct {
 	Messages                  store.MessageStore
 	Broker                    EventBroker
 	PairingClient             PairingClient
+	DeliveryRetryMin          time.Duration
+	DeliveryRetryMax          time.Duration
+	DeliveryPollInterval      time.Duration
+	DeliveryTimeout           time.Duration
 	// CausalWriter is optional. When set, SendMessageContext stamps a
 	// message.accepted causal event (pkg/protocol.CausalEvent) after each
 	// durable, non-duplicate message append. When nil, causal stamping is
@@ -72,7 +76,14 @@ type Service struct {
 	pairingClient             PairingClient
 	causalWriter              *observability.CausalWriter
 	transcriptWriter          *observability.TranscriptWriter
-	relaySlots                chan struct{}
+	pairingDeliveries         store.PairingDeliveryStore
+	deliveryRetryMin          time.Duration
+	deliveryRetryMax          time.Duration
+	deliveryPollInterval      time.Duration
+	deliveryTimeout           time.Duration
+	relayWake                 chan struct{}
+	relayStart                sync.Once
+	relayWG                   sync.WaitGroup
 	pairingsMu                sync.RWMutex
 	pairingPublishMu          sync.Mutex
 	deliveryMu                sync.Mutex
@@ -158,7 +169,7 @@ func NewService(config ServiceConfig) *Service {
 		pairingClient:             config.PairingClient,
 		causalWriter:              config.CausalWriter,
 		transcriptWriter:          config.TranscriptWriter,
-		relaySlots:                make(chan struct{}, 8),
+		relayWake:                 make(chan struct{}, 1),
 		pairingStatuses:           statuses,
 		roomCredentials:           make(map[string]protocol.SecretString),
 		connectedAgents:           make(map[string]bool),
@@ -166,6 +177,8 @@ func NewService(config ServiceConfig) *Service {
 		lifecycleCancel:           lifecycleCancel,
 		now:                       now,
 	}
+	service.pairingDeliveries, _ = config.Messages.(store.PairingDeliveryStore)
+	service.configureDelivery(config)
 	service.follows = follow.New(service)
 	return service
 }
@@ -177,6 +190,7 @@ func (s *Service) Close() error {
 	if s.lifecycleCancel != nil {
 		s.lifecycleCancel()
 	}
+	s.relayWG.Wait()
 	return nil
 }
 

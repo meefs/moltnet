@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/noopolis/moltnet/internal/observability"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
@@ -14,6 +13,7 @@ const pairingRelayErrorRetryAfter = 30 * time.Second
 
 func (s *Service) normalizeOrigin(ctx context.Context, origin protocol.MessageOrigin, messageID string) protocol.MessageOrigin {
 	normalized := origin
+	normalized.NetworkID = strings.TrimSpace(normalized.NetworkID)
 	if strings.TrimSpace(normalized.NetworkID) == "" {
 		normalized.NetworkID = s.networkID
 	}
@@ -70,65 +70,15 @@ func canonicalDMParticipantIDs(defaultNetworkID string, from protocol.Actor, par
 }
 
 func (s *Service) relayMessage(message protocol.Message) {
-	if !s.shouldRelayMessage(message) {
-		return
-	}
-
-	for _, pairing := range s.snapshotRelayPairings() {
-		if !s.shouldAttemptRelayToPairing(pairing, message) {
-			continue
-		}
-
-		request, ok := s.relayRequest(pairing, message)
-		if !ok {
-			continue
-		}
-
-		select {
-		case s.relaySlots <- struct{}{}:
-		default:
-			observability.DefaultMetrics.RecordRelay("dropped")
-			observability.Logger(context.Background(), "rooms.relay", "message_id", message.ID, "pairing_id", pairing.ID).
-				Warn("relay queue full")
-			continue
-		}
-
-		go func(pairing protocol.Pairing, request protocol.SendMessageRequest, messageID string) {
-			defer func() { <-s.relaySlots }()
-
-			ctx, cancel := context.WithTimeout(s.lifecycleCtx, pairingRelayTimeout)
-			defer cancel()
-
-			scope := pairingCheckRelayRoom
-			if message.Target.Kind == protocol.TargetKindDM {
-				scope = pairingCheckRelayDM
-			}
-			if _, err := s.refreshPairingDiagnosticsIfNeeded(ctx, pairing, scope); err != nil {
-				observability.DefaultMetrics.RecordRelay("error")
-				observability.Logger(ctx, "rooms.relay", "message_id", messageID, "pairing_id", pairing.ID).
-					Error("relay compatibility refresh failed", "error", err)
-				return
-			}
-			if !s.shouldRelayToPairing(pairing, message) {
-				observability.DefaultMetrics.RecordRelay("dropped")
-				return
-			}
-
-			if _, err := s.pairingClient.RelayMessage(ctx, pairing, request); err != nil {
-				observability.DefaultMetrics.RecordRelay("error")
-				s.setPairingError(pairing.ID, "Remote relay request failed.")
-				observability.Logger(ctx, "rooms.relay", "message_id", messageID, "pairing_id", pairing.ID).
-					Error("relay message failed", "error", err)
-				return
-			}
-			observability.DefaultMetrics.RecordRelay("success")
-			s.setPairingRelaySuccess(pairing.ID)
-		}(pairing, request, message.ID)
+	// Records were committed atomically with the accepted message.
+	if s.pairingDeliveries != nil {
+		s.StartPairingDelivery()
+		s.wakeDeliveryWorker()
 	}
 }
 
 func (s *Service) shouldRelayMessage(message protocol.Message) bool {
-	if strings.HasPrefix(message.Origin.ReceivedVia, "follow:") {
+	if strings.TrimSpace(message.Origin.ReceivedVia) != "" {
 		return false
 	}
 	if message.Target.RoomID != "" {

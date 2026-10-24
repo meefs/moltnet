@@ -159,6 +159,7 @@ func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
 		return nil, err
 	}
 
+	service.StartPairingDelivery()
 	return instance, nil
 }
 

@@ -18,8 +18,13 @@ func (s *Service) ListPairings() ([]protocol.Pairing, error) {
 	return page.Pairings, nil
 }
 
-func (s *Service) ListPairingsContext(_ context.Context, page protocol.PageRequest) (protocol.PairingPage, error) {
+func (s *Service) ListPairingsContext(ctx context.Context, page protocol.PageRequest) (protocol.PairingPage, error) {
 	pairings := s.snapshotPairings()
+	for i := range pairings {
+		if err := s.populateDeliveryStatus(ctx, &pairings[i]); err != nil {
+			return protocol.PairingPage{}, err
+		}
+	}
 	slices.SortFunc(pairings, func(left, right protocol.Pairing) int {
 		return strings.Compare(left.ID, right.ID)
 	})

@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/noopolis/moltnet/internal/events"
-	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
@@ -139,7 +137,7 @@ func TestPairingCompatibilityDiagnostics(t *testing.T) {
 			t.Parallel()
 
 			client := &compatibilityPairingClient{network: test.network}
-			service := newPairingCompatibilityService(client)
+			service := newPairingCompatibilityService(t, client)
 
 			if _, err := service.PairingNetwork(context.Background(), "pair_1"); err != nil {
 				t.Fatalf("PairingNetwork() error = %v", err)
@@ -184,7 +182,7 @@ func TestListPairingsUsesCachedDiagnosticsWithoutRemoteCalls(t *testing.T) {
 	t.Parallel()
 
 	client := &compatibilityPairingClient{network: compatibleRemoteNetwork("remote")}
-	service := newPairingCompatibilityService(client)
+	service := newPairingCompatibilityService(t, client)
 
 	if _, err := service.ListPairingsContext(context.Background(), protocol.PageRequest{}); err != nil {
 		t.Fatalf("ListPairingsContext() error = %v", err)
@@ -214,7 +212,7 @@ func TestPairingDiscoveryRequiresCursorPagination(t *testing.T) {
 	network := compatibleRemoteNetwork("remote")
 	network.Capabilities.MessagePagination = ""
 	client := &compatibilityPairingClient{network: network}
-	service := newPairingCompatibilityService(client)
+	service := newPairingCompatibilityService(t, client)
 
 	if _, err := service.PairingRoomsContext(context.Background(), "pair_1", protocol.PageRequest{}); err == nil {
 		t.Fatal("expected missing cursor pagination to fail discovery")
@@ -236,7 +234,7 @@ func TestPairingNetworkDoesNotClearDiscoveryDegradation(t *testing.T) {
 	network := compatibleRemoteNetwork("remote")
 	network.Capabilities.MessagePagination = ""
 	client := &compatibilityPairingClient{network: network}
-	service := newPairingCompatibilityService(client)
+	service := newPairingCompatibilityService(t, client)
 
 	if _, err := service.PairingRoomsContext(context.Background(), "pair_1", protocol.PageRequest{}); err == nil {
 		t.Fatal("expected discovery degradation error")
@@ -265,7 +263,7 @@ func TestPairingRoomsErrorReplacesStaleDiagnostics(t *testing.T) {
 		network:  network,
 		roomsErr: errors.New("rooms unavailable"),
 	}
-	service := newPairingCompatibilityService(client)
+	service := newPairingCompatibilityService(t, client)
 
 	if _, err := service.PairingRoomsContext(context.Background(), "pair_1", protocol.PageRequest{}); err == nil {
 		t.Fatal("expected remote rooms error")
@@ -292,30 +290,37 @@ func TestRelaySuppressesIncompatiblePairings(t *testing.T) {
 		notify:  make(chan struct{}, 8),
 		done:    make(chan struct{}, 8),
 	}
-	service := newRelayCompatibilityService(client)
+	service := newRelayCompatibilityService(t, client)
 
-	service.relayMessage(roomRelayMessage())
-	waitForNetworkCalls(t, client, 1)
-	time.Sleep(20 * time.Millisecond)
-
-	if calls := client.snapshotCalls(); len(calls) != 0 {
-		t.Fatalf("expected incompatible pairing to suppress relay, got %#v", calls)
+	queueRelayTestMessage(t, service, roomRelayMessage())
+	second := roomRelayMessage()
+	second.ID, second.Origin.MessageID = "later-room-message", "later-room-message"
+	queueRelayTestMessage(t, service, second)
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		heads, err := service.pairingDeliveries.ListPairingDeliveryHeadsContext(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		state, err := service.pairingDeliveries.PairingDeliveryStateContext(context.Background(), "pair_b")
+		if err != nil {
+			t.Fatal(err)
+		}
+		pairings, err := service.ListPairings()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(heads) == 1 && heads[0].MessageID == roomRelayMessage().ID && heads[0].Attempts >= 2 &&
+			state.Pending == 2 && state.Rejected == 0 && pairings[0].Status == protocol.PairingStatusError &&
+			pairings[0].Diagnostics != nil && pairings[0].Diagnostics.Reason == pairingDiagnosticUnsupportedPair {
+			if calls := client.snapshotCalls(); len(calls) != 0 {
+				t.Fatalf("incompatible peer received messages: %#v", calls)
+			}
+			return
+		}
+		time.Sleep(time.Millisecond)
 	}
-	pairings, err := service.ListPairings()
-	if err != nil {
-		t.Fatalf("ListPairings() error = %v", err)
-	}
-	if pairings[0].Status != protocol.PairingStatusIncompatible ||
-		pairings[0].Diagnostics == nil ||
-		pairings[0].Diagnostics.Reason != pairingDiagnosticUnsupportedPair {
-		t.Fatalf("unexpected incompatible pairing diagnostics %#v", pairings[0])
-	}
-
-	service.relayMessage(roomRelayMessage())
-	time.Sleep(20 * time.Millisecond)
-	if calls := snapshotRecordingNetworkCalls(client); len(calls) != 1 {
-		t.Fatalf("expected incompatible pairing to stay cooled down, got network calls %#v", calls)
-	}
+	t.Fatal("compatibility failure did not retry the FIFO head with an errored pairing")
 }
 
 func TestRelayAllowsRoomAndSuppressesDMWhenRemoteDMsDisabled(t *testing.T) {
@@ -328,9 +333,9 @@ func TestRelayAllowsRoomAndSuppressesDMWhenRemoteDMsDisabled(t *testing.T) {
 		notify:  make(chan struct{}, 8),
 		done:    make(chan struct{}, 8),
 	}
-	service := newRelayCompatibilityService(client)
+	service := newRelayCompatibilityService(t, client)
 
-	service.relayMessage(roomRelayMessage())
+	queueRelayTestMessage(t, service, roomRelayMessage())
 	waitForRelayCalls(t, client, 1)
 	waitForRelayDone(t, client)
 	pairings, err := service.ListPairings()
@@ -344,14 +349,14 @@ func TestRelayAllowsRoomAndSuppressesDMWhenRemoteDMsDisabled(t *testing.T) {
 	}
 
 	client.resetCalls()
-	service.relayMessage(dmRelayMessage())
+	queueRelayTestMessage(t, service, dmRelayMessage())
 	time.Sleep(20 * time.Millisecond)
 	if calls := client.snapshotCalls(); len(calls) != 0 {
 		t.Fatalf("expected DM relay to be suppressed, got %#v", calls)
 	}
 }
 
-func TestRelayRetriesTransientRelayFailureAfterCooldown(t *testing.T) {
+func TestRelayRetriesTransientFailureWithoutAnotherMessage(t *testing.T) {
 	t.Parallel()
 
 	client := &recordingPairingClient{
@@ -360,9 +365,9 @@ func TestRelayRetriesTransientRelayFailureAfterCooldown(t *testing.T) {
 		done:     make(chan struct{}, 8),
 		relayErr: errors.New("temporary relay failure"),
 	}
-	service := newRelayCompatibilityService(client)
+	service := newRelayCompatibilityService(t, client)
 
-	service.relayMessage(roomRelayMessage())
+	queueRelayTestMessage(t, service, roomRelayMessage())
 	waitForRelayCalls(t, client, 1)
 	waitForRelayDone(t, client)
 	pairings := waitForPairingStatus(t, service, "pair_b", protocol.PairingStatusError)
@@ -371,14 +376,9 @@ func TestRelayRetriesTransientRelayFailureAfterCooldown(t *testing.T) {
 	}
 
 	client.resetCalls()
+	client.mu.Lock()
 	client.relayErr = nil
-	service.pairingsMu.Lock()
-	status := service.pairingStatuses["pair_b"]
-	status.updatedAt = time.Now().UTC().Add(-pairingRelayErrorRetryAfter - time.Second)
-	service.pairingStatuses["pair_b"] = status
-	service.pairingsMu.Unlock()
-
-	service.relayMessage(roomRelayMessage())
+	client.mu.Unlock()
 	waitForRelayCalls(t, client, 1)
 	waitForRelayDone(t, client)
 	pairings = waitForPairingStatus(t, service, "pair_b", protocol.PairingStatusConnected)
@@ -388,147 +388,4 @@ func TestRelayRetriesTransientRelayFailureAfterCooldown(t *testing.T) {
 	if calls := snapshotRecordingNetworkCalls(client); len(calls) < 2 {
 		t.Fatalf("expected retry to refresh pairing diagnostics, got %#v", calls)
 	}
-}
-
-func compatibleRemoteNetwork(networkID string) protocol.Network {
-	return protocol.Network{
-		ID:      networkID,
-		Name:    networkID,
-		Version: "test",
-		Protocols: protocol.NetworkProtocols{
-			HTTP: []string{protocol.HTTPProtocolV1},
-			Pair: []string{protocol.PairProtocolV1},
-		},
-		Capabilities: protocol.NetworkCapabilities{
-			DirectMessages:    true,
-			MessagePagination: "cursor",
-		},
-	}
-}
-
-func newPairingCompatibilityService(client *compatibilityPairingClient) *Service {
-	memory := store.NewMemoryStore()
-	return NewService(ServiceConfig{
-		NetworkID: "local",
-		Pairings: []protocol.Pairing{{
-			ID:              "pair_1",
-			RemoteNetworkID: "remote",
-			RemoteBaseURL:   "http://remote.example",
-			Token:           "pair-secret",
-		}},
-		Store:         memory,
-		Messages:      memory,
-		Broker:        events.NewBroker(),
-		PairingClient: client,
-	})
-}
-
-func newRelayCompatibilityService(client *recordingPairingClient) *Service {
-	memory := store.NewMemoryStore()
-	return NewService(ServiceConfig{
-		NetworkID: "net_a",
-		Pairings: []protocol.Pairing{{
-			ID:              "pair_b",
-			RemoteNetworkID: "net_b",
-			RemoteBaseURL:   "http://remote-b",
-		}},
-		Store:         memory,
-		Messages:      memory,
-		Broker:        events.NewBroker(),
-		PairingClient: client,
-	})
-}
-
-func waitForPairingStatus(t *testing.T, service *Service, pairingID string, want string) []protocol.Pairing {
-	t.Helper()
-
-	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) {
-		pairings, err := service.ListPairings()
-		if err != nil {
-			t.Fatalf("ListPairings() error = %v", err)
-		}
-		for _, pairing := range pairings {
-			if pairing.ID == pairingID && pairing.Status == want {
-				return pairings
-			}
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-
-	pairings, err := service.ListPairings()
-	if err != nil {
-		t.Fatalf("ListPairings() error = %v", err)
-	}
-	t.Fatalf("timed out waiting for pairing %q status %q, got %#v", pairingID, want, pairings)
-	return nil
-}
-
-func roomRelayMessage() protocol.Message {
-	return protocol.Message{
-		ID:        "msg_net_a_room",
-		NetworkID: "net_a",
-		Origin:    protocol.MessageOrigin{NetworkID: "net_a", MessageID: "msg_net_a_room"},
-		Target:    protocol.Target{Kind: protocol.TargetKindRoom, RoomID: "research"},
-		From:      protocol.Actor{ID: "alpha", NetworkID: "net_a"},
-	}
-}
-
-func dmRelayMessage() protocol.Message {
-	return protocol.Message{
-		ID:        "msg_net_a_dm",
-		NetworkID: "net_a",
-		Origin:    protocol.MessageOrigin{NetworkID: "net_a", MessageID: "msg_net_a_dm"},
-		Target: protocol.Target{
-			Kind:           protocol.TargetKindDM,
-			DMID:           "dm_alpha_gamma",
-			ParticipantIDs: []string{"net_a:alpha", "net_b:gamma"},
-		},
-		From: protocol.Actor{ID: "alpha", NetworkID: "net_a"},
-	}
-}
-
-func sameStrings(left []string, right []string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for index := range left {
-		if left[index] != right[index] {
-			return false
-		}
-	}
-	return true
-}
-
-func (c *compatibilityPairingClient) snapshotNetworkCalls() int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.networkCalls
-}
-
-func waitForNetworkCalls(t *testing.T, client *recordingPairingClient, want int) {
-	t.Helper()
-
-	deadline := time.Now().Add(500 * time.Millisecond)
-	for time.Now().Before(deadline) {
-		if len(snapshotRecordingNetworkCalls(client)) >= want {
-			return
-		}
-		select {
-		case <-client.notify:
-		case <-time.After(10 * time.Millisecond):
-		}
-	}
-
-	if len(snapshotRecordingNetworkCalls(client)) >= want {
-		return
-	}
-	t.Fatalf("timed out waiting for %d network calls", want)
-}
-
-func snapshotRecordingNetworkCalls(client *recordingPairingClient) []protocol.Pairing {
-	client.mu.Lock()
-	defer client.mu.Unlock()
-
-	return append([]protocol.Pairing(nil), client.networkCalls...)
 }
