@@ -34,34 +34,59 @@ func runReadUnread(configPath string, networkID string, memberID string, overrid
 		return err
 	}
 
+	// Fetch everything first and advance cursors only after the messages were
+	// printed: a later target's failure must never consume earlier messages.
+	type fetched struct {
+		target targetRef
+		page   protocol.MessagePage
+	}
+	var shown []fetched
 	var blocks []string
+	var stopErr error
 	for _, target := range targets {
-		page, reset, err := readTargetPage(client, &cursor, target, protocol.PageRequest{Limit: limit})
+		page, reset, err := fetchSinceLast(client, &cursor, target, protocol.PageRequest{Limit: limit})
 		if err != nil {
-			return fmt.Errorf("read %s:%s: %w", target.kind, target.id, err)
+			stopErr = fmt.Errorf("stopped early at %s:%s: %w", target.kind, target.id, err)
+			break
 		}
 		if len(page.Messages) > 0 {
+			shown = append(shown, fetched{target: target, page: page})
 			blocks = append(blocks, renderUnreadBlock(target, page.Messages, reset))
 		}
 	}
 	if len(blocks) == 0 {
-		return nil
+		return stopErr
 	}
 
 	text := strings.Join(blocks, "\n")
 	if !stopHook {
-		_, err := fmt.Fprintln(stdout, text)
-		return err
+		if _, err := fmt.Fprintln(stdout, text); err != nil {
+			return err
+		}
+	} else {
+		// A Stop hook's output is only honoured on exit 0, so a partial
+		// failure is reported inside the reason instead of as an exit code.
+		if stopErr != nil {
+			text += "\n" + stopErr.Error()
+			stopErr = nil
+		}
+		payload, err := json.Marshal(map[string]string{
+			"decision": "block",
+			"reason":   "New Moltnet messages. Handle them (reply with `moltnet send` when appropriate), then finish.\n" + text,
+		})
+		if err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(stdout, string(payload)); err != nil {
+			return err
+		}
 	}
-	payload, err := json.Marshal(map[string]string{
-		"decision": "block",
-		"reason":   "New Moltnet messages. Handle them (reply with `moltnet send` when appropriate), then finish.\n" + text,
-	})
-	if err != nil {
-		return err
+	for _, item := range shown {
+		if err := advanceSinceLast(cursor, item.target, item.page); err != nil {
+			return err
+		}
 	}
-	_, err = fmt.Fprintln(stdout, string(payload))
-	return err
+	return stopErr
 }
 
 // unreadTargets lists the configured rooms (every visible room for the

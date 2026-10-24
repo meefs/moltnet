@@ -134,6 +134,27 @@ func readTargetPage(
 	target targetRef,
 	pageRequest protocol.PageRequest,
 ) (protocol.MessagePage, bool, error) {
+	page, cursorReset, err := fetchSinceLast(client, cursor, target, pageRequest)
+	if err != nil {
+		return protocol.MessagePage{}, false, err
+	}
+	if cursor != nil {
+		if err := advanceSinceLast(*cursor, target, page); err != nil {
+			return protocol.MessagePage{}, false, err
+		}
+	}
+	return page, cursorReset, nil
+}
+
+// fetchSinceLast fetches one target's page after its stored cursor (when
+// cursor is set) without advancing it, so a caller can advance only once the
+// messages were actually shown.
+func fetchSinceLast(
+	client *moltnetclient.Client,
+	cursor *readCursorIdentity,
+	target targetRef,
+	pageRequest protocol.PageRequest,
+) (protocol.MessagePage, bool, error) {
 	if cursor != nil {
 		stored, err := lookupReadCursor(cursor.path, readCursorKey(*cursor, target))
 		if err != nil {
@@ -152,10 +173,10 @@ func readTargetPage(
 			// history" behavior: rather than hard-failing an otherwise
 			// healthy identity/target resolution, this self-heals to a
 			// fresh baseline -- exactly first-use's unfiltered fetch --
-			// and the success path below persists a fresh, valid cursor
-			// from it. cursorReset also stamps a machine-readable
-			// "cursor_reset" marker on the printed payload, so an agent
-			// parsing stdout can tell this gap apart from a clean delta.
+			// and advancing persists a fresh, valid cursor from it.
+			// cursorReset also stamps a machine-readable "cursor_reset"
+			// marker on the printed payload, so an agent parsing stdout
+			// can tell this gap apart from a clean delta.
 			fmt.Fprintf(stderr, "note: stored --since-last cursor for %s:%s is older than retained history; showing the latest messages instead\n", target.kind, target.id)
 			cursorReset = true
 			pageRequest.After = ""
@@ -165,18 +186,17 @@ func readTargetPage(
 			return protocol.MessagePage{}, false, err
 		}
 	}
-
-	// The cursor advances on a successful fetch only, and only when there is
-	// a new "last seen" message to remember; an empty result leaves any
-	// existing cursor untouched. Every message page is ascending, so the
-	// newest message fetched is last.
-	if cursor != nil && len(page.Messages) > 0 {
-		newest := page.Messages[len(page.Messages)-1].ID
-		if err := advanceReadCursor(cursor.path, readCursorKey(*cursor, target), newest); err != nil {
-			return protocol.MessagePage{}, false, err
-		}
-	}
 	return page, cursorReset, nil
+}
+
+// advanceSinceLast moves the target's cursor to the newest fetched message.
+// An empty page leaves any existing cursor untouched. Every message page is
+// ascending, so the newest message fetched is last.
+func advanceSinceLast(cursor readCursorIdentity, target targetRef, page protocol.MessagePage) error {
+	if len(page.Messages) == 0 {
+		return nil
+	}
+	return advanceReadCursor(cursor.path, readCursorKey(cursor, target), page.Messages[len(page.Messages)-1].ID)
 }
 
 // fetchTargetMessages dispatches to the one ListXMessages client call

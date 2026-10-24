@@ -17,7 +17,7 @@ import (
 
 // unreadFixture serves two rooms and one DM. Each target returns its
 // messages after the requested cursor, so cursors advancing is observable.
-func unreadFixture(t *testing.T, dmsEnabled bool) (string, func(target string, message protocol.Message)) {
+func unreadFixture(t *testing.T, dmsEnabled bool) (string, func(target string, message protocol.Message), func(path string, failing bool)) {
 	t.Helper()
 	workspace := t.TempDir()
 	writeClientConfigFixture(t, workspace, clientconfig.Config{
@@ -34,11 +34,16 @@ func unreadFixture(t *testing.T, dmsEnabled bool) (string, func(target string, m
 
 	var mu sync.Mutex
 	messages := map[string][]protocol.Message{}
+	failing := map[string]bool{}
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
 		if request.URL.Path == "/v1/dms" {
 			_ = json.NewEncoder(response).Encode(protocol.DirectConversationPage{DMs: []protocol.DirectConversation{{ID: "dm_1"}}})
+			return
+		}
+		if failing[request.URL.Path] {
+			http.Error(response, "boom", http.StatusInternalServerError)
 			return
 		}
 		list, ok := messages[request.URL.Path]
@@ -66,7 +71,12 @@ func unreadFixture(t *testing.T, dmsEnabled bool) (string, func(target string, m
 		defer mu.Unlock()
 		messages[path] = append(messages[path], message)
 	}
-	return workspace, add
+	fail := func(path string, value bool) {
+		mu.Lock()
+		defer mu.Unlock()
+		failing[path] = value
+	}
+	return workspace, add, fail
 }
 
 func textMessage(id string, from string, text string) protocol.Message {
@@ -83,7 +93,7 @@ func runReadArgs(t *testing.T, args ...string) string {
 }
 
 func TestRunReadSinceLastWithoutTargetReadsAllUnreadThenIsSilent(t *testing.T) {
-	workspace, add := unreadFixture(t, true)
+	workspace, add, _ := unreadFixture(t, true)
 	add("/v1/rooms/research/messages", textMessage("m1", "bob", "hello research"))
 	add("/v1/dms/dm_1/messages", textMessage("d1", "carol", "psst"))
 
@@ -115,7 +125,7 @@ func TestRunReadSinceLastWithoutTargetReadsAllUnreadThenIsSilent(t *testing.T) {
 }
 
 func TestRunReadSinceLastStopHook(t *testing.T) {
-	workspace, add := unreadFixture(t, false)
+	workspace, add, _ := unreadFixture(t, false)
 
 	cwd := mustGetwd(t)
 	defer func() { _ = os.Chdir(cwd) }()
@@ -148,5 +158,36 @@ func TestRunReadStopHookRequiresUntargetedSinceLast(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "--stop-hook requires --since-last with no target") {
 			t.Fatalf("read %v error = %v", args, err)
 		}
+	}
+}
+
+func TestRunReadSinceLastWithoutTargetKeepsEarlierMessagesWhenALaterTargetFails(t *testing.T) {
+	workspace, add, fail := unreadFixture(t, true)
+	add("/v1/rooms/research/messages", textMessage("m1", "bob", "kept"))
+	add("/v1/dms/dm_1/messages", textMessage("d1", "carol", "not lost"))
+	fail("/v1/dms/dm_1/messages", true)
+
+	cwd := mustGetwd(t)
+	defer func() { _ = os.Chdir(cwd) }()
+	if err := os.Chdir(workspace); err != nil {
+		t.Fatal(err)
+	}
+
+	var runErr error
+	output := captureStdout(t, func() {
+		runErr = run(context.Background(), []string{"read", "--since-last"}, "test")
+	})
+	if runErr == nil || !strings.Contains(runErr.Error(), "stopped early at dm:dm_1") {
+		t.Fatalf("partial failure error = %v", runErr)
+	}
+	if !strings.Contains(output, "bob: kept") {
+		t.Fatalf("partial failure output = %q, want the fetched room messages", output)
+	}
+
+	// The printed room is consumed; the failed DM is still unread.
+	fail("/v1/dms/dm_1/messages", false)
+	next := runReadArgs(t, "--since-last")
+	if strings.Contains(next, "kept") || !strings.Contains(next, "carol: not lost") {
+		t.Fatalf("read after recovery = %q", next)
 	}
 }
