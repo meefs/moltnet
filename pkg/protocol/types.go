@@ -72,10 +72,15 @@ type Actor struct {
 type MessageOrigin struct {
 	// ClaimedAuthor preserves untrusted author data from a follow import.
 	ClaimedAuthor *Actor `json:"claimed_author,omitempty"`
-	NetworkID     string `json:"network_id"`
-	MessageID     string `json:"message_id"`
+	// These follow-import fields are origin testimony, never identity anchors.
+	ClaimedNetworkID          string `json:"claimed_network_id,omitempty"`
+	ClaimedMessageID          string `json:"claimed_message_id,omitempty"`
+	ClaimedDiscoveryNetworkID string `json:"claimed_discovery_network_id,omitempty"`
+	NetworkID                 string `json:"network_id"`
+	MessageID                 string `json:"message_id"`
 	// ReceivedVia is the local pairing id for an inbound relay, resolved
 	// server-side from its credential, or "follow:<id>" for an engine import.
+	// Follow imports stamp NetworkID with FollowNamespace and MessageID with the served ID.
 	// Empty for locally-originated messages.
 	//
 	// This is the ONLY provenance on a relayed message the receiving

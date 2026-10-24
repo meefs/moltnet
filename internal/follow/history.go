@@ -184,6 +184,6 @@ func (w *worker) syncHistory(ctx context.Context, networkID, roomID, threadID st
 	return checkpoint.Count, nil
 }
 
-func (w *worker) historyKey(networkID, roomID, threadID string) string {
-	return w.config.ID + "/" + w.config.RemoteBaseURL + "/" + networkID + "/room/" + roomID + "/thread/" + threadID
+func (w *worker) historyKey(_ string, roomID, threadID string) string {
+	return w.config.ID + "/" + w.config.RemoteBaseURL + "/room/" + roomID + "/thread/" + threadID
 }

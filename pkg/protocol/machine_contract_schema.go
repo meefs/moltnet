@@ -158,6 +158,9 @@ func machineContractShapes() []MachineContractShape {
 		}},
 		{Name: "message_origin", Fields: []MachineContractField{
 			f("claimed_author", "message_actor", false, ""),
+			f("claimed_network_id", "string", false, ""),
+			f("claimed_message_id", "string", false, ""),
+			f("claimed_discovery_network_id", "string", false, ""),
 			f("network_id", "identifier", true, "max_target_bytes"), f("message_id", "identifier", true, "max_target_bytes"),
 			f("received_via", "identifier", false, "max_target_bytes"),
 		}},

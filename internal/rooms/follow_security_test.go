@@ -26,7 +26,7 @@ func TestFollowUntrustedClaimsCannotForgeAuthorsOrSuppressAnotherOrigin(t *testi
 		t.Fatalf("evil history: %+v %v", page, err)
 	}
 	got := page.Messages[0]
-	if got.From.NetworkID != "evil" || got.From.FQID != "molt://evil/agents/writer" || got.From.CredentialBound {
+	if got.From.NetworkID != protocol.FollowNamespace(evil.ID) || got.From.FQID != protocol.AgentFQID(got.From.NetworkID, got.From.ID) || got.From.CredentialBound {
 		t.Fatalf("forged author survived: %+v", got.From)
 	}
 	if got.Origin.ClaimedAuthor == nil || *got.Origin.ClaimedAuthor != forged.From {
@@ -47,8 +47,8 @@ func TestFollowUntrustedClaimsCannotForgeAuthorsOrSuppressAnotherOrigin(t *testi
 	if added, err := service.ImportFollowMessage(t.Context(), evil, "evil", forged); err != nil || !added {
 		t.Fatalf("claimed tuple deduped: %v %v", added, err)
 	}
-	if _, err := service.ImportFollowMessage(t.Context(), evil, "local", forged); err == nil {
-		t.Fatal("local origin identity accepted")
+	if added, err := service.ImportFollowMessage(t.Context(), evil, "local", forged); err != nil || added {
+		t.Fatalf("discovery claim changed identity: %v %v", added, err)
 	}
 }
 

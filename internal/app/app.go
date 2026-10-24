@@ -20,6 +20,7 @@ import (
 	"github.com/noopolis/moltnet/internal/rooms"
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/internal/transport"
+	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
 const (
@@ -47,6 +48,9 @@ func New(config Config) (*App, error) {
 }
 
 func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
+	if err := protocol.ValidateNetworkNamespace(config.NetworkID); err != nil {
+		return nil, err
+	}
 	now, err := config.Clock.Now(realNow)
 	if err != nil {
 		return nil, err

@@ -44,6 +44,9 @@ func (w *worker) session(ctx context.Context) error {
 	if err := w.get(ctx, "/v1/network", &network); err != nil {
 		return err
 	}
+	w.mu.Lock()
+	w.status.ClaimedNetworkID = network.ID
+	w.mu.Unlock()
 	compatible := false
 	for _, version := range network.Protocols.HTTP {
 		if version == protocol.HTTPProtocolV1 {
@@ -56,6 +59,7 @@ func (w *worker) session(ctx context.Context) error {
 	if network.ID == "" || w.config.RemoteNetworkID != "" && network.ID != w.config.RemoteNetworkID {
 		return &incompatibleError{"remote_network_id does not match origin"}
 	}
+	// Remember the discovery claim for continuity, not authentication.
 	// Pin even unconfigured remote identity across reconnects and process restarts.
 	identityKey := w.config.ID + "/" + w.config.RemoteBaseURL + "/network"
 	identity, err := w.sink.GetFollowCheckpoint(ctx, identityKey)
@@ -70,9 +74,6 @@ func (w *worker) session(ctx context.Context) error {
 			return err
 		}
 	}
-	w.mu.Lock()
-	w.status.RemoteNetworkID = network.ID
-	w.mu.Unlock()
 	// Establish the first-sync cutoff before subscribing. Once these durable
 	// cursors exist, a second history scan after subscription covers every gap,
 	// including messages arriving while the SSE handshake is in progress.

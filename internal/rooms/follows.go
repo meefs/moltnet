@@ -3,6 +3,7 @@ package rooms
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -56,8 +57,8 @@ func (s *Service) EnsureFollowRoom(ctx context.Context, config protocol.Follow, 
 	return err
 }
 
-func followMessageID(networkID, messageID string) string {
-	return fmt.Sprintf("msg_%x", sha256.Sum256([]byte(networkID+"\x00"+messageID)))
+func followMessageID(followID, messageID string) string {
+	return fmt.Sprintf("msg_%x", sha256.Sum256([]byte(followID+"\x00"+messageID)))
 }
 
 func (s *Service) ImportFollowMessage(ctx context.Context, config protocol.Follow, networkID string, remote protocol.Message) (bool, error) {
@@ -68,40 +69,37 @@ func (s *Service) ImportFollowMessage(ctx context.Context, config protocol.Follo
 	if !exists || room.Follow == nil || room.Follow.ID != config.ID || room.Follow.RemoteBaseURL != config.RemoteBaseURL {
 		return false, fmt.Errorf("follow mirror room is missing or changed")
 	}
-	if networkID == "" || networkID == s.networkID {
-		return false, fmt.Errorf("follow origin must have a non-local network identity")
-	}
 	if remote.ID == "" {
 		return false, fmt.Errorf("origin returned an empty message id")
 	}
-	origin := remote.Origin
-	if origin.NetworkID == "" {
-		origin.NetworkID = networkID
+	namespace := protocol.FollowNamespace(config.ID)
+	claimedAuthor := remote.From
+	origin := protocol.MessageOrigin{
+		NetworkID: namespace, MessageID: remote.ID, ReceivedVia: "follow:" + config.ID,
+		ClaimedNetworkID: remote.Origin.NetworkID, ClaimedMessageID: remote.Origin.MessageID,
+		ClaimedDiscoveryNetworkID: networkID, ClaimedAuthor: &claimedAuthor,
 	}
-	if origin.MessageID == "" {
-		origin.MessageID = remote.ID
-	}
-	origin.ReceivedVia = "follow:" + config.ID
 	message := remote
-	message.ID = followMessageID(networkID, remote.ID)
+	message.ID = followMessageID(config.ID, remote.ID)
 	message.NetworkID = s.networkID
 	message.Origin = origin
 	message.Target.RoomID = room.ID
 	if remote.Target.Kind == protocol.TargetKindThread {
-		message.Target.ThreadID = followMessageID(networkID, remote.Target.ThreadID)
+		message.Target.ThreadID = followMessageID(config.ID, remote.Target.ThreadID)
 		if remote.Target.ParentMessageID != "" {
-			message.Target.ParentMessageID = followMessageID(networkID, remote.Target.ParentMessageID)
+			message.Target.ParentMessageID = followMessageID(config.ID, remote.Target.ParentMessageID)
 		}
 	} else if remote.Target.Kind != protocol.TargetKindRoom {
 		return false, fmt.Errorf("follow only imports room and thread messages")
 	}
-	// Claims from an anonymous origin cannot establish a local or third-party identity.
-	claimedAuthor := remote.From
-	message.Origin.ClaimedAuthor = &claimedAuthor
-	message.From = remote.From
-	message.From.NetworkID = networkID
-	message.From.FQID = protocol.AgentFQID(networkID, remote.From.ID)
-	message.From.CredentialBound = false
+	// Untrusted author tuples distinguish relayed names only within this follow.
+	// JSON framing prevents delimiter injection; names/FQID are display claims.
+	authorKey, _ := json.Marshal([]string{remote.From.Type, remote.From.NetworkID, remote.From.ID})
+	message.From = protocol.Actor{
+		Type: remote.From.Type, ID: fmt.Sprintf("agent_%x", sha256.Sum256(authorKey)),
+		Name: remote.From.Name, NetworkID: namespace,
+	}
+	message.From.FQID = protocol.AgentFQID(namespace, message.From.ID)
 	event := protocol.Event{ID: eventIDForMessage(message.ID), Type: protocol.EventTypeMessageCreated, NetworkID: s.networkID, Message: &message, CreatedAt: message.CreatedAt}
 	_, err = s.appendAndPublishMessage(ctx, protocol.SendMessageRequest{}, message, event)
 	duplicate := errors.Is(err, store.ErrDuplicateMessage)

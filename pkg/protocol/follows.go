@@ -53,13 +53,16 @@ type RoomFollow struct {
 }
 
 type FollowStatus struct {
-	ID              string             `json:"id"`
-	RemoteBaseURL   string             `json:"remote_base_url"`
-	RemoteNetworkID string             `json:"remote_network_id,omitempty"`
-	Status          string             `json:"status"`
-	LastError       string             `json:"last_error,omitempty"`
-	LastSynced      *time.Time         `json:"last_synced,omitempty"`
-	Rooms           []FollowRoomStatus `json:"rooms"`
+	ID            string `json:"id"`
+	RemoteBaseURL string `json:"remote_base_url"`
+	// RemoteNetworkID is the configured pin; discovery is explicitly a claim.
+	RemoteNetworkID  string             `json:"remote_network_id,omitempty"`
+	ClaimedNetworkID string             `json:"claimed_network_id,omitempty"`
+	Warning          string             `json:"warning,omitempty"`
+	Status           string             `json:"status"`
+	LastError        string             `json:"last_error,omitempty"`
+	LastSynced       *time.Time         `json:"last_synced,omitempty"`
+	Rooms            []FollowRoomStatus `json:"rooms"`
 }
 
 type FollowRoomStatus struct {

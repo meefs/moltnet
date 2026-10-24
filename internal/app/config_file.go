@@ -155,6 +155,9 @@ func decodeYAMLConfig(contents []byte, target *rawConfigFile) error {
 }
 
 func validateConfigFile(config rawConfigFile) error {
+	if err := protocol.ValidateNetworkNamespace(config.Network.ID); err != nil {
+		return err
+	}
 	if config.Clock != nil {
 		if err := config.Clock.Validate(); err != nil {
 			return err

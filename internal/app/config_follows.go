@@ -19,6 +19,9 @@ func validateConfigFollows(follows []protocol.Follow, rooms []RoomConfig) error 
 }
 
 func mergeEnvFollows(config *Config) error {
+	if err := protocol.ValidateNetworkNamespace(config.NetworkID); err != nil {
+		return err
+	}
 	value, ok := envValue("MOLTNET_FOLLOWS_JSON")
 	if !ok {
 		value, ok = envValue("MOLTNET_FOLLOWS")

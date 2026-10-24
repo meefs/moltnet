@@ -94,7 +94,7 @@ func TestFollowTwoServersBackfillLiveReconnectAndRestart(t *testing.T) {
 	page := followMessages(t, follower.Handler(), "news.public")
 	seen := map[string]bool{}
 	for _, message := range page.Messages {
-		if message.Origin.NetworkID != "origin" || message.Origin.ReceivedVia != "follow:news" {
+		if message.Origin.NetworkID != protocol.FollowNamespace("news") || message.Origin.ReceivedVia != "follow:news" {
 			t.Fatalf("lost provenance: %+v", message)
 		}
 		if seen[message.Origin.MessageID] {

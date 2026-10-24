@@ -79,6 +79,18 @@ func (m *Manager) Status() []protocol.FollowStatus {
 		w.mu.RUnlock()
 		values = append(values, status)
 	}
+	claims := map[string]int{}
+	for _, value := range values {
+		if value.RemoteNetworkID == "" && value.ClaimedNetworkID != "" {
+			claims[value.ClaimedNetworkID]++
+		}
+	}
+	for i := range values {
+		value := &values[i]
+		if value.RemoteNetworkID == "" && claims[value.ClaimedNetworkID] > 1 {
+			value.Warning = "multiple unpinned follows report the same claimed network id"
+		}
+	}
 	return values
 }
 

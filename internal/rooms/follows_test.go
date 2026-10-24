@@ -71,7 +71,7 @@ func TestFollowImportDeduplicatesServedIDAndMapsForeignThreadParent(t *testing.T
 	if _, err = service.ImportFollowMessage(t.Context(), config, "origin", reply); err != nil {
 		t.Fatal(err)
 	}
-	rootID := followMessageID("origin", "remote-copy")
+	rootID := followMessageID(config.ID, "remote-copy")
 	thread, exists, err := service.getThread(t.Context(), rootID)
 	if err != nil || !exists || thread.ParentMessageID != rootID {
 		t.Fatalf("foreign parent mapping %#v %v %v", thread, exists, err)
@@ -80,7 +80,7 @@ func TestFollowImportDeduplicatesServedIDAndMapsForeignThreadParent(t *testing.T
 	if err != nil || len(page.Messages) != 1 {
 		t.Fatalf("dedupe failed %#v %v", page, err)
 	}
-	if page.Messages[0].Origin.ReceivedVia != "follow:source" || page.Messages[0].Origin.NetworkID != "original" {
+	if page.Messages[0].Origin.ReceivedVia != "follow:source" || page.Messages[0].Origin.NetworkID != protocol.FollowNamespace(config.ID) || page.Messages[0].Origin.ClaimedNetworkID != "original" {
 		t.Fatalf("origin not preserved %#v", page.Messages[0].Origin)
 	}
 }

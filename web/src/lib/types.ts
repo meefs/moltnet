@@ -135,6 +135,11 @@ export interface MessageFrom {
 }
 
 export interface MessageOrigin {
+  /** Untrusted testimony supplied by an anonymous follow origin. */
+  claimed_author?: MessageFrom;
+  claimed_network_id?: string;
+  claimed_message_id?: string;
+  claimed_discovery_network_id?: string;
   network_id?: string;
   message_id?: string;
   /** Server-stamped: the local pairing this message actually arrived

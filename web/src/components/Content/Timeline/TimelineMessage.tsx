@@ -22,18 +22,23 @@ interface TimelineMessageProps {
  * why a remote row leads with the pairing rather than the id.
  *
  * For a remote sender the useful provenance is `origin.received_via`: the
- * local pairing the message actually arrived through, stamped server-side from
+ * local pairing (or follow) the message actually arrived through, stamped server-side from
  * the presenting credential. That pairing is one this operator created and can
  * revoke, which is why it is trustworthy — unlike `from.network_id`, which is
  * the peer's own claim about itself.
  */
 export function TimelineMessage({ message, networkId }: TimelineMessageProps) {
-  const id = message.from?.id || "unknown";
-  const claimedName = message.from?.name?.trim();
-  // Only worth showing when it says something the id does not.
-  const alias = claimedName && claimedName !== id ? claimedName : undefined;
-
   const via = message.origin?.received_via?.trim();
+  const follow = via?.startsWith("follow:") ? via.slice("follow:".length) : undefined;
+  const author = follow ? message.origin?.claimed_author ?? message.from : message.from;
+  const authorId = author?.id || "unknown";
+  const claimedNetwork = author?.network_id?.trim();
+  const relayed = follow && claimedNetwork && claimedNetwork !== message.origin?.claimed_discovery_network_id;
+  const id = relayed ? `${authorId}@${claimedNetwork}` : authorId;
+  const claimedName = author?.name?.trim();
+  const alias = claimedName && claimedName !== authorId ? claimedName : undefined;
+  const viaLabel = follow ?? via;
+  const viaTitle = follow ? `arrived through the follow "${follow}"` : `arrived through the pairing "${via}"`;
   const senderNetwork = message.from?.network_id?.trim();
   const isRemote = Boolean(via) || Boolean(senderNetwork && networkId && senderNetwork !== networkId);
 
@@ -48,8 +53,8 @@ export function TimelineMessage({ message, networkId }: TimelineMessageProps) {
         [{id}]
       </span>{" "}
       {via ? (
-        <span className="text-faint" title={`arrived through the pairing "${via}"`}>
-          via {via}{" "}
+        <span className="text-faint" title={viaTitle}>
+          via {viaLabel}{" "}
         </span>
       ) : null}
       {alias ? (
