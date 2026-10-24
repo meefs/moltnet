@@ -2,6 +2,7 @@ package rooms
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -66,6 +67,7 @@ func (r *recordingPairingClient) RelayMessage(
 	}
 	r.mu.Lock()
 	r.calls = append(r.calls, pairing)
+	relayErr, block := r.relayErr, r.block
 	r.mu.Unlock()
 	if r.notify != nil {
 		select {
@@ -73,10 +75,10 @@ func (r *recordingPairingClient) RelayMessage(
 		default:
 		}
 	}
-	if r.relayErr != nil {
-		return protocol.MessageAccepted{}, r.relayErr
+	if relayErr != nil {
+		return protocol.MessageAccepted{}, relayErr
 	}
-	if r.block {
+	if block {
 		<-ctx.Done()
 		return protocol.MessageAccepted{}, ctx.Err()
 	}
@@ -95,6 +97,7 @@ func TestRelayHelpers(t *testing.T) {
 		Messages:  store.NewMemoryStore(),
 		Broker:    events.NewBroker(),
 	})
+	t.Cleanup(func() { _ = service.Close() })
 
 	origin := service.normalizeOrigin(context.Background(), protocol.MessageOrigin{}, "msg_net_a_1")
 	if origin.NetworkID != "net_a" || origin.MessageID != "msg_net_a_1" {
@@ -158,6 +161,7 @@ func TestRelayMessageSelection(t *testing.T) {
 		Broker:        events.NewBroker(),
 		PairingClient: client,
 	})
+	t.Cleanup(func() { _ = service.Close() })
 
 	roomMessage := protocol.Message{
 		ID:        "msg_net_a_1",
@@ -169,7 +173,7 @@ func TestRelayMessageSelection(t *testing.T) {
 	if !service.shouldRelayMessage(roomMessage) {
 		t.Fatal("expected local-origin room message to relay")
 	}
-	service.relayMessage(roomMessage)
+	queueRelayTestMessage(t, service, roomMessage)
 	waitForRelayCalls(t, client, 1)
 	waitForRelayDone(t, client)
 	calls := client.snapshotCalls()
@@ -224,7 +228,7 @@ func TestRelayMessageSelection(t *testing.T) {
 		t.Fatal("expected cooled-down error pairing status to allow retry")
 	}
 	service.setPairingStatus("pair_b", "connected")
-	service.relayMessage(dmMessage)
+	queueRelayTestMessage(t, service, dmMessage)
 	waitForRelayCalls(t, client, 1)
 	waitForRelayDone(t, client)
 	calls = client.snapshotCalls()
@@ -246,7 +250,7 @@ func TestRelayMessageSelection(t *testing.T) {
 	}
 
 	client.resetCalls()
-	service.relayMessage(protocol.Message{
+	queueRelayTestMessage(t, service, protocol.Message{
 		ID:        "msg_net_a_3",
 		NetworkID: "net_a",
 		Origin:    protocol.MessageOrigin{NetworkID: "net_b", MessageID: "msg_net_b_3"},
@@ -256,39 +260,6 @@ func TestRelayMessageSelection(t *testing.T) {
 	calls = client.snapshotCalls()
 	if len(calls) != 0 {
 		t.Fatalf("expected remote-origin message to skip relay, got %#v", calls)
-	}
-}
-
-func TestRelayMessageDropsWhenQueueIsFull(t *testing.T) {
-	t.Parallel()
-
-	client := &recordingPairingClient{notify: make(chan struct{}, 1)}
-	memory := store.NewMemoryStore()
-	service := NewService(ServiceConfig{
-		NetworkID: "net_a",
-		Pairings: []protocol.Pairing{
-			{ID: "pair_b", RemoteNetworkID: "net_b", RemoteBaseURL: "http://remote-b", Status: "connected"},
-		},
-		Store:         memory,
-		Messages:      memory,
-		Broker:        events.NewBroker(),
-		PairingClient: client,
-	})
-
-	for index := 0; index < cap(service.relaySlots); index++ {
-		service.relaySlots <- struct{}{}
-	}
-
-	service.relayMessage(protocol.Message{
-		ID:        "msg_net_a_drop",
-		NetworkID: "net_a",
-		Origin:    protocol.MessageOrigin{NetworkID: "net_a", MessageID: "msg_net_a_drop"},
-		Target:    protocol.Target{Kind: protocol.TargetKindRoom, RoomID: "research"},
-		From:      protocol.Actor{ID: "alpha", NetworkID: "net_a"},
-	})
-
-	if calls := client.snapshotCalls(); len(calls) != 0 {
-		t.Fatalf("expected full relay queue to skip calls, got %#v", calls)
 	}
 }
 
@@ -311,8 +282,9 @@ func TestRelayMessageStopsWhenServiceCloses(t *testing.T) {
 		Broker:        events.NewBroker(),
 		PairingClient: client,
 	})
+	t.Cleanup(func() { _ = service.Close() })
 
-	service.relayMessage(protocol.Message{
+	queueRelayTestMessage(t, service, protocol.Message{
 		ID:        "msg_net_a_close",
 		NetworkID: "net_a",
 		Origin:    protocol.MessageOrigin{NetworkID: "net_a", MessageID: "msg_net_a_close"},
@@ -374,4 +346,28 @@ func (r *recordingPairingClient) resetCalls() {
 	defer r.mu.Unlock()
 
 	r.calls = nil
+}
+
+// Exercise the acceptance boundary: relayMessage now only wakes the worker.
+func queueRelayTestMessage(t *testing.T, service *Service, message protocol.Message) {
+	t.Helper()
+	if message.CreatedAt.IsZero() {
+		message.CreatedAt = time.Now().UTC()
+	}
+	if message.Target.RoomID != "" {
+		if _, exists, err := service.store.GetRoom(message.Target.RoomID); err != nil {
+			t.Fatal(err)
+		} else if !exists {
+			_, err := service.CreateRoom(protocol.CreateRoomRequest{ID: message.Target.RoomID, Federation: &protocol.RoomFederation{Mode: protocol.RoomFederationAll}})
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	event := protocol.Event{ID: eventIDForMessage(message.ID), Type: protocol.EventTypeMessageCreated, NetworkID: service.networkID, Message: &message, CreatedAt: message.CreatedAt}
+	_, err := service.appendAndPublishMessage(context.Background(), protocol.SendMessageRequest{}, message, event)
+	if err != nil && !errors.Is(err, store.ErrDuplicateMessage) {
+		t.Fatal(err)
+	}
+	service.relayMessage(message)
 }

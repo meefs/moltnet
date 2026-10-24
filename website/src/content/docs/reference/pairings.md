@@ -74,8 +74,12 @@ no new message is needed to trigger recovery.
 Delivery is **at least once within the queue's retention bounds**. A receiver
 deduplicates by the original network and message ID after checking the network
 against the presenting pairing credential's configured or learned binding.
-Retries do not create additional stored messages. JSON, SQLite, and Postgres
-retain pending deliveries across sender restarts; memory storage is ephemeral.
+Retries do not create additional stored messages. Message IDs still share the
+receiver's storage namespace: use globally unique IDs, as server-generated IDs
+do. An ID already used by a different origin is rejected with HTTP 409 and
+remains queued at the sender until the conflict is resolved or retention
+expires. JSON, SQLite, and Postgres retain pending deliveries across sender
+restarts; memory storage is ephemeral.
 
 Each pairing defaults to **7 days and 10,000 pending messages**. Override either
 bound under that pairing's `delivery_limits`:
