@@ -29,11 +29,10 @@ export function MembersPanel() {
       .sort((a, b) => (a.home === network?.id ? -1 : b.home === network?.id ? 1 : a.home.localeCompare(b.home)));
   }, [room, agents, network?.id]);
 
-  if (!room) return null;
+  if (!room || groups.length === 0) return null;
 
   return (
     <aside className="hidden xl:flex flex-col w-64 min-h-0 border-l border-border overflow-auto px-3 py-4" aria-label="Room members">
-      {groups.length === 0 ? <p className="text-faint text-[13px] px-2">no members.</p> : null}
       {groups.map(({ home, members }) => (
         <section key={home} className="mb-5">
           <h2 className="flex items-center gap-2 px-2 mb-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-mute">

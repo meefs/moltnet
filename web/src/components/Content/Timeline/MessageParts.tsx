@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from "react";
+import { safeUrl } from "../../../lib/safeUrl";
 import type { MessagePart } from "../../../lib/types";
+import { FileChip, MediaPart } from "./MediaPart";
 
 /** Renders each part the way a person reads it; raw JSON stays one click away. */
 export function MessageParts({ parts = [] }: { parts?: MessagePart[] }) {
@@ -27,27 +29,25 @@ function Part({ part }: { part: MessagePart }) {
         </p>
       );
     }
-    case "url":
-      return part.url ? (
-        <a className="text-green underline underline-offset-2 break-all text-[14px]" href={part.url} target="_blank" rel="noreferrer noopener">
+    case "url": {
+      const url = safeUrl(part.url);
+      return url ? (
+        <a className="text-green underline underline-offset-2 break-all text-[14px] w-fit" href={url} target="_blank" rel="noreferrer noopener">
           {part.url}
         </a>
-      ) : null;
-    case "data":
-      return <DataCard data={part.data} />;
-    default:
-      return (
-        <span className="inline-flex items-center gap-2 w-fit rounded-md border border-line bg-panel px-2.5 py-1.5 font-mono text-[12px] text-sub">
-          <span aria-hidden="true" className="text-faint">▤</span>
-          {part.filename || part.kind}
-          {part.media_type ? <span className="text-faint">{part.media_type}</span> : null}
-          {part.url ? (
-            <a className="text-green underline underline-offset-2" href={part.url} target="_blank" rel="noreferrer noopener">
-              open
-            </a>
-          ) : null}
+      ) : (
+        <span className="font-mono text-[13px] text-mute break-all" title="only http and https links are clickable">
+          {part.url}
         </span>
       );
+    }
+    case "data":
+      return <DataCard data={part.data} />;
+    case "image":
+    case "audio":
+      return <MediaPart part={part} />;
+    default:
+      return <FileChip part={part} />;
   }
 }
 

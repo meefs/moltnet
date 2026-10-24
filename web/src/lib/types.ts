@@ -114,7 +114,7 @@ export interface PairingDiagnostics {
 }
 
 export interface MessagePart {
-  kind: "text" | "url" | "data" | "file";
+  kind: "text" | "url" | "data" | "file" | "image" | "audio";
   text?: string;
   url?: string;
   data?: unknown;

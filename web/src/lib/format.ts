@@ -8,7 +8,7 @@ export function textFromParts(parts: MessagePart[] = []): string {
       if (part.kind === "text") return part.text || "";
       if (part.kind === "url") return part.url || "";
       if (part.kind === "data") return JSON.stringify(part.data ?? {});
-      return part.filename || part.media_type || "";
+      return part.filename || part.url || part.media_type || "";
     })
     .filter(Boolean)
     .join("\n");
