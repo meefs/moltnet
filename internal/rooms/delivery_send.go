@@ -49,6 +49,10 @@ func (s *Service) sendQueuedMessage(ctx context.Context, pairing protocol.Pairin
 	}
 	if !s.shouldRelayToPairing(pairing, message) {
 		status := s.currentPairingStatus(pairing)
+		if message.Target.Kind == protocol.TargetKindDM && status.value == protocol.PairingStatusDegraded &&
+			status.diagnostics != nil && status.diagnostics.Reason == pairingDiagnosticDirectMessagesOff {
+			return fmt.Errorf("%w: %s", errDeliveryRejected, status.diagnosticsMessage("peer direct messages disabled"))
+		}
 		return errors.New(status.diagnosticsMessage("peer is not ready for this delivery"))
 	}
 	if record.RemoteNetworkID != "" && record.RemoteNetworkID != remote {

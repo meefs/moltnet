@@ -97,20 +97,26 @@ may still arrive after its pending record is dropped. Delivery beyond these
 bounds is not guaranteed; this queue does not backfill earlier room history.
 
 One active sender attempts messages in queue order for each pairing and waits
-for acknowledgment before advancing. A transient failure holds the head for
-retry; other pairings continue independently. Definitive rejections (a reachable
-peer with DMs disabled, incompatible peer capabilities, a local federation policy
-that no longer allows the message, or HTTP 4xx other than 408/429) remove only
-that message and let the next one proceed. Each rejection is logged, increments
+for acknowledgment before advancing. Transient failures and pairing-wide
+credential, route, identity, or protocol failures hold the head and retry with
+backoff; other pairings continue independently. Only definitive per-message
+rejections remove a message and let the next one proceed, for example: DMs to an otherwise
+compatible, reachable peer with DMs disabled, a local federation policy that no
+longer allows the message, or a message POST returning HTTP 4xx other than
+401/407/408/429 after successful discovery in the same attempt. Discovery
+failures, including 401/403/404, and message POST authentication failures retain
+the backlog for retry. Each rejection is logged, increments
 `delivery.rejected`, and retains `delivery.last_rejection_reason`. Rejected
 messages remain in local history but are not automatically replayed after a fix.
-A credential or route error such as 401/403/404 can reject every queued message
-for that pairing. Correct the configuration before sending again. Disabling
-local DMs also rejects queued DMs when the new configuration loads.
+Correct pairing configuration failures to let the retained backlog drain.
+Disabling local DMs also rejects queued DMs when the new configuration loads.
 
-On startup, revoked/removed pairings and changed remote network IDs purge the
-old backlog and increment `delivery.dropped`. Legacy outbox rows without a remote
-network binding are also purged rather than risk sending them to a reused ID.
+On startup, revoked/removed pairings purge all their queued deliveries. A nonempty
+configured remote network ID drops deliveries bound to a different network.
+Both increment `delivery.dropped`. Unbound outbox rows for active configured
+pairings are retained and bound when discovery succeeds. An empty configured remote
+network ID preserves a previously learned binding; if discovery later identifies
+a different peer, deliveries bound to the old peer are dropped.
 Pairing configuration has no live reload: restart after edits or revocation.
 There is no dedicated purge command. To discard a blocked backlog, remove the
 pairing and restart before adding it again; do not edit the backing store.

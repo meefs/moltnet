@@ -15,7 +15,7 @@ import (
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
-func TestDisabledPeerDMKeepsFIFOForCompatibilityRetry(t *testing.T) {
+func TestDisabledPeerDMDoesNotBlockRoomDelivery(t *testing.T) {
 	peer, receive, _ := deliveryReceiverWithStore(t, true)
 	server := httptest.NewServer(receive)
 	defer server.Close()
@@ -30,9 +30,9 @@ func TestDisabledPeerDMKeepsFIFOForCompatibilityRetry(t *testing.T) {
 	postDeliveryMessage(t, origin.URL, "room-after-DM")
 	waitDelivery(t, func() bool {
 		state := deliveryStatus(t, origin.URL)
-		return state.Pending == 2 && state.Rejected == 0 && state.LastError != ""
+		return state.Pending == 0 && state.Rejected == 1 && state.LastRejectionReason != ""
 	})
-	assertDeliveryTexts(t, peer, []string{}...)
+	assertDeliveryTexts(t, peer, "room-after-DM")
 }
 
 func TestPeerRoom403DoesNotBlockAnotherRoom(t *testing.T) {
