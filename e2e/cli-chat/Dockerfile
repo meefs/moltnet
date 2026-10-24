@@ -6,6 +6,8 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 COPY pkg ./pkg
+COPY relay/embed.go ./relay/
+COPY relay/dist ./relay/dist
 COPY web ./web
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=0.0.0-e2e" -o /out/moltnet ./cmd/moltnet
 
