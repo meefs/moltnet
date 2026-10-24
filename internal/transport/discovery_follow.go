@@ -11,21 +11,11 @@ import (
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
-// A guide is executable documentation: never derive commands from an untrusted
-// Host header. Explicit config wins. A configured proxy may supply the public
-// origin only when it sets both forwarding headers, replacing client values.
-func followPublicBaseURL(request *http.Request, policy *authn.Policy, config HTTPConfig) (string, bool) {
+// A guide is executable documentation. Protocol-forwarding trust does not
+// authenticate a hostname; commands require an operator-configured public URL.
+func followPublicBaseURL(_ *http.Request, _ *authn.Policy, config HTTPConfig) (string, bool) {
 	if base, ok := safeGuideURL(config.PublicBaseURL); ok {
 		return base, true
-	}
-	if policy.TrustForwardedProto() && request != nil {
-		scheme := strings.TrimSpace(request.Header.Get("X-Forwarded-Proto"))
-		host := strings.TrimSpace(request.Header.Get("X-Forwarded-Host"))
-		if host != "" && !strings.ContainsAny(host, "/,?#@") {
-			if base, ok := safeGuideURL(scheme + "://" + host); ok {
-				return base, true
-			}
-		}
 	}
 	return "https://YOUR_PUBLIC_MOLTNET_HOST", false
 }

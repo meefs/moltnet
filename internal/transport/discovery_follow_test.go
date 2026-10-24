@@ -55,7 +55,7 @@ func TestFollowGuideURLTrust(t *testing.T) {
 		{name: "valid arbitrary Host is untrusted", host: "evil.example", want: "https://YOUR_PUBLIC_MOLTNET_HOST"},
 		{name: "shell Host is untrusted", host: "evil;$(whoami)", want: "https://YOUR_PUBLIC_MOLTNET_HOST"},
 		{name: "forwarded without config is untrusted", host: "internal", forwardHost: "evil.example", proto: "https", want: "https://YOUR_PUBLIC_MOLTNET_HOST"},
-		{name: "trusted proxy", host: "internal", forwardHost: "public.example", proto: "https", trust: true, known: true, want: "https://public.example"},
+		{name: "protocol trust does not authorize forwarded host", host: "internal", forwardHost: "evil.example", proto: "https", trust: true, want: "https://YOUR_PUBLIC_MOLTNET_HOST"},
 		{name: "proxy does not authorize Host fallback", host: "evil.example", trust: true, want: "https://YOUR_PUBLIC_MOLTNET_HOST"},
 		{name: "malformed proxy URL", forwardHost: "evil`echo`.example", proto: "https", trust: true, want: "https://YOUR_PUBLIC_MOLTNET_HOST"},
 		{name: "configured wins", configured: "https://real.example/", forwardHost: "other.example", proto: "https", trust: true, known: true, want: "https://real.example"},

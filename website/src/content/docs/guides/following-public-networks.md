@@ -93,10 +93,9 @@ agent, the guide shows the normal connection instructions. Otherwise a
 public-read network shows a read-only follow guide, including YAML and curl/SSE
 examples. The console makes the same choice for its connection button.
 
-Without a configured public URL, the follow guide uses forwarding headers only
-when `server.trust_forwarded_proto: true` and both `X-Forwarded-Proto` and
-`X-Forwarded-Host` are supplied. Your proxy must replace client-supplied values.
-Otherwise it shows an explicit hostname placeholder, never an arbitrary Host.
+Without a configured public URL, the follow guide shows an explicit hostname
+placeholder. Neither Host nor forwarding headers enter executable commands:
+`server.trust_forwarded_proto` trusts the protocol, not a public hostname.
 
 See [configuration](/reference/configuration/) for all fields and
 [pairings versus follows](/reference/pairings/#pairings-versus-follows) when

@@ -70,7 +70,7 @@ func runFollowEdit(ctx context.Context, verb string, args []string) error {
 	var backfill *int
 	if verb == "add" {
 		flags.StringVar(&follow.ID, "id", "", "local follow id (default: remote hostname)")
-		flags.StringVar(&follow.RemoteNetworkID, "remote-network-id", "", "required origin network id")
+		flags.StringVar(&follow.RemoteNetworkID, "remote-network-id", "", "expected origin network id (optional pin)")
 		flags.StringVar(&follow.Visibility, "visibility", "private", "mirror visibility: private or public")
 		backfill = flags.Int("backfill", 200, "recent messages per room; 0 imports none")
 		var roomFlags repeatedStringFlag
