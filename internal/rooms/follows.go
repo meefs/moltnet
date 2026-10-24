@@ -66,6 +66,12 @@ func (s *Service) EnsureFollowRoom(ctx context.Context, config protocol.Follow, 
 		_, err = s.reconcileRoom(ctx, room)
 	} else {
 		err = s.createRoom(ctx, room)
+		if err == nil {
+			s.publishEvent(protocol.Event{
+				ID: newPrefixedID("evt"), Type: protocol.EventTypeRoomCreated,
+				NetworkID: s.networkID, Room: &room, CreatedAt: room.CreatedAt,
+			})
+		}
 	}
 	return err
 }

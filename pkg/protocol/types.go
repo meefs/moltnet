@@ -72,9 +72,9 @@ type Actor struct {
 type MessageOrigin struct {
 	NetworkID string `json:"network_id"`
 	MessageID string `json:"message_id"`
-	// ReceivedVia is the local pairing id an inbound relayed message
-	// actually arrived through, resolved server-side from the presenting
-	// credential. Empty for locally-originated messages.
+	// ReceivedVia is the local pairing id for an inbound relay, resolved
+	// server-side from its credential, or "follow:<id>" for an engine import.
+	// Empty for locally-originated messages.
 	//
 	// This is the ONLY provenance on a relayed message the receiving
 	// operator authored: NetworkID and the sender's own network id are

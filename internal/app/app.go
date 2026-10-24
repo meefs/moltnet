@@ -132,10 +132,11 @@ func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
 		server:       server,
 		relayClients: relayClients,
 	}
-	if closer, ok := roomStore.(io.Closer); ok {
+	// Stop follow workers before closing the persistence they write to.
+	if closer, ok := any(service).(io.Closer); ok {
 		instance.closers = append(instance.closers, closer)
 	}
-	if closer, ok := any(service).(io.Closer); ok {
+	if closer, ok := roomStore.(io.Closer); ok {
 		instance.closers = append(instance.closers, closer)
 	}
 	if causalWriter != nil {

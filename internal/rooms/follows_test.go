@@ -84,3 +84,21 @@ func TestFollowImportDeduplicatesOriginAndMapsForeignThreadParent(t *testing.T) 
 		t.Fatalf("origin not preserved %#v", page.Messages[0].Origin)
 	}
 }
+
+func TestFollowEmptyMirrorPublishesRoomCreated(t *testing.T) {
+	service, config := followTestService(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	stream := service.Subscribe(ctx)
+	if err := service.EnsureFollowRoom(ctx, config, protocol.Room{ID: "empty", Name: "Empty"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case event := <-stream:
+		if event.Type != protocol.EventTypeRoomCreated || event.Room == nil || event.Room.ID != "source.empty" || event.Room.Follow == nil {
+			t.Fatalf("mirror discovery event: %+v", event)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("empty mirror never announced to connected consoles")
+	}
+}
