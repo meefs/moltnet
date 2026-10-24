@@ -104,7 +104,7 @@ func TestRunReadSinceLastWithoutTargetReadsAllUnreadThenIsSilent(t *testing.T) {
 	}
 
 	first := runReadArgs(t, "--since-last")
-	want := "room:research (1 new)\n  bob: hello research\ndm:dm_1 (1 new)\n  carol: psst\n"
+	want := untrustedMessagesHeader + "\nroom:research (1 new)\n  bob: hello research\ndm:dm_1 (1 new)\n  carol: psst\n"
 	if first != want {
 		t.Fatalf("first unread output = %q, want %q", first, want)
 	}
@@ -115,7 +115,7 @@ func TestRunReadSinceLastWithoutTargetReadsAllUnreadThenIsSilent(t *testing.T) {
 
 	// Only what arrived since is shown, and the targeted read shares the cursor.
 	add("/v1/rooms/general/messages", textMessage("g1", "dave", "line one\nline two"))
-	if third := runReadArgs(t, "--since-last"); third != "room:general (1 new)\n  dave: line one\n    line two\n" {
+	if third := runReadArgs(t, "--since-last"); third != untrustedMessagesHeader+"\nroom:general (1 new)\n  dave: line one\n    line two\n" {
 		t.Fatalf("third unread output = %q", third)
 	}
 	targeted := runReadArgs(t, "--since-last", "room:general")
@@ -144,7 +144,7 @@ func TestRunReadSinceLastStopHook(t *testing.T) {
 	if err := json.Unmarshal([]byte(output), &payload); err != nil {
 		t.Fatalf("stop hook output %q is not JSON: %v", output, err)
 	}
-	if payload["decision"] != "block" || !strings.Contains(payload["reason"], "room:research (1 new)\n  bob: say \"hi\"") || strings.Contains(payload["reason"], "carol") {
+	if payload["decision"] != "block" || !strings.Contains(payload["reason"], untrustedMessagesHeader+"\nroom:research (1 new)\n  bob: say \"hi\"") || strings.Contains(payload["reason"], "carol") {
 		t.Fatalf("stop hook payload = %#v", payload)
 	}
 	if len(payload) != 2 {
