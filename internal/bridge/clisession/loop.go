@@ -58,6 +58,7 @@ type Runner struct {
 	queueWG  sync.WaitGroup
 	mu       sync.Mutex
 	observe  RunnerObserver
+	notifier Notifier
 }
 
 func NewRunner(
@@ -134,6 +135,9 @@ func (r *Runner) Run(ctx context.Context) error {
 			if !loop.ShouldHandle(r.config, event) {
 				return nil
 			}
+			if r.notifier != nil {
+				return r.enqueueNudge(ctx, event)
+			}
 			return r.enqueueEventDelivery(ctx, event)
 		})
 
@@ -164,7 +168,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 		attempt++
 
-		observability.Logger(ctx, "bridge."+r.driver.Name(), "agent_id", r.config.Agent.ID, "error", err).
+		observability.Logger(ctx, "bridge."+r.name(), "agent_id", r.config.Agent.ID, "error", err).
 			Warn("CLI bridge inbound stream error")
 
 		select {
@@ -185,6 +189,10 @@ func readBootstrapResult(results <-chan error) (error, bool) {
 }
 
 func (r *Runner) sendBootstrapDeliveries(ctx context.Context) error {
+	if r.notifier != nil {
+		// An attached session is already running; there is nothing to bootstrap.
+		return nil
+	}
 	for _, target := range BootstrapTargets(r.config) {
 		prompt := bridgeutil.RenderCompactBootstrapMessage(r.config.Moltnet.NetworkID, target, true)
 		if err := r.dispatch(ctx, Delivery{
