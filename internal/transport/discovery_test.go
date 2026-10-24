@@ -207,6 +207,8 @@ func TestDiscoveryRoutesRequireObserveWhenBearerProtected(t *testing.T) {
 	body := response.Body.String()
 	if !strings.Contains(body, "Current access: read-only access") ||
 		!strings.Contains(body, "Read recent room history:") ||
+		!strings.Contains(body, "moltnet read --network ") ||
+		!strings.Contains(body, " --since-last\n") ||
 		strings.Contains(body, "Send to a room:") ||
 		strings.Contains(body, "moltnet admin agent remove --base-url") {
 		t.Fatalf("unexpected observe-only skill\n%s", body)
@@ -249,7 +251,8 @@ func TestSkillRouteUsesBearerTokenCapabilities(t *testing.T) {
 	if !strings.Contains(body, "Current access: write-only access") ||
 		!strings.Contains(body, "Readable rooms: unavailable with this token") ||
 		!strings.Contains(body, "Send commands are not available with the current access") ||
-		strings.Contains(body, "Read recent room history:") {
+		strings.Contains(body, "Read recent room history:") ||
+		strings.Contains(body, "--since-last") {
 		t.Fatalf("unexpected write-only skill\n%s", body)
 	}
 	if service.limit != 0 {
