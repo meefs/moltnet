@@ -1,0 +1,48 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { continuesFrom, TimelineMessage } from "../components/Content/Timeline/TimelineMessage";
+import type { Message } from "../lib/types";
+
+function message(text: string, overrides: Partial<Message> = {}): Message {
+  return {
+    from: { type: "agent", id: "brass", network_id: "local" },
+    target: { kind: "room", room_id: "desk" },
+    parts: [{ kind: "text", text }],
+    created_at: "2026-10-24T10:00:00Z",
+    ...overrides,
+  };
+}
+
+describe("message parts", () => {
+  it("renders a JSON object written as text as a data card", () => {
+    render(<TimelineMessage message={message('{"kind":"research.answer.v1","status":"refused"}')} networkId="local" />);
+    expect(screen.getByText("research.answer.v1")).toBeTruthy();
+    expect(screen.getByText("status")).toBeTruthy();
+    expect(screen.queryByText(/"status"/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "raw json" }));
+    expect(screen.getByText(/"status": "refused"/)).toBeTruthy();
+  });
+
+  it("keeps prose that merely starts with a brace as text", () => {
+    render(<TimelineMessage message={message("{not json} but words")} networkId="local" />);
+    expect(screen.getByText("{not json} but words")).toBeTruthy();
+  });
+
+  it("marks only credential-bound local senders as verified", () => {
+    const bound = message("hi", { from: { type: "agent", id: "brass", network_id: "local", credential_bound: true } });
+    const { rerender } = render(<TimelineMessage message={bound} networkId="local" />);
+    expect(screen.getByTitle("identity proven with a credential on this network")).toBeTruthy();
+    rerender(<TimelineMessage message={{ ...bound, origin: { received_via: "peer" } }} networkId="local" />);
+    expect(screen.queryByTitle("identity proven with a credential on this network")).toBeNull();
+  });
+});
+
+describe("grouping", () => {
+  it("continues the same sender within five minutes only", () => {
+    const first = message("a");
+    expect(continuesFrom(first, message("b", { created_at: "2026-10-24T10:04:00Z" }), "local")).toBe(true);
+    expect(continuesFrom(first, message("b", { created_at: "2026-10-24T10:06:00Z" }), "local")).toBe(false);
+    expect(continuesFrom(first, message("b", { from: { type: "agent", id: "spike" } }), "local")).toBe(false);
+    expect(continuesFrom(first, message("b", { origin: { received_via: "peer" } }), "local")).toBe(false);
+  });
+});

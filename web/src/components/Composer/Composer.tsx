@@ -1,9 +1,7 @@
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useComposerVisible } from "../../hooks/useComposerVisible";
-import { Panel } from "../Panel";
 import { ComposerEditor } from "./ComposerEditor";
 import { ComposerKeys } from "./ComposerKeys";
-import { ComposerPrompt } from "./ComposerPrompt";
 import { MentionNode } from "./MentionNode";
 import { theme } from "./theme";
 
@@ -21,19 +19,13 @@ export function Composer() {
   if (!useComposerVisible()) return null;
 
   return (
-    <Panel>
-      <Panel.Header>
-        <Panel.Title>HUMAN INGRESS</Panel.Title>
-      </Panel.Header>
-      <Panel.Body>
-        <ComposerPrompt />
+    <section className="px-5 pb-4 pt-1" aria-label="Human ingress">
+      <div className="rounded-xl border border-line bg-panel px-4 py-2.5 focus-within:border-green-dim">
         <LexicalComposer initialConfig={initialConfig}>
           <ComposerEditor />
         </LexicalComposer>
-      </Panel.Body>
-      <Panel.Footer>
-        <ComposerKeys />
-      </Panel.Footer>
-    </Panel>
+      </div>
+      <ComposerKeys />
+    </section>
   );
 }

@@ -108,15 +108,16 @@ describe("Sidebar", () => {
     const { client } = mount(<Sidebar />);
     await waitFor(() => expect(client.getQueryData(["network"])).toEqual(network));
     await waitFor(() => {
-      expect(!!screen.queryByRole("tab", { name: "PAIRINGS" })).toBe(pairings && (readPairings ?? true));
-      expect(!!screen.queryByRole("tab", { name: "DMS" })).toBe(dms && (readDMs ?? true));
+      expect(!!screen.queryByRole("heading", { name: /^Paired networks/ })).toBe(pairings && (readPairings ?? true));
+      expect(!!screen.queryByRole("heading", { name: /^Direct/ })).toBe(dms && (readDMs ?? true));
     });
-    expect(screen.getByRole("tab", { name: "AGENTS" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /^Agents/ })).toBeTruthy();
   });
   it.each([401, 403])("hides AGENTS after a forbidden fetch (%s)", async (status) => {
     agentsStatus = status;
     mount(<Sidebar />);
-    await waitFor(() => expect(screen.queryByRole("tab", { name: "AGENTS" })).toBeNull());
+    expect(await screen.findByRole("heading", { name: /^Agents/ })).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("heading", { name: /^Agents/ })).toBeNull());
   });
 });
 

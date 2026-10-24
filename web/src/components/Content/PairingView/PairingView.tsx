@@ -10,6 +10,8 @@ import { useSelection } from "../../../providers";
 import { DetailRow } from "../../DetailRow";
 import { ListItem } from "../../ListItem";
 import { Panel } from "../../Panel";
+import { SectionLabel } from "../../SectionLabel";
+import { pairingDisplayStatus, pairingToneClass } from "../../../lib/pairingStatus";
 
 export function PairingView() {
   const { selected } = useSelection();
@@ -29,11 +31,11 @@ export function PairingView() {
     return (
       <Panel>
         <Panel.Header>
-          <Panel.Title>PAIRING</Panel.Title>
+          <Panel.Title>Pairing</Panel.Title>
         </Panel.Header>
         <Panel.Body>
           {error ? <PairingsError error={error} /> : (
-            <p className="text-faint text-xs px-2 py-1.5">
+            <p className="text-faint text-[13px] px-2 py-1.5">
               {isLoading ? "loading…" : `pairing not found${pairingId ? ` — ${pairingId}` : ""}.`}
             </p>
           )}
@@ -55,11 +57,15 @@ export function PairingView() {
   return (
     <Panel>
       <Panel.Header>
-        <Panel.Title>{`PAIRING: ${pairing.id}`}</Panel.Title>
-        <Panel.Count>{status}</Panel.Count>
+        <Panel.Title>
+          <span className="text-faint font-normal">paired with</span> {pairing.id}
+        </Panel.Title>
+        <Panel.Count>
+          <span className={pairingToneClass(pairingDisplayStatus(pairing).tone)}>● {pairingDisplayStatus(pairing).label}</span>
+        </Panel.Count>
       </Panel.Header>
       <Panel.Body>
-        <div className="grid gap-2 text-xs mb-4">
+        <div className="max-w-3xl mb-2">
           <DetailRow label="pairing" value={pairing.id} />
           <DetailRow label="remote network" value={remoteName} />
           <DetailRow label="remote id" value={pairing.remote_network_id} />
@@ -73,8 +79,8 @@ export function PairingView() {
 
         {diagnostics ? (
           <>
-            <SectionHeader title="DIAGNOSTICS" />
-            <div className="grid gap-2 text-xs mb-4">
+            <SectionLabel title="DIAGNOSTICS" />
+            <div className="max-w-3xl mb-2">
               {diagnostics.message || diagnostics.reason ? (
                 <DetailRow
                   label="reason"
@@ -109,15 +115,15 @@ export function PairingView() {
           </>
         ) : null}
 
-        <SectionHeader title="REMOTE NETWORK" />
+        <SectionLabel title="REMOTE NETWORK" />
         {networkQuery.isLoading ? (
-          <p className="text-faint text-xs px-2 py-1 mb-4">loading…</p>
+          <p className="text-faint text-[13px] px-2 py-1 mb-4">loading…</p>
         ) : networkQuery.error ? (
-          <p className="text-coral text-xs px-2 py-1 mb-4">
+          <p className="text-coral text-[13px] px-2 py-1 mb-4">
             unreachable — {(networkQuery.error as Error).message}
           </p>
         ) : remoteNetwork ? (
-          <div className="grid gap-2 text-xs mb-4">
+          <div className="max-w-3xl mb-2">
             <DetailRow
               label="name"
               value={remoteNetwork.name || remoteNetwork.id}
@@ -142,16 +148,16 @@ export function PairingView() {
             />
           </div>
         ) : (
-          <p className="text-faint text-xs px-2 py-1 mb-4">no data.</p>
+          <p className="text-faint text-[13px] px-2 py-1 mb-4">no data.</p>
         )}
 
-        <SectionHeader title="REMOTE ROOMS" count={remoteRooms.length} />
+        <SectionLabel title="REMOTE ROOMS" count={remoteRooms.length} />
         <RemoteList
           loading={roomsQuery.isLoading}
           error={roomsQuery.error}
           items={remoteRooms.map((room) => ({
             key: room.id,
-            title: <># {room.name || room.id}</>,
+            title: <><span className="text-faint">#</span> {room.name || room.id}</>,
             trailing:
               (room.members ?? []).length > 0
                 ? `${room.members!.length} members`
@@ -160,7 +166,7 @@ export function PairingView() {
           emptyText="no rooms exposed by the remote."
         />
 
-        <SectionHeader title="REMOTE AGENTS" count={remoteAgents.length} />
+        <SectionLabel title="REMOTE AGENTS" count={remoteAgents.length} />
         <RemoteList
           loading={agentsQuery.isLoading}
           error={agentsQuery.error}
@@ -205,21 +211,6 @@ function protocolPart(label: string, values: string[] | undefined) {
   return `${label} ${values.join(", ")}`;
 }
 
-function SectionHeader({
-  title,
-  count,
-}: {
-  title: string;
-  count?: number;
-}) {
-  return (
-    <div className="text-[11px] tracking-[0.12em] text-green mt-1 mb-1.5">
-      [ {title} ]
-      {count !== undefined ? <span> ( {count} )</span> : null}
-    </div>
-  );
-}
-
 interface RemoteListItem {
   key: string;
   title: React.ReactNode;
@@ -238,20 +229,20 @@ function RemoteList({
   emptyText: string;
 }) {
   if (loading) {
-    return <p className="text-faint text-xs px-2 py-1 mb-4">loading…</p>;
+    return <p className="text-faint text-[13px] px-2 py-1 mb-4">loading…</p>;
   }
   if (error) {
     return (
-      <p className="text-coral text-xs px-2 py-1 mb-4">
+      <p className="text-coral text-[13px] px-2 py-1 mb-4">
         unreachable — {(error as Error).message}
       </p>
     );
   }
   if (items.length === 0) {
-    return <p className="text-faint text-xs px-2 py-1 mb-4">{emptyText}</p>;
+    return <p className="text-faint text-[13px] px-2 py-1 mb-4">{emptyText}</p>;
   }
   return (
-    <div className="flex flex-col mb-4">
+    <div className="flex flex-col max-w-3xl mb-4">
       {items.map((item) => (
         <ListItem
           key={item.key}

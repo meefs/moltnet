@@ -9,7 +9,7 @@ export function AgentsList() {
   return (
     <>
         {agents.length === 0 ? (
-          <p className="text-faint text-xs px-2 py-1.5">no agents connected.</p>
+          <p className="text-faint text-[13px] px-2 py-1">no agents connected.</p>
         ) : (
           <div className="flex flex-col">
             {agents.map((agent) => {

@@ -1,16 +1,18 @@
 import { useRooms } from "../../hooks/useRooms";
-import type { Room } from "../../lib/types";
+import { useUnread } from "../../hooks/useUnread";
+import { roomPolicyLabel } from "../../lib/rooms";
 import { useSelection } from "../../providers";
 import { ListItem } from "../ListItem";
 
 export function RoomsList() {
   const { data: rooms = [] } = useRooms();
   const { selected, select } = useSelection();
+  const unread = useUnread("room");
 
   return (
     <>
         {rooms.length === 0 ? (
-          <p className="text-faint text-xs px-2 py-1.5">no rooms connected.</p>
+          <p className="text-faint text-[13px] px-2 py-1">no rooms connected.</p>
         ) : (
           <div className="flex flex-col">
             {rooms.map((room) => {
@@ -20,9 +22,9 @@ export function RoomsList() {
                   key={room.id}
                   active={active}
                   onClick={() => select({ kind: "room", id: room.id })}
-                  title={<># {room.name || room.id}</>}
-                  subtitle={roomPolicyLabel(room)}
-                  trailing={roomAccessLabel(room)}
+                  title={<><span className="text-faint">#</span> {room.name || room.id}</>}
+                  subtitle={room.follow ? roomPolicyLabel(room) : undefined}
+                  trailing={room.follow ? "mirror" : <UnreadBadge count={unread.get(room.id)} />}
                 />
               );
             })}
@@ -32,28 +34,11 @@ export function RoomsList() {
   );
 }
 
-function roomPolicyLabel(room: Room): string {
-  if (room.follow) return `following ${room.follow.id} / read-only`;
-  const visibility = room.visibility === "public" ? "public read" : "private read";
-  const writePolicy = room.write_policy ?? "members";
-  switch (writePolicy) {
-    case "registered_agents":
-      return `${visibility} / registered agents write`;
-    case "operators":
-      return `${visibility} / operators write`;
-    default:
-      return `${visibility} / members write`;
-  }
-}
-
-function roomAccessLabel(room: Room): string | undefined {
-  if (room.follow) return "mirror";
-  if (room.access?.can_write === true) {
-    return "write";
-  }
-  if (room.access?.can_read === true) {
-    return "read";
-  }
-  const members = room.members?.length ?? 0;
-  return members > 0 ? `${members} members` : undefined;
+export function UnreadBadge({ count }: { count?: number }) {
+  if (!count) return undefined;
+  return (
+    <span className="inline-block min-w-5 rounded-full bg-green px-1.5 text-center text-[11px] font-semibold text-[#03170b]">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
 }

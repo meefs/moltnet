@@ -16,7 +16,7 @@ describe("follow author provenance", () => {
       created_at: "2026-10-24T10:00:00Z", parts: [{ kind: "text", text: "hello" }],
     } as Message;
     render(<TimelineMessage message={message} networkId="local" />);
-    expect(screen.getByText(`[${id}]`)).toBeTruthy();
+    expect(screen.getByText(id)).toBeTruthy();
     expect(screen.getByText(/via good-follow/)).toBeTruthy();
     expect(screen.getByTitle('arrived through the follow "good-follow"')).toBeTruthy();
   });

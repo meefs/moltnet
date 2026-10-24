@@ -1,5 +1,6 @@
 import { Router } from "wouter";
 import { Content } from "./components/Content";
+import { MembersPanel } from "./components/Members";
 import { Sidebar } from "./components/Sidebar";
 import { StatusBar } from "./components/StatusBar";
 import { TopBar } from "./components/TopBar";
@@ -12,9 +13,10 @@ export function App() {
         <EventStreamProvider>
           <SelectionProvider>
             <TopBar />
-            <main className="grid grid-cols-[340px_minmax(0,1fr)] gap-4 px-4 py-3.5 min-h-0 overflow-hidden">
+            <main className="grid grid-cols-[248px_minmax(0,1fr)_auto] min-h-0 overflow-hidden">
               <Sidebar />
               <Content />
+              <MembersPanel />
             </main>
             <StatusBar />
           </SelectionProvider>

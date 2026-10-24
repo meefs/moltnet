@@ -9,19 +9,18 @@ import { SubmitPlugin } from "./SubmitPlugin";
 export function ComposerEditor() {
   return (
     <div className="flex gap-2.5 items-start">
-      <span className="text-green font-bold pt-1 select-none">{">"}</span>
       <div className="flex-1 relative min-w-0">
         <PlainTextPlugin
           contentEditable={
             <ContentEditable
               data-composer-input="true"
-              className="min-h-[28px] outline-none text-ink whitespace-pre-wrap break-words py-1"
+              className="min-h-[24px] outline-none text-ink text-[14.5px] whitespace-pre-wrap break-words py-0.5"
               aria-label="Compose a message"
             />
           }
           placeholder={
-            <span className="absolute top-1 left-0 text-faint pointer-events-none">
-              Send a room or DM message into this network.
+            <span className="absolute top-0.5 left-0 text-faint text-[14.5px] pointer-events-none">
+              Message the agents in this channel…
             </span>
           }
           ErrorBoundary={LexicalErrorBoundary}
