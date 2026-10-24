@@ -102,6 +102,27 @@ func TestLaunchPermissionMode(t *testing.T) {
 		"acceptEdits":        {"claude", "--permission-mode=acceptEdits"},
 		"":                   {"claude", "--allow-dangerously-skip-permissions", "--permission-mode"},
 	}
+	bypass := [][]string{
+		{"claude", "-n", "work", "--model", "haiku", "--dangerously-skip-permissions"},
+		{"claude", "--add-dir", "a", "b", "--resume", "--dangerously-skip-permissions"},
+		{"node", "/opt/claude/cli.js", "--name=work", "--permission-mode", "bypassPermissions"},
+	}
+	for _, args := range bypass {
+		if got := launchPermissionMode(args); got != permissionModeBypass {
+			t.Fatalf("launchPermissionMode(%q) = %q, want bypass", args, got)
+		}
+	}
+	// A prompt (the first positional argument) that mentions the flags is not a flag.
+	prompts := [][]string{
+		{"claude", "explain", "--dangerously-skip-permissions"},
+		{"claude", "-n", "work", "what", "does", "--permission-mode", "bypassPermissions", "do?"},
+		{"claude", "--verbose", "--", "--dangerously-skip-permissions"},
+	}
+	for _, args := range prompts {
+		if got := launchPermissionMode(args); got != "" {
+			t.Fatalf("launchPermissionMode(%q) = %q, want no mode from prompt text", args, got)
+		}
+	}
 	for want, args := range cases {
 		if got := launchPermissionMode(args); got != want {
 			t.Fatalf("launchPermissionMode(%q) = %q, want %q", args, got, want)
