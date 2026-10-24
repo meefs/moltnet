@@ -109,7 +109,7 @@ func (c *httpTransport) doJSON(request *http.Request, target any) error {
 	defer response.Body.Close()
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return fmt.Errorf("paired network returned %s", response.Status)
+		return &ResponseError{Code: response.StatusCode}
 	}
 
 	if err := json.NewDecoder(io.LimitReader(response.Body, maxPairingResponseBytes)).Decode(target); err != nil {
