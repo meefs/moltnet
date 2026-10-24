@@ -36,13 +36,14 @@ func (w *worker) sync(ctx context.Context, networkID string) error {
 			if err := w.sink.EnsureFollowRoom(ctx, w.config, room); err != nil {
 				return err
 			}
-			roomState, err := w.sink.GetFollowCheckpoint(ctx, w.historyKey(networkID, room.ID, ""))
+			threadBaselineKey := w.historyKey(networkID, room.ID, "") + "/threads-baselined"
+			threadBaseline, err := w.sink.GetFollowCheckpoint(ctx, threadBaselineKey)
 			if err != nil {
 				return err
 			}
 			count, err := w.syncHistory(ctx, networkID, room.ID, "", w.config.BackfillLimit())
 			threadBackfill := w.config.BackfillLimit()
-			if roomState.Initialized {
+			if threadBaseline.Initialized {
 				threadBackfill = math.MaxInt
 			}
 			if err != nil {
@@ -68,6 +69,13 @@ func (w *worker) sync(ctx context.Context, networkID string) error {
 					return fmt.Errorf("origin returned non-advancing thread cursor")
 				}
 				threadBefore = threads.Page.NextBefore
+			}
+			// Room history can finish before thread discovery fails. Only a complete
+			// thread pass establishes which future threads should use live semantics.
+			if !threadBaseline.Initialized {
+				if err := w.sink.SetFollowCheckpoint(ctx, threadBaselineKey, Checkpoint{Initialized: true}); err != nil {
+					return err
+				}
 			}
 			statuses = append(statuses, protocol.FollowRoomStatus{RemoteRoomID: room.ID, LocalRoomID: w.config.LocalRoomID(room.ID), MessageCount: count})
 		}
