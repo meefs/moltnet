@@ -143,10 +143,42 @@ func writeEndOfTurnFile(file endOfTurnFile) (bool, error) {
 	if err := os.MkdirAll(filepath.Dir(file.path), 0o755); err != nil {
 		return false, fmt.Errorf("create end-of-turn directory: %w", err)
 	}
+	if file.mode == turnFileBlock {
+		return true, writeFileAtomic(file.path, []byte(content), perm)
+	}
 	if err := os.WriteFile(file.path, []byte(content), perm); err != nil {
 		return false, fmt.Errorf("write end-of-turn file: %w", err)
 	}
 	return true, nil
+}
+
+// writeFileAtomic replaces a user-owned file through a temp file and rename
+// in the same directory, so a crash never leaves it half-written. A symlink
+// is resolved first, so its target is updated and the link stays a link.
+func writeFileAtomic(path string, content []byte, perm os.FileMode) error {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	temp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".moltnet-*")
+	if err != nil {
+		return fmt.Errorf("write end-of-turn file: %w", err)
+	}
+	defer os.Remove(temp.Name())
+	if _, err := temp.Write(content); err != nil {
+		temp.Close()
+		return fmt.Errorf("write end-of-turn file: %w", err)
+	}
+	if err := temp.Chmod(perm); err != nil {
+		temp.Close()
+		return fmt.Errorf("write end-of-turn file: %w", err)
+	}
+	if err := temp.Close(); err != nil {
+		return fmt.Errorf("write end-of-turn file: %w", err)
+	}
+	if err := os.Rename(temp.Name(), path); err != nil {
+		return fmt.Errorf("write end-of-turn file: %w", err)
+	}
+	return nil
 }
 
 // withTurnBlock replaces Moltnet's marked block in existing, or appends it,

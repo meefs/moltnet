@@ -176,3 +176,36 @@ func TestInstallMoltnetSkillLeavesExistingOpencodeConfig(t *testing.T) {
 		t.Fatalf("missing note, stderr = %q", notes.String())
 	}
 }
+
+func TestInstallMoltnetSkillUpdatesSymlinkedGeminiMDTarget(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	target := filepath.Join(root, "shared", "rules.md")
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, []byte("shared rules\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(root, "GEMINI.md")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := installMoltnetSkill("antigravity", root, "skill"); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Lstat(link); err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("GEMINI.md is no longer a symlink: %v %v", info, err)
+	}
+	got, err := os.ReadFile(target)
+	if err != nil || !strings.HasPrefix(string(got), "shared rules\n\n"+turnBlockBegin) {
+		t.Fatalf("symlink target = %q, %v", got, err)
+	}
+	if info, _ := os.Stat(target); info.Mode().Perm() != 0o640 {
+		t.Fatalf("target mode = %v, want 0640", info.Mode().Perm())
+	}
+	entries, _ := os.ReadDir(filepath.Dir(target))
+	if len(entries) != 1 {
+		t.Fatalf("temp files left behind: %v", entries)
+	}
+}
