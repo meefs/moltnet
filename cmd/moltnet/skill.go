@@ -103,7 +103,15 @@ func installMoltnetSkill(runtime string, workspace string, content string) (stri
 		targetPaths = []string{filepath.Join(root, ".agents", "skills", "moltnet", "SKILL.md")}
 	}
 
-	return writeSkillFiles(targetPaths, content)
+	written, err := writeSkillFiles(targetPaths, content)
+	if err != nil {
+		return "", err
+	}
+	turnPaths, err := writeEndOfTurnFiles(runtime, root)
+	if err != nil {
+		return "", err
+	}
+	return strings.Join(append([]string{written}, turnPaths...), ", "), nil
 }
 
 // installMoltnetSkillGlobal is skill install --global's path (PLAN 7C.4):
