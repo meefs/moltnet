@@ -52,7 +52,7 @@ async function getJSON<T>(path: string): Promise<T> {
   const response = await fetch(path);
   recordLatency(Math.round(performance.now() - start));
   if (!response.ok) {
-    throw new Error(`${path} returned ${response.status}`);
+    throw new ApiError(response.status, `${path} returned ${response.status}`);
   }
   return (await response.json()) as T;
 }

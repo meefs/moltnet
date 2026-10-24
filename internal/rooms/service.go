@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/noopolis/moltnet/internal/follow"
 	"github.com/noopolis/moltnet/internal/observability"
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -49,6 +50,8 @@ type ServiceConfig struct {
 }
 
 type Service struct {
+	follows                   *follow.Manager
+	followApplyMu             sync.Mutex
 	allowHumanIngress         bool
 	debugEvents               bool
 	disableDirectMessages     bool
@@ -134,7 +137,7 @@ func NewService(config ServiceConfig) *Service {
 	}
 	lifecycleCtx, lifecycleCancel := context.WithCancel(context.Background())
 
-	return &Service{
+	service := &Service{
 		allowHumanIngress:         config.AllowHumanIngress,
 		debugEvents:               config.DebugEvents,
 		disableDirectMessages:     config.DisableDirectMessages,
@@ -163,9 +166,14 @@ func NewService(config ServiceConfig) *Service {
 		lifecycleCancel:           lifecycleCancel,
 		now:                       now,
 	}
+	service.follows = follow.New(service)
+	return service
 }
 
 func (s *Service) Close() error {
+	if s.follows != nil {
+		s.follows.Close()
+	}
 	if s.lifecycleCancel != nil {
 		s.lifecycleCancel()
 	}

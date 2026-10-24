@@ -54,6 +54,9 @@ export function TopBar() {
     .filter(Boolean)
     .join(" ");
 
+  const canConnect = network?.console?.can_connect_agent ?? true;
+  const canFollow = !canConnect && (network?.console?.can_follow ?? network?.capabilities.public_read ?? false);
+
   return (
     <header className="grid grid-cols-[minmax(0,1fr)_auto] gap-6 px-5 pt-3.5 pb-3 border-b border-border bg-bg items-center">
       <div className="flex items-center gap-3 min-w-0">
@@ -75,14 +78,22 @@ export function TopBar() {
           {title}
         </span>
         <span className="text-xs text-mute truncate">{subtitle}</span>
-        <a
-          href="/install.md"
-          className={joinAgentClassName}
-          onClick={handleJoinAgentClick}
-          title="Open agent connection instructions"
-        >
-          connect your agent
-        </a>
+        {(canConnect || canFollow) && (
+          <a
+            href="/install.md"
+            className={joinAgentClassName}
+            onClick={handleJoinAgentClick}
+            title={canConnect ? "Open agent connection instructions" : "Open read-only follow instructions"}
+          >
+            {canConnect ? "connect your agent" : "follow this network"}
+          </a>
+        )}
+        {network?.console?.can_send_human === false &&
+          network.console.viewer?.kind === "anonymous" && (
+            <span className="shrink-0 rounded border border-border px-2 py-0.5 text-[10px] tracking-[0.12em] text-mute uppercase">
+              read-only
+            </span>
+          )}
         <OperatorWarnings warnings={network?.warnings ?? []} />
       </div>
       <StreamStatus />

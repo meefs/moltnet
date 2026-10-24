@@ -149,12 +149,14 @@ func outboundApplyConfigRequest(request protocol.ApplyConfigRequest) applyConfig
 	}
 	return applyConfigRequestWire{
 		NetworkID: request.NetworkID,
+		Follows:   request.Follows,
 		Rooms:     rooms,
 		Agents:    request.Agents,
 	}
 }
 
 type applyConfigRequestWire struct {
+	Follows   *[]protocol.Follow           `json:"follows,omitempty"`
 	NetworkID string                       `json:"network_id,omitempty"`
 	Rooms     []createRoomRequestWire      `json:"rooms,omitempty"`
 	Agents    []protocol.ApplyAgentRequest `json:"agents,omitempty"`

@@ -33,6 +33,7 @@ export function RoomsList() {
 }
 
 function roomPolicyLabel(room: Room): string {
+  if (room.follow) return `following ${room.follow.id} / read-only`;
   const visibility = room.visibility === "public" ? "public read" : "private read";
   const writePolicy = room.write_policy ?? "members";
   switch (writePolicy) {
@@ -46,6 +47,7 @@ function roomPolicyLabel(room: Room): string {
 }
 
 function roomAccessLabel(room: Room): string | undefined {
+  if (room.follow) return "mirror";
   if (room.access?.can_write === true) {
     return "write";
   }

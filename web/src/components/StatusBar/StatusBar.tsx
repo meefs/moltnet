@@ -51,9 +51,11 @@ export function StatusBar() {
   return (
     <footer className="flex justify-between gap-6 px-5 py-2 border-t border-border text-[11px] text-mute bg-bg tabular-nums flex-wrap">
       <div className="flex gap-[22px] flex-wrap items-center">
-        <StatusItem label="session:" value={network?.id ?? "—"} />
-        <StatusItem label="user:" value="human" />
-        <StatusItem label="mode:" value="operator" />
+        <StatusItem label="network:" value={network?.id ?? "—"} />
+        <StatusItem label="viewer:" value={
+          network?.console?.viewer?.kind === "anonymous"
+            ? "public" : network?.console?.viewer?.id ?? "—"
+        } />
         <StatusItem
           label="latency:"
           value={latency != null ? `${latency}ms` : "—"}

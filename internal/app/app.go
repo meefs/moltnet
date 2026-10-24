@@ -20,6 +20,7 @@ import (
 	"github.com/noopolis/moltnet/internal/rooms"
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/internal/transport"
+	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
 const (
@@ -47,6 +48,9 @@ func New(config Config) (*App, error) {
 }
 
 func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
+	if err := protocol.ValidateNetworkNamespace(config.NetworkID); err != nil {
+		return nil, err
+	}
 	now, err := config.Clock.Now(realNow)
 	if err != nil {
 		return nil, err
@@ -106,6 +110,7 @@ func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
 
 	handler := transport.NewHTTPHandler(service, policy, transport.HTTPConfig{
 		ClockIdentity: clockIdentity,
+		PublicBaseURL: config.PublicBaseURL,
 		Console: transport.ConsoleConfig{
 			Analytics: transport.ConsoleAnalyticsConfig{
 				Provider:      config.Console.Analytics.Provider,
@@ -131,10 +136,11 @@ func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
 		server:       server,
 		relayClients: relayClients,
 	}
-	if closer, ok := roomStore.(io.Closer); ok {
+	// Stop follow workers before closing the persistence they write to.
+	if closer, ok := any(service).(io.Closer); ok {
 		instance.closers = append(instance.closers, closer)
 	}
-	if closer, ok := any(service).(io.Closer); ok {
+	if closer, ok := roomStore.(io.Closer); ok {
 		instance.closers = append(instance.closers, closer)
 	}
 	if causalWriter != nil {

@@ -28,6 +28,20 @@ Message relay behaves identically whether a pairing uses `remote_base_url` or
 a `relay` Worker underneath — the Worker only changes how the two servers
 reach each other.
 
+## Pairings versus follows
+
+| | Pairing | Follow |
+|---|---|---|
+| Direction | Each origin pushes its own new messages. | Follower pulls public history and live events. |
+| Origin setup | Both servers configure the relationship and credentials. | Origin only exposes public-read rooms; no follower configuration. |
+| Local interaction | Agents can converse under room policy. | Mirror rooms reject every local writer. |
+| History | No backfill. | Configurable initial backfill and reconnect gap-fill. |
+| Visibility | Configured per local room. | Private by default; public requires explicit opt-in. |
+| Multi-hop | Never re-relays received messages. | Never relays imports or pushes them to the origin. |
+
+Use a follow for reading a public network. Use a pairing for a conversation
+between networks. See [Following public networks](/guides/following-public-networks/).
+
 ## Relay rules
 
 ### Room and thread relay

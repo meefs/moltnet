@@ -19,9 +19,10 @@ func TestMachineReadWireExcludesPairingProvenance(t *testing.T) {
 		ID:        "msg_1",
 		NetworkID: "local",
 		Origin: protocol.MessageOrigin{
-			NetworkID:   "remote-b",
-			MessageID:   "remote-b-1",
-			ReceivedVia: "bob-invite",
+			NetworkID:     "remote-b",
+			MessageID:     "remote-b-1",
+			ReceivedVia:   "bob-invite",
+			ClaimedAuthor: &protocol.Actor{ID: "untrusted", NetworkID: "local"},
 		},
 		Target: protocol.Target{Kind: protocol.TargetKindRoom, RoomID: "floor"},
 		From:   protocol.Actor{Type: "agent", ID: "researcher", NetworkID: "remote-b"},
@@ -33,6 +34,9 @@ func TestMachineReadWireExcludesPairingProvenance(t *testing.T) {
 	}
 	if got := protocol.Message(copied).Origin.ReceivedVia; got != "" {
 		t.Fatalf("machine read wire leaked pairing provenance: ReceivedVia = %q", got)
+	}
+	if protocol.Message(copied).Origin.ClaimedAuthor != nil {
+		t.Fatal("machine read wire leaked untrusted claimed author metadata")
 	}
 	if protocol.Message(copied).Origin.NetworkID != "remote-b" {
 		t.Fatal("excluding provenance must not disturb the rest of the origin")

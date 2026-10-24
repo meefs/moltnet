@@ -44,6 +44,8 @@ type Config struct {
 	NetworkID             string
 	NetworkName           string
 	Pairings              []protocol.Pairing
+	Follows               []protocol.Follow
+	PublicBaseURL         string
 	Rooms                 []RoomConfig
 	Storage               StorageConfig
 	Version               string

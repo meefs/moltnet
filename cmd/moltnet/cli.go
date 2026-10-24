@@ -55,6 +55,8 @@ func run(ctx context.Context, args []string, buildVersion string) error {
 		return runMachine(ctx, rest)
 	case "machine-contract":
 		return runMachineContract(rest)
+	case "follow":
+		return runFollowCommand(ctx, rest)
 	case "pair":
 		return runPairCommand(ctx, rest)
 	case "relay":

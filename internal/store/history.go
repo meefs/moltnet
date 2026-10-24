@@ -102,6 +102,7 @@ func (s *MemoryStore) AppendMessageWithLifecycleContext(_ context.Context, messa
 		}
 	}
 	s.messageIDs[message.ID] = struct{}{}
+	s.recordRoomActivity(message)
 
 	return lifecycle, nil
 }

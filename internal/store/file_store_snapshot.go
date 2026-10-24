@@ -3,20 +3,22 @@ package store
 import (
 	"time"
 
+	"github.com/noopolis/moltnet/internal/follow"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
 type snapshot struct {
-	DeliveryCursors map[string]int                           `json:"attachment_delivery_cursors,omitempty"`
-	DeliveryEvents  []protocol.Event                         `json:"attachment_delivery_events,omitempty"`
-	Rooms           map[string]protocol.Room                 `json:"rooms"`
-	RemovedRooms    map[string]time.Time                     `json:"removed_rooms,omitempty"`
-	RoomMessages    map[string][]protocol.Message            `json:"room_messages"`
-	Threads         map[string]protocol.Thread               `json:"threads"`
-	ThreadMessages  map[string][]protocol.Message            `json:"thread_messages"`
-	DirectMessages  map[string][]protocol.Message            `json:"direct_messages"`
-	DirectMembers   map[string]map[string]struct{}           `json:"direct_members"`
-	Agents          map[string]fileSnapshotAgentRegistration `json:"agents,omitempty"`
+	FollowCheckpoints map[string]follow.Checkpoint             `json:"follow_checkpoints,omitempty"`
+	DeliveryCursors   map[string]int                           `json:"attachment_delivery_cursors,omitempty"`
+	DeliveryEvents    []protocol.Event                         `json:"attachment_delivery_events,omitempty"`
+	Rooms             map[string]protocol.Room                 `json:"rooms"`
+	RemovedRooms      map[string]time.Time                     `json:"removed_rooms,omitempty"`
+	RoomMessages      map[string][]protocol.Message            `json:"room_messages"`
+	Threads           map[string]protocol.Thread               `json:"threads"`
+	ThreadMessages    map[string][]protocol.Message            `json:"thread_messages"`
+	DirectMessages    map[string][]protocol.Message            `json:"direct_messages"`
+	DirectMembers     map[string]map[string]struct{}           `json:"direct_members"`
+	Agents            map[string]fileSnapshotAgentRegistration `json:"agents,omitempty"`
 }
 
 type fileSnapshotAgentRegistration struct {
@@ -154,16 +156,17 @@ func (s *FileStore) snapshot() snapshot {
 	defer s.MemoryStore.mu.RUnlock()
 
 	return snapshot{
-		DeliveryCursors: cloneDeliveryCursors(s.MemoryStore.deliveryCursors),
-		DeliveryEvents:  append([]protocol.Event(nil), s.MemoryStore.deliveryEvents...),
-		Rooms:           cloneRooms(s.MemoryStore.rooms),
-		RemovedRooms:    snapshotRemovedRooms(s.MemoryStore.removedRooms),
-		RoomMessages:    cloneMessages(s.MemoryStore.roomMessages),
-		Threads:         cloneThreads(s.MemoryStore.threads),
-		ThreadMessages:  cloneMessages(s.MemoryStore.threadMessages),
-		DirectMessages:  cloneMessages(s.MemoryStore.directMessages),
-		DirectMembers:   cloneMembers(s.MemoryStore.directMembers),
-		Agents:          snapshotAgents(s.MemoryStore.agents),
+		FollowCheckpoints: cloneFollowCheckpoints(s.MemoryStore.followCheckpoints),
+		DeliveryCursors:   cloneDeliveryCursors(s.MemoryStore.deliveryCursors),
+		DeliveryEvents:    append([]protocol.Event(nil), s.MemoryStore.deliveryEvents...),
+		Rooms:             cloneRooms(s.MemoryStore.rooms),
+		RemovedRooms:      snapshotRemovedRooms(s.MemoryStore.removedRooms),
+		RoomMessages:      cloneMessages(s.MemoryStore.roomMessages),
+		Threads:           cloneThreads(s.MemoryStore.threads),
+		ThreadMessages:    cloneMessages(s.MemoryStore.threadMessages),
+		DirectMessages:    cloneMessages(s.MemoryStore.directMessages),
+		DirectMembers:     cloneMembers(s.MemoryStore.directMembers),
+		Agents:            snapshotAgents(s.MemoryStore.agents),
 	}
 }
 
@@ -171,6 +174,7 @@ func (s *FileStore) restore(state snapshot) {
 	s.MemoryStore.mu.Lock()
 	defer s.MemoryStore.mu.Unlock()
 
+	s.MemoryStore.followCheckpoints = cloneFollowCheckpoints(state.FollowCheckpoints)
 	s.MemoryStore.rooms = cloneRooms(state.Rooms)
 	s.MemoryStore.deliveryCursors = cloneDeliveryCursors(state.DeliveryCursors)
 	s.MemoryStore.deliveryEvents = append([]protocol.Event(nil), state.DeliveryEvents...)
@@ -182,6 +186,7 @@ func (s *FileStore) restore(state snapshot) {
 	s.MemoryStore.directMessages = cloneMessages(state.DirectMessages)
 	s.MemoryStore.directMembers = cloneMembers(state.DirectMembers)
 	s.MemoryStore.agents = protocolAgents(state.Agents)
+	s.MemoryStore.rebuildRoomActivity()
 	s.MemoryStore.messageIDs = collectMessageIDs(
 		s.MemoryStore.roomMessages,
 		s.MemoryStore.threadMessages,
@@ -194,16 +199,17 @@ func snapshotFromMemoryStore(memory *MemoryStore) snapshot {
 	defer memory.mu.RUnlock()
 
 	return snapshot{
-		DeliveryCursors: cloneDeliveryCursors(memory.deliveryCursors),
-		DeliveryEvents:  append([]protocol.Event(nil), memory.deliveryEvents...),
-		Rooms:           cloneRooms(memory.rooms),
-		RemovedRooms:    snapshotRemovedRooms(memory.removedRooms),
-		RoomMessages:    cloneMessages(memory.roomMessages),
-		Threads:         cloneThreads(memory.threads),
-		ThreadMessages:  cloneMessages(memory.threadMessages),
-		DirectMessages:  cloneMessages(memory.directMessages),
-		DirectMembers:   cloneMembers(memory.directMembers),
-		Agents:          snapshotAgents(memory.agents),
+		FollowCheckpoints: cloneFollowCheckpoints(memory.followCheckpoints),
+		DeliveryCursors:   cloneDeliveryCursors(memory.deliveryCursors),
+		DeliveryEvents:    append([]protocol.Event(nil), memory.deliveryEvents...),
+		Rooms:             cloneRooms(memory.rooms),
+		RemovedRooms:      snapshotRemovedRooms(memory.removedRooms),
+		RoomMessages:      cloneMessages(memory.roomMessages),
+		Threads:           cloneThreads(memory.threads),
+		ThreadMessages:    cloneMessages(memory.threadMessages),
+		DirectMessages:    cloneMessages(memory.directMessages),
+		DirectMembers:     cloneMembers(memory.directMembers),
+		Agents:            snapshotAgents(memory.agents),
 	}
 }
 
@@ -211,6 +217,7 @@ func memoryStoreFromSnapshot(state snapshot) *MemoryStore {
 	memory := NewMemoryStore()
 	memory.deliveryCursors = cloneDeliveryCursors(state.DeliveryCursors)
 	memory.deliveryEvents = append([]protocol.Event(nil), state.DeliveryEvents...)
+	memory.followCheckpoints = cloneFollowCheckpoints(state.FollowCheckpoints)
 	memory.rooms = cloneRooms(state.Rooms)
 	memory.removedRooms = cloneRemovedRooms(state.RemovedRooms)
 	memory.roomMessages = cloneMessages(state.RoomMessages)
@@ -220,6 +227,7 @@ func memoryStoreFromSnapshot(state snapshot) *MemoryStore {
 	memory.directMessages = cloneMessages(state.DirectMessages)
 	memory.directMembers = cloneMembers(state.DirectMembers)
 	memory.agents = protocolAgents(state.Agents)
+	memory.rebuildRoomActivity()
 	memory.messageIDs = collectMessageIDs(memory.roomMessages, memory.threadMessages, memory.directMessages)
 	return memory
 }

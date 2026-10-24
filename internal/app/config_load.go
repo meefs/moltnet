@@ -134,6 +134,8 @@ func defaultConfig(version string) Config {
 
 func mergeFileConfig(config Config, fileConfig rawConfigFile) Config {
 	config.Clock = fileConfig.Clock
+	config.PublicBaseURL = normalizedPublicBaseURL(fileConfig.Server.BaseURL)
+	config.Follows = append([]protocol.Follow(nil), fileConfig.Follows...)
 	if fileConfig.Network.ID != "" {
 		config.NetworkID = fileConfig.Network.ID
 	}
@@ -194,6 +196,9 @@ func mergeFileConfig(config Config, fileConfig rawConfigFile) Config {
 }
 
 func mergeEnvConfig(config Config) (Config, error) {
+	if err := mergeEnvFollows(&config); err != nil {
+		return Config{}, err
+	}
 	if err := mergeEnvClock(&config); err != nil {
 		return Config{}, err
 	}

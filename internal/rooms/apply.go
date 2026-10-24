@@ -13,6 +13,8 @@ func (s *Service) ApplyConfigContext(
 	ctx context.Context,
 	request protocol.ApplyConfigRequest,
 ) (protocol.ApplyConfigResult, error) {
+	s.followApplyMu.Lock()
+	defer s.followApplyMu.Unlock()
 	if err := s.validateApplyConfigRequest(request); err != nil {
 		return protocol.ApplyConfigResult{}, err
 	}
@@ -26,6 +28,9 @@ func (s *Service) ApplyConfigContext(
 		return protocol.ApplyConfigResult{}, err
 	}
 
+	if request.Follows != nil {
+		s.follows.Apply(s.lifecycleCtx, *request.Follows)
+	}
 	return protocol.ApplyConfigResult{
 		Applied: true,
 		Agents:  agents,
@@ -59,6 +64,15 @@ func (s *Service) validateApplyConfigRequest(request protocol.ApplyConfigRequest
 		}
 	}
 
+	if request.Follows != nil {
+		ids := make([]string, 0, len(request.Rooms))
+		for _, room := range request.Rooms {
+			ids = append(ids, room.ID)
+		}
+		if err := protocol.ValidateFollows(*request.Follows, ids); err != nil {
+			return invalidMessageRequestError(err.Error())
+		}
+	}
 	return nil
 }
 

@@ -21,6 +21,7 @@ type rawConfigFile struct {
 	Server   rawServerConfig           `json:"server" yaml:"server"`
 	Storage  rawStorageConfig          `json:"storage" yaml:"storage"`
 	Rooms    []RoomConfig              `json:"rooms" yaml:"rooms"`
+	Follows  []protocol.Follow         `json:"follows" yaml:"follows"`
 	Pairings []protocol.Pairing        `json:"pairings" yaml:"pairings"`
 }
 
@@ -30,6 +31,7 @@ type rawNetworkConfig struct {
 }
 
 type rawServerConfig struct {
+	BaseURL             string           `json:"base_url,omitempty" yaml:"base_url,omitempty"`
 	ListenAddr          string           `json:"listen_addr" yaml:"listen_addr"`
 	DataPath            string           `json:"data_path,omitempty" yaml:"data_path,omitempty"`
 	Console             rawConsoleConfig `json:"console,omitempty" yaml:"console,omitempty"`
@@ -153,6 +155,9 @@ func decodeYAMLConfig(contents []byte, target *rawConfigFile) error {
 }
 
 func validateConfigFile(config rawConfigFile) error {
+	if err := protocol.ValidateNetworkNamespace(config.Network.ID); err != nil {
+		return err
+	}
 	if config.Clock != nil {
 		if err := config.Clock.Validate(); err != nil {
 			return err
@@ -172,6 +177,9 @@ func validateConfigFile(config rawConfigFile) error {
 		return err
 	}
 	if err := validateConsole(config.Server.Console); err != nil {
+		return err
+	}
+	if err := validateConfigFollows(config.Follows, config.Rooms); err != nil {
 		return err
 	}
 	if err := validatePairings(config.Pairings); err != nil {
@@ -224,6 +232,11 @@ func validateStorage(storage rawStorageConfig) error {
 // listen_addr's syntax at all, so a malformed value silently rode along
 // until the server tried and failed to bind.
 func validateServer(server rawServerConfig) error {
+	if server.BaseURL != "" {
+		if err := protocol.ValidateFollowBaseURL(server.BaseURL); err != nil {
+			return fmt.Errorf("server.base_url: %w", err)
+		}
+	}
 	if strings.TrimSpace(server.ListenAddr) == "" {
 		return nil
 	}

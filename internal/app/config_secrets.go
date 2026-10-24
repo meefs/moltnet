@@ -15,6 +15,9 @@ func validatePairings(pairings []protocol.Pairing) error {
 		if strings.TrimSpace(pairing.ID) == "" {
 			return fmt.Errorf("%s.id is required", name)
 		}
+		if err := protocol.ValidateNetworkNamespace(pairing.RemoteNetworkID); err != nil {
+			return fmt.Errorf("%s.remote_network_id: %w", name, err)
+		}
 		hasRemoteBaseURL := strings.TrimSpace(pairing.RemoteBaseURL) != ""
 		hasRelayURL := pairing.Relay != nil && strings.TrimSpace(pairing.Relay.URL) != ""
 		if hasRemoteBaseURL && hasRelayURL {

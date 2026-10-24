@@ -13,7 +13,12 @@ func networkForRequest(policy *authn.Policy, request *http.Request, network prot
 		network.Capabilities.AgentRegistration = policy.AgentRegistration()
 	}
 	network.Console = &protocol.NetworkConsole{
-		CanSendHuman: canConsoleSendHuman(policy, request, network.Capabilities),
+		CanFollow:       !canConnectAgent(policy, request) && network.Capabilities.PublicRead,
+		CanSendHuman:    canConsoleSendHuman(policy, request, network.Capabilities),
+		Viewer:          consoleViewer(request),
+		CanReadPairings: canReadPairings(policy, request),
+		CanReadDMs:      requestAllowsScopes(policy, request, readScopes),
+		CanConnectAgent: canConnectAgent(policy, request),
 	}
 	return network
 }
@@ -35,4 +40,29 @@ func canConsoleSendHuman(
 		return false
 	}
 	return claims.Allows(authn.ScopeWrite)
+}
+
+func consoleViewer(request *http.Request) protocol.ConsoleViewer {
+	claims, ok := authn.ClaimsFromContext(request.Context())
+	if !ok {
+		return protocol.ConsoleViewer{Kind: "anonymous"}
+	}
+	if claims.AgentToken() {
+		ids := claims.AgentIDs()
+		if len(ids) == 1 {
+			return protocol.ConsoleViewer{Kind: "agent", ID: ids[0]}
+		}
+		return protocol.ConsoleViewer{Kind: "agent"}
+	}
+	return protocol.ConsoleViewer{Kind: "token", ID: claims.TokenID}
+}
+
+// Public identity discovery keeps valid caller claims even when they lack
+// metadata read scopes. Public access already permits this response; dropping
+// claims would mislabel a write-only token as anonymous and hide its composer.
+func networkDiscoveryAuth(policy *authn.Policy, verifier agentTokenVerifier, next http.HandlerFunc) http.HandlerFunc {
+	if policy != nil && policy.Enabled() && policy.PublicRead() {
+		return optionalAuthInOpen(policy, verifier, nil, next)
+	}
+	return publicInOpen(policy, verifier, networkScopes, next)
 }

@@ -34,7 +34,18 @@ type Network struct {
 }
 
 type NetworkConsole struct {
-	CanSendHuman bool `json:"can_send_human"`
+	CanFollow       bool          `json:"can_follow"`
+	CanSendHuman    bool          `json:"can_send_human"`
+	Viewer          ConsoleViewer `json:"viewer"`
+	CanReadPairings bool          `json:"can_read_pairings"`
+	CanReadDMs      bool          `json:"can_read_dms"`
+	CanConnectAgent bool          `json:"can_connect_agent"`
+}
+
+// ConsoleViewer identifies the caller without exposing credentials.
+type ConsoleViewer struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id,omitempty"`
 }
 
 type NetworkCapabilities struct {
@@ -59,11 +70,18 @@ type Actor struct {
 }
 
 type MessageOrigin struct {
-	NetworkID string `json:"network_id"`
-	MessageID string `json:"message_id"`
-	// ReceivedVia is the local pairing id an inbound relayed message
-	// actually arrived through, resolved server-side from the presenting
-	// credential. Empty for locally-originated messages.
+	// ClaimedAuthor preserves untrusted author data from a follow import.
+	ClaimedAuthor *Actor `json:"claimed_author,omitempty"`
+	// These follow-import fields are origin testimony, never identity anchors.
+	ClaimedNetworkID          string `json:"claimed_network_id,omitempty"`
+	ClaimedMessageID          string `json:"claimed_message_id,omitempty"`
+	ClaimedDiscoveryNetworkID string `json:"claimed_discovery_network_id,omitempty"`
+	NetworkID                 string `json:"network_id"`
+	MessageID                 string `json:"message_id"`
+	// ReceivedVia is the local pairing id for an inbound relay, resolved
+	// server-side from its credential, or "follow:<id>" for an engine import.
+	// Follow imports stamp NetworkID with FollowNamespace and MessageID with the served ID.
+	// Empty for locally-originated messages.
 	//
 	// This is the ONLY provenance on a relayed message the receiving
 	// operator authored: NetworkID and the sender's own network id are
@@ -117,16 +135,18 @@ type Event struct {
 }
 
 type Room struct {
-	ID          string          `json:"id"`
-	NetworkID   string          `json:"network_id,omitempty"`
-	FQID        string          `json:"fqid,omitempty"`
-	Name        string          `json:"name"`
-	Members     []string        `json:"members,omitempty"`
-	Visibility  string          `json:"visibility,omitempty"`
-	WritePolicy string          `json:"write_policy,omitempty"`
-	Federation  *RoomFederation `json:"federation,omitempty" yaml:"federation,omitempty"`
-	Access      *RoomAccess     `json:"access,omitempty"`
-	CreatedAt   time.Time       `json:"created_at"`
+	Follow        *RoomFollow     `json:"follow,omitempty"`
+	ID            string          `json:"id"`
+	NetworkID     string          `json:"network_id,omitempty"`
+	FQID          string          `json:"fqid,omitempty"`
+	Name          string          `json:"name"`
+	Members       []string        `json:"members,omitempty"`
+	Visibility    string          `json:"visibility,omitempty"`
+	WritePolicy   string          `json:"write_policy,omitempty"`
+	Federation    *RoomFederation `json:"federation,omitempty" yaml:"federation,omitempty"`
+	Access        *RoomAccess     `json:"access,omitempty"`
+	CreatedAt     time.Time       `json:"created_at"`
+	LastMessageAt *time.Time      `json:"last_message_at,omitempty"`
 }
 
 type RoomAccess struct {

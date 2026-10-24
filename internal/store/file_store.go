@@ -334,22 +334,7 @@ func (s *FileStore) load() error {
 		return fmt.Errorf("decode Moltnet store %q: %w", s.path, err)
 	}
 
-	s.MemoryStore.deliveryCursors = cloneDeliveryCursors(snapshot.DeliveryCursors)
-	s.MemoryStore.deliveryEvents = append([]protocol.Event(nil), snapshot.DeliveryEvents...)
-	s.MemoryStore.rooms = cloneRooms(snapshot.Rooms)
-	s.MemoryStore.removedRooms = cloneRemovedRooms(snapshot.RemovedRooms)
-	s.MemoryStore.roomMessages = cloneMessages(snapshot.RoomMessages)
-	s.MemoryStore.threads = cloneThreads(snapshot.Threads)
-	s.MemoryStore.roomThreads = collectRoomThreads(s.MemoryStore.threads)
-	s.MemoryStore.threadMessages = cloneMessages(snapshot.ThreadMessages)
-	s.MemoryStore.directMessages = cloneMessages(snapshot.DirectMessages)
-	s.MemoryStore.directMembers = cloneMembers(snapshot.DirectMembers)
-	s.MemoryStore.agents = protocolAgents(snapshot.Agents)
-	s.MemoryStore.messageIDs = collectMessageIDs(
-		s.MemoryStore.roomMessages,
-		s.MemoryStore.threadMessages,
-		s.MemoryStore.directMessages,
-	)
+	s.restore(snapshot)
 
 	return nil
 }

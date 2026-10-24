@@ -167,3 +167,20 @@ func TestValidatePrivateConfigModeRejectsSymlinks(t *testing.T) {
 		t.Fatal("expected symlink config to be rejected")
 	}
 }
+
+func TestValidatePairingsRejectsFollowNamespace(t *testing.T) {
+	t.Parallel()
+	for _, network := range []string{"follow-peer", "FOLLOW-peer", " follow-peer "} {
+		for _, relay := range []bool{false, true} {
+			pairing := protocol.Pairing{ID: "peer", RemoteNetworkID: network, RemoteBaseURL: "https://peer.example"}
+			if relay {
+				pairing.RemoteBaseURL = ""
+				pairing.Relay = &protocol.PairingRelay{URL: "wss://relay.example", Room: "peer"}
+			}
+			err := validatePairings([]protocol.Pairing{pairing})
+			if err == nil || !strings.Contains(err.Error(), "pairings[0].remote_network_id") || !strings.Contains(err.Error(), "reserved") {
+				t.Fatalf("network %q (relay=%v): expected reserved namespace error, got %v", network, relay, err)
+			}
+		}
+	}
+}

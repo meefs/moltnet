@@ -15,6 +15,7 @@ export interface NetworkWarning {
 }
 
 export interface NetworkCapabilities {
+  public_read?: boolean;
   event_stream?: string;
   message_pagination?: string;
   human_ingress?: boolean;
@@ -25,7 +26,12 @@ export interface NetworkCapabilities {
 }
 
 export interface NetworkConsole {
+  can_follow?: boolean;
   can_send_human?: boolean;
+  viewer?: { kind: "anonymous" | "token" | "agent"; id?: string };
+  can_read_pairings?: boolean;
+  can_read_dms?: boolean;
+  can_connect_agent?: boolean;
 }
 
 export interface Network {
@@ -39,6 +45,8 @@ export interface Network {
 }
 
 export interface Room {
+  follow?: { id: string; remote_base_url: string; remote_room_id: string };
+  last_message_at?: string;
   id: string;
   name: string;
   fqid?: string;
@@ -127,6 +135,11 @@ export interface MessageFrom {
 }
 
 export interface MessageOrigin {
+  /** Untrusted testimony supplied by an anonymous follow origin. */
+  claimed_author?: MessageFrom;
+  claimed_network_id?: string;
+  claimed_message_id?: string;
+  claimed_discovery_network_id?: string;
   network_id?: string;
   message_id?: string;
   /** Server-stamped: the local pairing this message actually arrived

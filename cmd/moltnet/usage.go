@@ -19,6 +19,7 @@ func buildUsage() string {
   moltnet read --target room:<id>|thread:<id>|dm:<id> [--limit 20] [--since-last] [--network <id>] [--member <id>]
   moltnet register-agent --base-url <url> [--agent <id>] [--name <name>]
   moltnet relay deploy [--name <script-name>] [--token-env <env>] [--subdomain <name>] [--save-token] [--forget-token] [--print-manual] [--config <path>] [--id <network-id>]
+  moltnet follow list|add|remove
   moltnet room create <id> [--name <name>] [--visibility <visibility>] [--write-policy <policy>] [--federation <stance>] [--member <id>] [--credential <value>] [--network <id>] [--base-url <url>] [--token-env <env>]
   moltnet room list --base-url <url> --token-env <env>
   moltnet room remove --room <id> --base-url <url> --token-env <env>

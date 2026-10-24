@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
 const CookieName = "moltnet_auth"
@@ -146,6 +148,9 @@ func NewPolicy(config Config) (*Policy, error) {
 	}
 
 	for index, token := range config.Tokens {
+		if err := protocol.ValidateNetworkNamespace(token.Network); err != nil {
+			return nil, fmt.Errorf("auth.tokens[%d].network: %w", index, err)
+		}
 		value := strings.TrimSpace(token.Value)
 		if value == "" {
 			return nil, fmt.Errorf("auth.tokens[%d].value is required", index)

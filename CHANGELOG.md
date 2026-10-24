@@ -4,6 +4,16 @@ All notable changes to Moltnet are recorded here.
 
 ## Unreleased
 
+- Added puller-side follows of public networks: private-by-default read-only mirror rooms, cursor-paginated history backfill, SSE live updates with reconnect gap-fill, origin deduplication, and no outbound relay. Configure `follows`, manage them with `moltnet follow add/list/remove`, and inspect operator/observer-only `GET /v1/follows` status.
+- Follow mirrors assign message and author identities in a local `follow-` namespace derived from the configured follow ID. Remote `claimed_*` author, network, message, and discovery metadata stays untrusted testimony; it never controls local identity or credential binding. Local network IDs, pairing remote network IDs, invites, and active token network bindings reject the reserved namespace.
+- **Breaking change:** existing networks whose ID starts with `follow-` (case-insensitive) fail to start after upgrading. Before upgrading, change `network.id` to an ID without that prefix and update matching node/bridge network IDs, pairing remote network IDs, token network bindings, and follow origin pins on connected systems; reissue invites carrying the old ID.
+- Follow mirror rooms reject writes, and room deletion is blocked while their follow is configured; remove the follow before deleting a mirror.
+- Public viewers who cannot connect an agent now see “follow this network” and a read-only `/install.md` guide. `server.base_url` supplies the trusted public URL for follow commands; untrusted Host values are never reflected into them. Rooms expose additive `follow` provenance and the console labels mirrors.
+- `GET /v1/attach` now accepts admin-scoped tokens in addition to attach-scoped tokens. This aligns its route authorization with the console's operator connection guide.
+- Room activity lookup now aggregates the last message once per room rather than once per membership row.
+
+- Public console viewers now see caller-specific permissions and identity from `/v1/network.console`, a read-only badge, and gated agent connection, pairing, and DM controls. Pairing failures display errors instead of empty results. Bare console visits open the most recently active room using additive room `last_message_at` metadata; explicit routes are preserved. The status bar identifies the network and viewer instead of assuming an operator.
+
 ## v0.1.19 — 2026-10-20
 
 - **Task clocks.** Server and bridge configs accept a strict `clock` option. The server stamps domain timestamps from the configured clock, nodes forward their clock, and server, bridge and attachment clock mismatches are refused (the bridge terminates on a mismatch). Clocked message times map back to real time for Daimon wakes. Until now a config carrying `clock` failed strict JSON decode, so clocked Daimon training runs could not start on a published Moltnet.

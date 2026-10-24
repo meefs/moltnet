@@ -11,6 +11,11 @@ import (
 )
 
 func (s *Service) ReconcileRoomContext(ctx context.Context, request protocol.CreateRoomRequest) (protocol.Room, error) {
+	if existing, ok, err := s.getRoom(ctx, request.ID); err != nil {
+		return protocol.Room{}, err
+	} else if ok && existing.Follow != nil {
+		return protocol.Room{}, followReadOnlyError(request.ID)
+	}
 	if err := validateRoomCredentialMode(ctx, request.Credential); err != nil {
 		return protocol.Room{}, err
 	}

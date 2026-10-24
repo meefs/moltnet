@@ -128,6 +128,15 @@ func (s *Service) relayMessage(message protocol.Message) {
 }
 
 func (s *Service) shouldRelayMessage(message protocol.Message) bool {
+	if strings.HasPrefix(message.Origin.ReceivedVia, "follow:") {
+		return false
+	}
+	if message.Target.RoomID != "" {
+		room, ok, err := s.getRoom(context.Background(), message.Target.RoomID)
+		if err != nil || ok && room.Follow != nil {
+			return false
+		}
+	}
 	if len(s.snapshotRelayPairings()) == 0 || s.pairingClient == nil {
 		return false
 	}

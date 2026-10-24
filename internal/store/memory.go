@@ -6,7 +6,9 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/noopolis/moltnet/internal/follow"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
@@ -22,35 +24,39 @@ type RoomStore interface {
 }
 
 type MemoryStore struct {
-	mu              sync.RWMutex
-	deliveryCursors map[string]int
-	deliveryEvents  []protocol.Event
-	messageIDs      map[string]struct{}
-	rooms           map[string]protocol.Room
-	removedRooms    map[string]struct{}
-	roomMessages    map[string][]protocol.Message
-	threads         map[string]protocol.Thread
-	roomThreads     map[string]map[string]struct{}
-	threadMessages  map[string][]protocol.Message
-	directMessages  map[string][]protocol.Message
-	directMembers   map[string]map[string]struct{}
-	agents          map[string]protocol.AgentRegistration
+	mu                sync.RWMutex
+	followCheckpoints map[string]follow.Checkpoint
+	deliveryCursors   map[string]int
+	deliveryEvents    []protocol.Event
+	messageIDs        map[string]struct{}
+	rooms             map[string]protocol.Room
+	removedRooms      map[string]struct{}
+	roomMessages      map[string][]protocol.Message
+	roomActivity      map[string]time.Time
+	threads           map[string]protocol.Thread
+	roomThreads       map[string]map[string]struct{}
+	threadMessages    map[string][]protocol.Message
+	directMessages    map[string][]protocol.Message
+	directMembers     map[string]map[string]struct{}
+	agents            map[string]protocol.AgentRegistration
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		deliveryCursors: make(map[string]int),
-		deliveryEvents:  make([]protocol.Event, 0),
-		messageIDs:      make(map[string]struct{}),
-		rooms:           make(map[string]protocol.Room),
-		removedRooms:    make(map[string]struct{}),
-		roomMessages:    make(map[string][]protocol.Message),
-		threads:         make(map[string]protocol.Thread),
-		roomThreads:     make(map[string]map[string]struct{}),
-		threadMessages:  make(map[string][]protocol.Message),
-		directMessages:  make(map[string][]protocol.Message),
-		directMembers:   make(map[string]map[string]struct{}),
-		agents:          make(map[string]protocol.AgentRegistration),
+		followCheckpoints: make(map[string]follow.Checkpoint),
+		deliveryCursors:   make(map[string]int),
+		deliveryEvents:    make([]protocol.Event, 0),
+		messageIDs:        make(map[string]struct{}),
+		rooms:             make(map[string]protocol.Room),
+		removedRooms:      make(map[string]struct{}),
+		roomMessages:      make(map[string][]protocol.Message),
+		roomActivity:      make(map[string]time.Time),
+		threads:           make(map[string]protocol.Thread),
+		roomThreads:       make(map[string]map[string]struct{}),
+		threadMessages:    make(map[string][]protocol.Message),
+		directMessages:    make(map[string][]protocol.Message),
+		directMembers:     make(map[string]map[string]struct{}),
+		agents:            make(map[string]protocol.AgentRegistration),
 	}
 }
 
@@ -111,6 +117,7 @@ func (s *MemoryStore) ListRoomsContext(_ context.Context) ([]protocol.Room, erro
 
 	rooms := make([]protocol.Room, 0, len(s.rooms))
 	for _, room := range s.rooms {
+		room.LastMessageAt = s.latestRoomMessage(room.ID)
 		rooms = append(rooms, room)
 	}
 
@@ -299,6 +306,7 @@ func (s *MemoryStore) ReconcileRoomContext(_ context.Context, room protocol.Room
 	if !ok {
 		return protocol.Room{}, fmt.Errorf("%w: %q", ErrRoomNotFound, room.ID)
 	}
+	existing.Follow = room.Follow
 	existing.Name = room.Name
 	existing.Members = protocol.SortedUniqueTrimmedStrings(room.Members)
 	existing.Visibility = protocol.NormalizeRoomVisibility(room.Visibility)
