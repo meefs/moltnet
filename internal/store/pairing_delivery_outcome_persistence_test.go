@@ -80,11 +80,11 @@ func TestPairingDeliveryOutcomeMigrationPreservesLegacyQueueUntilReconcile(t *te
 		t.Fatalf("pairing head index absent: %v", err)
 	}
 	dropped, err := storage.ReconcilePairingDeliveriesContext(context.Background(), map[string]string{"pair-a": "remote-a"})
-	if err != nil || dropped["pair-a"] != 1 {
-		t.Fatalf("unbound legacy delivery did not fail closed: %#v, %v", dropped, err)
+	if err != nil || len(dropped) != 0 {
+		t.Fatalf("unbound legacy delivery was purged: %#v, %v", dropped, err)
 	}
 	state, err := storage.PairingDeliveryStateContext(context.Background(), "pair-a")
-	if err != nil || state.Pending != 0 || state.Dropped != 1 || state.Rejected != 0 {
+	if err != nil || state.Pending != 1 || state.Dropped != 0 || state.Rejected != 0 {
 		t.Fatalf("legacy purge state: %#v, %v", state, err)
 	}
 }

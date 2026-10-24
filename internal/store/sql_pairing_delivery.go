@@ -65,10 +65,21 @@ func (s *SQLStore) insertPairingDeliveries(
 		if err := s.lockPairingDeliveryState(ctx, tx, id); err != nil {
 			return nil, err
 		}
+		remote := limits[id].RemoteNetworkID
+		if remote == "" {
+			if err := tx.QueryRowContext(ctx, bindQuery(s.dialect,
+				`SELECT remote_network_id FROM pairing_delivery_states WHERE pairing_id = ?`), id).Scan(&remote); err != nil {
+				return nil, err
+			}
+		}
+		if _, err := tx.ExecContext(ctx, bindQuery(s.dialect,
+			`UPDATE pairing_delivery_states SET remote_network_id = ? WHERE pairing_id = ?`), remote, id); err != nil {
+			return nil, err
+		}
 		_, err := tx.ExecContext(ctx, bindQuery(s.dialect, `
 			INSERT INTO pairing_deliveries (pairing_id, message_id, message_json, next_attempt, created_at, remote_network_id)
 			VALUES (?, ?, ?, ?, ?, ?)
-		`), id, message.ID, marshalJSON(message), pairingQueueTime(time.Time{}), pairingQueueTime(now), limits[id].RemoteNetworkID)
+		`), id, message.ID, marshalJSON(message), pairingQueueTime(time.Time{}), pairingQueueTime(now), remote)
 		if err != nil {
 			return nil, fmt.Errorf("insert pairing delivery: %w", err)
 		}

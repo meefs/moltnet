@@ -22,10 +22,17 @@ func (s *MemoryStore) AppendMessageWithPairingDeliveriesContext(
 	now := time.Now().UTC()
 	limits := pairingDeliveryLimitsFromContext(ctx)
 	for _, id := range protocol.UniqueTrimmedStrings(pairingIDs) {
+		remote := limits[id].RemoteNetworkID
+		if remote == "" {
+			remote = s.pairingDeliveryStates[id].RemoteNetworkID
+		}
+		state := s.pairingDeliveryStates[id]
+		state.RemoteNetworkID = remote
+		s.pairingDeliveryStates[id] = state
 		s.pairingDeliverySequence++
 		s.pairingDeliveries = append(s.pairingDeliveries, PairingDelivery{
 			Sequence: s.pairingDeliverySequence, PairingID: id, MessageID: message.ID,
-			Message: message, CreatedAt: now, RemoteNetworkID: limits[id].RemoteNetworkID,
+			Message: message, CreatedAt: now, RemoteNetworkID: remote,
 		})
 		if limit, ok := limits[id]; ok {
 			if dropped := s.prunePairingDeliveriesLocked(id, now, limit.MaxAge, limit.MaxPending); dropped > 0 {

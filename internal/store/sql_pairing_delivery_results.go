@@ -77,7 +77,7 @@ func (s *SQLStore) ReconcilePairingDeliveriesContext(ctx context.Context, destin
 		return nil, err
 	}
 	defer rollback(tx)
-	rows, err := tx.QueryContext(ctx, `SELECT DISTINCT pairing_id FROM pairing_deliveries ORDER BY pairing_id`)
+	rows, err := tx.QueryContext(ctx, `SELECT pairing_id FROM pairing_deliveries UNION SELECT pairing_id FROM pairing_delivery_states`)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +95,7 @@ func (s *SQLStore) ReconcilePairingDeliveriesContext(ctx context.Context, destin
 	if err != nil {
 		return nil, err
 	}
+	slices.Sort(ids) // Match Go byte order used by enqueue and result transactions.
 	dropped := make(map[string]int)
 	for _, id := range ids {
 		if err := s.lockPairingDeliveryState(ctx, tx, id); err != nil {
@@ -102,8 +103,8 @@ func (s *SQLStore) ReconcilePairingDeliveriesContext(ctx context.Context, destin
 		}
 		query, args := `DELETE FROM pairing_deliveries WHERE pairing_id = ?`, []any{id}
 		if remote, exists := destinations[id]; exists {
-			query += ` AND (remote_network_id = '' OR remote_network_id <> ?)`
-			args = append(args, remote)
+			query += ` AND remote_network_id <> '' AND remote_network_id <> ? AND ? <> ''`
+			args = append(args, remote, remote)
 		}
 		result, err := tx.ExecContext(ctx, bindQuery(s.dialect, query), args...)
 		if err != nil {
@@ -112,6 +113,13 @@ func (s *SQLStore) ReconcilePairingDeliveriesContext(ctx context.Context, destin
 		count, err := result.RowsAffected()
 		if err != nil {
 			return nil, err
+		}
+		remote, exists := destinations[id]
+		if !exists || remote != "" {
+			if _, err := tx.ExecContext(ctx, bindQuery(s.dialect,
+				`UPDATE pairing_delivery_states SET remote_network_id = ? WHERE pairing_id = ?`), remote, id); err != nil {
+				return nil, err
+			}
 		}
 		if count > 0 {
 			if _, err := tx.ExecContext(ctx, bindQuery(s.dialect,

@@ -34,7 +34,7 @@ func (s *MemoryStore) ApplyPairingDeliveryResultsContext(_ context.Context, resu
 	return nil
 }
 
-// Reconciliation fails closed for legacy rows without a bound destination.
+// Empty destinations and rows are unbound, not evidence of a changed peer.
 func (s *MemoryStore) ReconcilePairingDeliveriesContext(_ context.Context, destinations map[string]string) (map[string]int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -42,7 +42,7 @@ func (s *MemoryStore) ReconcilePairingDeliveriesContext(_ context.Context, desti
 	retained := s.pairingDeliveries[:0]
 	for _, delivery := range s.pairingDeliveries {
 		remote, exists := destinations[delivery.PairingID]
-		if !exists || delivery.RemoteNetworkID == "" || remote != delivery.RemoteNetworkID {
+		if !exists || remote != "" && delivery.RemoteNetworkID != "" && remote != delivery.RemoteNetworkID {
 			dropped[delivery.PairingID]++
 			continue
 		}
@@ -55,5 +55,40 @@ func (s *MemoryStore) ReconcilePairingDeliveriesContext(_ context.Context, desti
 		state.LastError = ""
 		s.pairingDeliveryStates[id] = state
 	}
+	for id, state := range s.pairingDeliveryStates {
+		if remote, exists := destinations[id]; !exists {
+			state.RemoteNetworkID = ""
+		} else if remote != "" {
+			state.RemoteNetworkID = remote
+		}
+		s.pairingDeliveryStates[id] = state
+	}
+	return dropped, nil
+}
+
+// Discovery binds the queue and its durable default in the same critical section.
+func (s *MemoryStore) BindPairingDeliveryDestinationContext(_ context.Context, id, remote string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if remote == "" {
+		return 0, nil
+	}
+	dropped := 0
+	retained := s.pairingDeliveries[:0]
+	for _, delivery := range s.pairingDeliveries {
+		if delivery.PairingID == id {
+			if delivery.RemoteNetworkID != "" && delivery.RemoteNetworkID != remote {
+				dropped++
+				continue
+			}
+			delivery.RemoteNetworkID = remote
+		}
+		retained = append(retained, delivery)
+	}
+	s.pairingDeliveries = retained
+	state := s.pairingDeliveryStates[id]
+	state.RemoteNetworkID = remote
+	state.Dropped += int64(dropped)
+	s.pairingDeliveryStates[id] = state
 	return dropped, nil
 }

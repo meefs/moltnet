@@ -102,11 +102,11 @@ func (s *SQLStore) PairingDeliveryStateContext(ctx context.Context, pairingID st
 	var state PairingDeliveryState
 	var oldest sql.NullString
 	err := s.db.QueryRowContext(ctx, bindQuery(s.dialect, `
-		SELECT last_error, dropped, rejected, last_rejection_reason,
+		SELECT last_error, dropped, rejected, last_rejection_reason, remote_network_id,
 		(SELECT COUNT(*) FROM pairing_deliveries WHERE pairing_id = ?),
 		(SELECT MIN(created_at) FROM pairing_deliveries WHERE pairing_id = ?)
 		FROM pairing_delivery_states WHERE pairing_id = ?
-	`), pairingID, pairingID, pairingID).Scan(&state.LastError, &state.Dropped, &state.Rejected, &state.LastRejectionReason, &state.Pending, &oldest)
+	`), pairingID, pairingID, pairingID).Scan(&state.LastError, &state.Dropped, &state.Rejected, &state.LastRejectionReason, &state.RemoteNetworkID, &state.Pending, &oldest)
 	if errors.Is(err, sql.ErrNoRows) {
 		return state, nil
 	}

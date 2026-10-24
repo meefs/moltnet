@@ -46,3 +46,9 @@ func pairingDeliveryOutcomeMigration() migration {
 		`CREATE INDEX pairing_deliveries_pairing_seq ON pairing_deliveries (pairing_id, seq)`,
 	}}
 }
+
+func pairingDeliveryBindingMigration() migration {
+	return migration{Version: 14, Name: "pairing_delivery_binding", Statements: []string{
+		`ALTER TABLE pairing_delivery_states ADD COLUMN remote_network_id TEXT NOT NULL DEFAULT ''`,
+	}}
+}

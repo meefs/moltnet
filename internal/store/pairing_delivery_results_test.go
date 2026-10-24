@@ -89,10 +89,10 @@ func TestPairingDeliveryReconcilePurgesAndCounts(t *testing.T) {
 			}
 			current := map[string]string{"pair-a": "new-network", "legacy": "legacy-network"}
 			dropped, err := storage.ReconcilePairingDeliveriesContext(context.Background(), current)
-			if err != nil || dropped["pair-a"] != 2 || dropped["pair-b"] != 1 || dropped["legacy"] != 1 {
+			if err != nil || dropped["pair-a"] != 2 || dropped["pair-b"] != 1 || dropped["legacy"] != 0 {
 				t.Fatalf("purge counts = %#v, %v", dropped, err)
 			}
-			if heads := pairingHeads(t, storage); len(heads) != 0 {
+			if heads := pairingHeads(t, storage); len(heads) != 1 || heads["legacy"].MessageID != "legacy" {
 				t.Fatalf("old destination retained: %#v", heads)
 			}
 			for id, want := range dropped {
@@ -105,7 +105,7 @@ func TestPairingDeliveryReconcilePurgesAndCounts(t *testing.T) {
 				t.Fatalf("purge was not idempotent: %#v, %v", again, err)
 			}
 			appendPairingResultTest(t, storage, "current", "pair-a")
-			if dropped, err := storage.ReconcilePairingDeliveriesContext(context.Background(), map[string]string{"pair-a": "remote-a"}); err != nil || len(dropped) != 0 {
+			if dropped, err := storage.ReconcilePairingDeliveriesContext(context.Background(), map[string]string{"pair-a": "remote-a", "legacy": ""}); err != nil || len(dropped) != 0 {
 				t.Fatalf("current destination purged: %#v, %v", dropped, err)
 			}
 		})

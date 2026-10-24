@@ -23,6 +23,7 @@ type PairingDelivery struct {
 }
 
 type PairingDeliveryState struct {
+	RemoteNetworkID     string
 	Pending             int
 	OldestPendingAt     time.Time
 	LastError           string
@@ -41,6 +42,7 @@ type PairingDeliveryResult struct {
 }
 
 type PairingDeliveryStore interface {
+	BindPairingDeliveryDestinationContext(context.Context, string, string) (int, error)
 	ApplyPairingDeliveryResultsContext(context.Context, []PairingDeliveryResult) error
 	ReconcilePairingDeliveriesContext(context.Context, map[string]string) (map[string]int, error)
 	AppendMessageWithPairingDeliveriesContext(context.Context, protocol.Message, *protocol.Event, []string) (AppendLifecycle, error)

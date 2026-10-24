@@ -315,4 +315,5 @@ var sqlMigrations = []migration{
 	}},
 	pairingDeliveryMigration(),
 	pairingDeliveryOutcomeMigration(),
+	pairingDeliveryBindingMigration(),
 }

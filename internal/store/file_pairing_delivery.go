@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -89,9 +90,10 @@ func (s *FileStore) ApplyPairingDeliveryResultsContext(ctx context.Context, resu
 func (s *FileStore) ReconcilePairingDeliveriesContext(ctx context.Context, destinations map[string]string) (map[string]int, error) {
 	s.persistMu.Lock()
 	defer s.persistMu.Unlock()
-	working := memoryStoreFromSnapshot(s.snapshot())
+	previous := s.snapshot()
+	working := memoryStoreFromSnapshot(previous)
 	dropped, err := working.ReconcilePairingDeliveriesContext(ctx, destinations)
-	if err != nil || len(dropped) == 0 {
+	if err != nil || reflect.DeepEqual(working.pairingDeliveryStates, previous.PairingDeliveryStates) && len(dropped) == 0 {
 		return dropped, err
 	}
 	next := snapshotFromMemoryStore(working)
@@ -99,5 +101,18 @@ func (s *FileStore) ReconcilePairingDeliveriesContext(ctx context.Context, desti
 		return nil, err
 	}
 	s.restore(next)
+	return dropped, nil
+}
+
+func (s *FileStore) BindPairingDeliveryDestinationContext(ctx context.Context, id, remote string) (int, error) {
+	var dropped int
+	err := s.mutatePairingDeliveries(func(working *MemoryStore) error {
+		var err error
+		dropped, err = working.BindPairingDeliveryDestinationContext(ctx, id, remote)
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
 	return dropped, nil
 }
