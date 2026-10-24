@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -57,13 +58,13 @@ func TestDMTopologyIsImmutableAcrossStoreBackends(t *testing.T) {
 			}
 
 			matchingDuplicate := dmTopologyMessage("msg-first", "dm-fixed", "local", []string{"alpha", "beta"}, protocol.Actor{ID: "alpha"})
-			if lifecycle, err := messages.AppendMessageWithLifecycleContext(context.Background(), matchingDuplicate); !errors.Is(err, ErrDuplicateMessage) || lifecycle != (AppendLifecycle{}) {
+			if lifecycle, err := messages.AppendMessageWithLifecycleContext(context.Background(), matchingDuplicate); !errors.Is(err, ErrDuplicateMessage) || !reflect.DeepEqual(lifecycle, AppendLifecycle{}) {
 				t.Fatalf("matching duplicate = %#v, %v, want empty lifecycle and ErrDuplicateMessage", lifecycle, err)
 			}
 
 			duplicateConflict := dmTopologyMessage("msg-first", "dm-fixed", "local", []string{"alpha", "gamma"}, protocol.Actor{ID: "alpha"})
 			duplicateConflict.Parts = []protocol.Part{{Kind: protocol.PartKindFile, Filename: "stolen.txt"}}
-			if lifecycle, err := messages.AppendMessageWithLifecycleContext(context.Background(), duplicateConflict); !errors.Is(err, ErrDMTopologyConflict) || lifecycle != (AppendLifecycle{}) {
+			if lifecycle, err := messages.AppendMessageWithLifecycleContext(context.Background(), duplicateConflict); !errors.Is(err, ErrDMTopologyConflict) || !reflect.DeepEqual(lifecycle, AppendLifecycle{}) {
 				t.Fatalf("conflicting duplicate = %#v, %v, want empty lifecycle and ErrDMTopologyConflict", lifecycle, err)
 			}
 			duplicateNetwork := dmTopologyMessage("msg-first", "dm-fixed", "remote", []string{"alpha", "beta"}, protocol.Actor{ID: "alpha"})

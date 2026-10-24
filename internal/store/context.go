@@ -29,8 +29,9 @@ type ContextMessageStore interface {
 }
 
 type AppendLifecycle struct {
-	Thread *protocol.Thread
-	DM     *protocol.DirectConversation
+	PairingDeliveriesDropped map[string]int
+	Thread                   *protocol.Thread
+	DM                       *protocol.DirectConversation
 }
 
 type ContextLifecycleMessageStore interface {
@@ -56,4 +57,15 @@ type ContextAgentRegistryStore interface {
 	GetRegisteredAgentContext(ctx context.Context, agentID string) (protocol.AgentRegistration, bool, error)
 	GetRegisteredAgentByCredentialKeyContext(ctx context.Context, credentialKey string) (protocol.AgentRegistration, bool, error)
 	RemoveRegisteredAgentContext(ctx context.Context, agentID string) error
+}
+
+type RoomStore interface {
+	CreateRoom(room protocol.Room) error
+	GetRoom(id string) (protocol.Room, bool, error)
+	GetThread(id string) (protocol.Thread, bool, error)
+	ListRooms() ([]protocol.Room, error)
+	RemoveAgent(agentID string) error
+	RemoveRoom(roomID string) error
+	ReconcileRoom(room protocol.Room) (protocol.Room, error)
+	UpdateRoomMembers(roomID string, add []string, remove []string) (protocol.Room, error)
 }

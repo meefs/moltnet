@@ -85,3 +85,24 @@ func TestNewPostgresStoreReturnsPingErrorsForUnreachableServer(t *testing.T) {
 		t.Fatal("expected postgres open failure")
 	}
 }
+
+func TestSQLitePragmasSurviveConnectionReplacement(t *testing.T) {
+	storage, err := NewSQLiteStore(filepath.Join(t.TempDir(), "state ?#.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer storage.Close()
+	storage.db.SetMaxIdleConns(0)
+	for _, check := range []struct {
+		pragma string
+		want   int
+	}{{"foreign_keys", 1}, {"busy_timeout", 5000}} {
+		var got int
+		if err := storage.db.QueryRow("PRAGMA " + check.pragma).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got != check.want {
+			t.Fatalf("replacement connection %s = %d, want %d", check.pragma, got, check.want)
+		}
+	}
+}

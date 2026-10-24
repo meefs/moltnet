@@ -21,7 +21,7 @@ func TestPostgresStoreIntegration(t *testing.T) {
 	}
 	defer store.Close()
 
-	if _, err := store.db.Exec(`DELETE FROM artifacts; DELETE FROM dm_participants; DELETE FROM dm_conversations; DELETE FROM messages; DELETE FROM threads; DELETE FROM room_members; DELETE FROM rooms;`); err != nil {
+	if _, err := store.db.Exec(`DELETE FROM pairing_deliveries; DELETE FROM pairing_delivery_states; DELETE FROM pairing_receive_receipts; DELETE FROM artifacts; DELETE FROM dm_participants; DELETE FROM dm_conversations; DELETE FROM messages; DELETE FROM threads; DELETE FROM room_members; DELETE FROM rooms;`); err != nil {
 		t.Fatalf("reset postgres tables: %v", err)
 	}
 
@@ -69,7 +69,7 @@ func TestPostgresStorePaginationThreadsDMsArtifactsAndConflicts(t *testing.T) {
 	}
 	defer store.Close()
 
-	if _, err := store.db.Exec(`DELETE FROM artifacts; DELETE FROM dm_participants; DELETE FROM dm_conversations; DELETE FROM messages; DELETE FROM threads; DELETE FROM room_members; DELETE FROM rooms;`); err != nil {
+	if _, err := store.db.Exec(`DELETE FROM pairing_deliveries; DELETE FROM pairing_delivery_states; DELETE FROM pairing_receive_receipts; DELETE FROM artifacts; DELETE FROM dm_participants; DELETE FROM dm_conversations; DELETE FROM messages; DELETE FROM threads; DELETE FROM room_members; DELETE FROM rooms;`); err != nil {
 		t.Fatalf("reset postgres tables: %v", err)
 	}
 

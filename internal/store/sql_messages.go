@@ -18,7 +18,7 @@ func (s *SQLStore) AppendMessageContext(ctx context.Context, message protocol.Me
 }
 
 func (s *SQLStore) AppendMessageWithLifecycleContext(ctx context.Context, message protocol.Message) (AppendLifecycle, error) {
-	return s.appendMessageWithLifecycleContext(ctx, message, nil)
+	return s.appendMessageWithLifecycleContext(ctx, message, nil, nil)
 }
 
 func (s *SQLStore) AppendMessageEventWithLifecycleContext(
@@ -26,13 +26,14 @@ func (s *SQLStore) AppendMessageEventWithLifecycleContext(
 	message protocol.Message,
 	event protocol.Event,
 ) (AppendLifecycle, error) {
-	return s.appendMessageWithLifecycleContext(ctx, message, &event)
+	return s.appendMessageWithLifecycleContext(ctx, message, &event, nil)
 }
 
 func (s *SQLStore) appendMessageWithLifecycleContext(
 	ctx context.Context,
 	message protocol.Message,
 	event *protocol.Event,
+	pairingIDs []string,
 ) (AppendLifecycle, error) {
 	topology := dmTopology{}
 	if message.Target.Kind == protocol.TargetKindDM {
@@ -50,11 +51,18 @@ func (s *SQLStore) appendMessageWithLifecycleContext(
 	}
 	defer rollback(tx)
 
+	if err := s.insertPairingReceiveReceipt(ctx, tx, message); err != nil {
+		return AppendLifecycle{}, err
+	}
+
 	duplicate, err := messageCursorExistsContext(ctx, tx, s.dialect, message.ID)
 	if err != nil {
 		return AppendLifecycle{}, fmt.Errorf("check duplicate message: %w", err)
 	}
 	if duplicate {
+		if err := s.requireMatchingMessageOrigin(ctx, tx, message); err != nil {
+			return AppendLifecycle{}, err
+		}
 		if message.Target.Kind == protocol.TargetKindDM {
 			if err := s.requireMatchingDuplicateDM(ctx, tx, message, topology); err != nil {
 				return AppendLifecycle{}, err
@@ -71,6 +79,9 @@ func (s *SQLStore) appendMessageWithLifecycleContext(
 		return AppendLifecycle{}, err
 	}
 	if !inserted {
+		if err := s.requireMatchingMessageOrigin(ctx, tx, message); err != nil {
+			return AppendLifecycle{}, err
+		}
 		if message.Target.Kind == protocol.TargetKindDM {
 			if err := s.requireMatchingDuplicateDM(ctx, tx, message, topology); err != nil {
 				return AppendLifecycle{}, err
@@ -88,6 +99,11 @@ func (s *SQLStore) appendMessageWithLifecycleContext(
 	}
 
 	lifecycle, err := s.appendLifecycleUsingQuerier(ctx, tx, message)
+	if err != nil {
+		return AppendLifecycle{}, err
+	}
+
+	lifecycle.PairingDeliveriesDropped, err = s.insertPairingDeliveries(ctx, tx, message, pairingIDs)
 	if err != nil {
 		return AppendLifecycle{}, err
 	}
