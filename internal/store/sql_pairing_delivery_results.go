@@ -24,6 +24,8 @@ func (s *SQLStore) ApplyPairingDeliveryResultsContext(ctx context.Context, resul
 		return cmp.Compare(a.Delivery.Sequence, b.Delivery.Sequence)
 	})
 	for _, result := range results {
+		result.LastError = pairingDeliveryText(result.LastError)
+		result.RejectedReason = pairingDeliveryText(result.RejectedReason)
 		if err := s.applyPairingDeliveryResultTx(ctx, tx, result); err != nil {
 			return err
 		}

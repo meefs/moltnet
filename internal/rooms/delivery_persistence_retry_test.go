@@ -82,3 +82,47 @@ func TestDeliveryPersistenceRetriesWithoutResending(t *testing.T) {
 	}
 	t.Fatal("results did not drain after recovery")
 }
+
+type interruptedDeliveryResults struct {
+	*store.MemoryStore
+	calls   atomic.Int32
+	started chan struct{}
+}
+
+func (s *interruptedDeliveryResults) ApplyPairingDeliveryResultsContext(ctx context.Context, results []store.PairingDeliveryResult) error {
+	if s.calls.Add(1) == 1 {
+		close(s.started)
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	return s.MemoryStore.ApplyPairingDeliveryResultsContext(ctx, results)
+}
+
+func TestDeliveryShutdownFlushesAcknowledgedResults(t *testing.T) {
+	storage := &interruptedDeliveryResults{MemoryStore: store.NewMemoryStore(), started: make(chan struct{})}
+	client := &federationRelayClient{relayed: make(chan protocol.SendMessageRequest, 10)}
+	service := NewService(ServiceConfig{NetworkID: "local", Store: storage, Messages: storage, Broker: events.NewBroker(), PairingClient: client,
+		Pairings: []protocol.Pairing{{ID: "peer", RemoteNetworkID: "remote", RemoteBaseURL: "https://peer.example"}}, DeliveryPollInterval: time.Millisecond})
+	defer service.Close()
+	if _, err := service.CreateRoom(protocol.CreateRoomRequest{ID: "research", Federation: &protocol.RoomFederation{Mode: protocol.RoomFederationAll}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.SendMessage(roomSend("research", "local")); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-storage.started:
+	case <-time.After(time.Second):
+		t.Fatal("acknowledged result did not reach persistence")
+	}
+	if err := service.Close(); err != nil {
+		t.Fatal(err)
+	}
+	state, err := storage.PairingDeliveryStateContext(context.Background(), "peer")
+	if err != nil || state.Pending != 0 || storage.calls.Load() != 2 {
+		t.Fatalf("shutdown did not flush acknowledged result: %#v calls=%d %v", state, storage.calls.Load(), err)
+	}
+	if len(client.relayed) != 1 {
+		t.Fatalf("network sends = %d", len(client.relayed))
+	}
+}

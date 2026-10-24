@@ -77,11 +77,23 @@ func (s *Service) runDeliveryWorker() {
 	ticker := time.NewTicker(s.deliveryPollInterval)
 	defer ticker.Stop()
 	var jobs sync.WaitGroup
-	defer jobs.Wait()
 	active := make(map[string]bool)
 	finished := make(chan store.PairingDeliveryResult, 8)
 	var configuredDestinations map[string]string
 	var pendingResults []store.PairingDeliveryResult
+	defer func() {
+		jobs.Wait()
+		for len(finished) > 0 {
+			pendingResults = append(pendingResults, <-finished)
+		}
+		if len(pendingResults) > 0 {
+			ctx, cancel := context.WithTimeout(context.WithoutCancel(s.lifecycleCtx), time.Second)
+			defer cancel()
+			if err := s.pairingDeliveries.ApplyPairingDeliveryResultsContext(ctx, pendingResults); err != nil {
+				observability.Logger(ctx, "rooms.relay").Error("pairing delivery shutdown flush failed; results remain queued", "error", err)
+			}
+		}
+	}()
 	var persistAfter time.Time
 	persistAttempts := 0
 	for {
@@ -149,10 +161,9 @@ func (s *Service) runDeliveryWorker() {
 			go func(pairing protocol.Pairing, head store.PairingDelivery) {
 				defer jobs.Done()
 				result := s.deliverQueuedMessage(pairing, head)
-				select {
-				case finished <- result:
-				case <-s.lifecycleCtx.Done():
-				}
+				// At most eight active jobs share an eight-slot result channel,
+				// so every result fits even while shutdown waits for the jobs.
+				finished <- result
 			}(pairing, head)
 		}
 	}
@@ -166,6 +177,10 @@ func (s *Service) deliverQueuedMessage(pairing protocol.Pairing, record store.Pa
 	if err == nil {
 		observability.DefaultMetrics.RecordRelay("success")
 		s.setPairingRelaySuccess(pairing.ID)
+		return result
+	}
+	if s.lifecycleCtx.Err() != nil && !deliveryRejected(err) {
+		result.Retry, result.LastError = true, "delivery interrupted by shutdown"
 		return result
 	}
 	if deliveryRejected(err) {

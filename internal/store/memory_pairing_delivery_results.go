@@ -6,6 +6,8 @@ func (s *MemoryStore) ApplyPairingDeliveryResultsContext(_ context.Context, resu
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, result := range results {
+		result.LastError = pairingDeliveryText(result.LastError)
+		result.RejectedReason = pairingDeliveryText(result.RejectedReason)
 		for index := range s.pairingDeliveries {
 			current := &s.pairingDeliveries[index]
 			delivery := result.Delivery
