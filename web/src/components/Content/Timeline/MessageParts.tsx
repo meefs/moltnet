@@ -1,28 +1,29 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useRowFlag } from "./rowState";
 import { safeUrl } from "../../../lib/safeUrl";
 import type { MessagePart } from "../../../lib/types";
 import { FileChip, MediaPart } from "./MediaPart";
 
 /** Renders each part the way a person reads it; raw JSON stays one click away. */
-export function MessageParts({ parts = [] }: { parts?: MessagePart[] }) {
+export function MessageParts({ parts = [], rowKey }: { parts?: MessagePart[]; rowKey?: string }) {
   if (parts.length === 0) {
     return <p className="text-faint text-[14px] italic">(empty message)</p>;
   }
   return (
     <div className="flex flex-col gap-1.5">
       {parts.map((part, index) => (
-        <Part key={index} part={part} />
+        <Part key={index} part={part} stateKey={rowKey ? `${rowKey}#${index}` : undefined} />
       ))}
     </div>
   );
 }
 
-function Part({ part }: { part: MessagePart }) {
+function Part({ part, stateKey }: { part: MessagePart; stateKey?: string }) {
   switch (part.kind) {
     case "text": {
       // Agents often write a JSON object as plain text; show it as data.
       const parsed = parseObject(part.text);
-      if (parsed) return <DataCard data={parsed} />;
+      if (parsed) return <DataCard data={parsed} stateKey={stateKey} />;
       return (
         <p className="text-[14.5px] leading-relaxed text-[#dfe5e0] whitespace-pre-wrap break-words">
           {highlightMentions(part.text ?? "")}
@@ -42,10 +43,10 @@ function Part({ part }: { part: MessagePart }) {
       );
     }
     case "data":
-      return <DataCard data={part.data} />;
+      return <DataCard data={part.data} stateKey={stateKey} />;
     case "image":
     case "audio":
-      return <MediaPart part={part} />;
+      return <MediaPart part={part} stateKey={stateKey} />;
     default:
       return <FileChip part={part} />;
   }
@@ -61,8 +62,8 @@ function highlightMentions(text: string): ReactNode[] {
   );
 }
 
-function DataCard({ data }: { data: unknown }) {
-  const [raw, setRaw] = useState(false);
+function DataCard({ data, stateKey }: { data: unknown; stateKey?: string }) {
+  const [raw, setRaw] = useRowFlag(stateKey && `${stateKey}:raw`);
   const record = isRecord(data) ? data : null;
   const kindKey = record ? KIND_KEYS.find((key) => typeof record[key] === "string") : undefined;
   const kind = record && kindKey ? String(record[kindKey]) : null;
@@ -75,7 +76,7 @@ function DataCard({ data }: { data: unknown }) {
         <span className="text-green">{kind ?? "data"}</span>
         <span className="flex-1" />
         {record ? (
-          <button type="button" className="text-faint hover:text-ink cursor-pointer" onClick={() => setRaw((value) => !value)}>
+          <button type="button" className="text-faint hover:text-ink cursor-pointer" onClick={() => setRaw(!raw)}>
             {raw ? "table" : "raw json"}
           </button>
         ) : null}

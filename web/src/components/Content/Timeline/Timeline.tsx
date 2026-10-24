@@ -16,11 +16,12 @@ import {
   isTimelineAtBottom,
   pinToBottom,
   restoreScrollAnchor,
-  restorePrependScroll,
+  prependRestoreTop,
   type ScrollAnchor,
   type ScrollSnapshot,
 } from "./scroll";
-import { continuesFrom, TimelineMessage } from "./TimelineMessage";
+import { continuesFrom, rowKeyOf, startsDay, TimelineMessage } from "./TimelineMessage";
+import { DayDivider, EmptyPane } from "./TimelinePlaceholders";
 import { TimelineHeader } from "./TimelineHeader";
 
 const ESTIMATED_ROW_HEIGHT = 64;
@@ -49,7 +50,7 @@ export function Timeline() {
   const virtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => parentRef.current,
-    getItemKey: (index) => messages[index]?.id ?? index,
+    getItemKey: (index) => (messages[index] ? rowKeyOf(messages[index]) : index),
     estimateSize: () => ESTIMATED_ROW_HEIGHT,
     overscan: 12,
   });
@@ -143,10 +144,18 @@ export function Timeline() {
         return;
       }
 
-      snapshotRef.current = captureScrollSnapshot(node);
+      // Bookmark the row at the top of the viewport from the virtualizer's
+      // measurements: right after a fast scroll the DOM may not hold the
+      // rows for this offset yet.
+      const item = virtualizer.getVirtualItemForOffset(node.scrollTop);
+      const message = item ? messages[item.index] : undefined;
+      snapshotRef.current = {
+        ...captureScrollSnapshot(node),
+        prepend: item && message ? { rowKey: rowKeyOf(message), endOffset: item.end - node.scrollTop } : null,
+      };
       void fetchNextPage();
     },
-    [fetchNextPage, hasNextPage, isFetchingNextPage, messages.length],
+    [fetchNextPage, hasNextPage, isFetchingNextPage, messages, virtualizer],
   );
 
   const handleScroll = useCallback(() => {
@@ -207,10 +216,16 @@ export function Timeline() {
     if (isFetchingNextPage || !node || !snapshot) return;
     anchorRestoreTokenRef.current += 1;
 
+    const anchorIndex = snapshot.prepend
+      ? messages.findIndex((message) => rowKeyOf(message) === snapshot.prepend?.rowKey)
+      : -1;
     const restore = () => {
       const current = parentRef.current;
       if (!current) return;
-      restorePrependScroll(current, snapshot);
+      // getTotalSize() rebuilds measurements from the latest row sizes first.
+      if (anchorIndex >= 0) virtualizer.getTotalSize();
+      const anchorEnd = anchorIndex >= 0 ? virtualizer.measurementsCache[anchorIndex]?.end : undefined;
+      current.scrollTop = prependRestoreTop(current, snapshot, anchorEnd);
       const nearBottom = isTimelineAtBottom(current);
       nearBottomRef.current = nearBottom;
       if (nearBottom) autoFollowRef.current = true;
@@ -223,7 +238,7 @@ export function Timeline() {
       requestAnimationFrame(restore);
     });
     snapshotRef.current = null;
-  }, [firstMessageID, isFetchingNextPage, lastMessageID, messages.length]);
+  }, [firstMessageID, isFetchingNextPage, lastMessageID, messages, virtualizer]);
 
   // Initial selection loads pin to the newest message. Later live appends only
   // stick when the operator was already reading at the bottom of the chat.
@@ -367,6 +382,9 @@ export function Timeline() {
                       paddingRight: 20,
                     }}
                   >
+                    {startsDay(messages[virtualItem.index - 1], message) ? (
+                      <DayDivider date={message.created_at} />
+                    ) : null}
                     <TimelineMessage
                       message={message}
                       continued={continuesFrom(messages[virtualItem.index - 1], message)}
@@ -378,14 +396,6 @@ export function Timeline() {
           )}
           <div className="h-3" aria-hidden="true" />
         </div>
-    </section>
-  );
-}
-
-function EmptyPane({ text }: { text: string }) {
-  return (
-    <section className="grid place-items-center min-h-0 text-faint text-[14px]">
-      <p>{text}</p>
     </section>
   );
 }

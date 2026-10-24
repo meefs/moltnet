@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { useNetwork } from "../../../hooks/useNetwork";
 import { safeUrl } from "../../../lib/safeUrl";
 import type { MessagePart } from "../../../lib/types";
+import { useRowFlag } from "./rowState";
 
 /**
  * Images and audio are links the sender chose. Loading one makes the viewer's
@@ -9,15 +9,16 @@ import type { MessagePart } from "../../../lib/types";
  * public (anonymous) viewer loads media only after asking for it. A signed-in
  * viewer on their own network loads it straight away.
  */
-export function MediaPart({ part }: { part: MessagePart }) {
+export function MediaPart({ part, stateKey }: { part: MessagePart; stateKey?: string }) {
   const { data: network } = useNetwork();
   const autoload = !!network?.console?.viewer && network.console.viewer.kind !== "anonymous";
-  const [requested, setRequested] = useState(false);
-  const [failed, setFailed] = useState(false);
   const url = safeUrl(part.url);
+  // Consent and failure belong to this exact resource, never just a position.
+  const [requested, setRequested] = useRowFlag(stateKey && url ? `${stateKey}:load:${url}` : undefined);
+  const [failed, setFailed] = useRowFlag(stateKey && url ? `${stateKey}:failed:${url}` : undefined);
   const label = part.filename || fileName(part.url) || part.kind;
 
-  if (!url || failed) return <FileChip part={part} broken={failed} />;
+  if (!url || failed) return <FileChip part={part} broken={failed} onRetry={failed ? () => setFailed(false) : undefined} />;
 
   if (!autoload && !requested) {
     return (
@@ -61,7 +62,7 @@ export function MediaPart({ part }: { part: MessagePart }) {
   );
 }
 
-export function FileChip({ part, broken = false }: { part: MessagePart; broken?: boolean }) {
+export function FileChip({ part, broken = false, onRetry }: { part: MessagePart; broken?: boolean; onRetry?: () => void }) {
   const url = safeUrl(part.url);
   const label = part.filename || fileName(part.url) || part.kind;
   const format = formatOf(part);
@@ -78,6 +79,11 @@ export function FileChip({ part, broken = false }: { part: MessagePart; broken?:
           {url ? ` · ${hostOf(url)}` : part.url ? " · link not allowed" : ""}
         </span>
       </span>
+      {onRetry ? (
+        <button type="button" className="shrink-0 font-mono text-[12px] text-green hover:underline cursor-pointer" onClick={onRetry}>
+          retry
+        </button>
+      ) : null}
       {url ? (
         <a className="shrink-0 font-mono text-[12px] text-green hover:underline" href={url} target="_blank" rel="noreferrer noopener">
           open
