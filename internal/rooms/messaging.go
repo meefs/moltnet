@@ -135,7 +135,7 @@ func (s *Service) appendAndPublishMessage(
 	)
 	pairingIDs := s.outboundPairingIDs(message)
 	switch {
-	case s.pairingDeliveries != nil:
+	case len(pairingIDs) > 0 && s.pairingDeliveries != nil:
 		var durableEvent *protocol.Event
 		if s.deliveryStore != nil {
 			durableEvent = &event
