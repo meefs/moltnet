@@ -63,9 +63,9 @@ func (s *SQLStore) insertPairingDeliveries(
 			return nil, err
 		}
 		_, err := tx.ExecContext(ctx, bindQuery(s.dialect, `
-			INSERT INTO pairing_deliveries (pairing_id, message_id, message_json, next_attempt, created_at)
-			VALUES (?, ?, ?, ?, ?)
-		`), id, message.ID, marshalJSON(message), pairingQueueTime(time.Time{}), pairingQueueTime(now))
+			INSERT INTO pairing_deliveries (pairing_id, message_id, message_json, next_attempt, created_at, remote_network_id)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`), id, message.ID, marshalJSON(message), pairingQueueTime(time.Time{}), pairingQueueTime(now), limits[id].RemoteNetworkID)
 		if err != nil {
 			return nil, fmt.Errorf("insert pairing delivery: %w", err)
 		}
@@ -91,7 +91,7 @@ func pairingQueueTime(at time.Time) string {
 }
 
 func (s *SQLStore) ListPairingDeliveryHeadsContext(ctx context.Context) ([]PairingDelivery, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT seq, pairing_id, message_id, message_json,
+	rows, err := s.db.QueryContext(ctx, `SELECT seq, pairing_id, remote_network_id, message_id, message_json,
 		attempts, next_attempt, created_at FROM pairing_deliveries
 		WHERE seq IN (SELECT MIN(seq) FROM pairing_deliveries GROUP BY pairing_id) ORDER BY seq`)
 	if err != nil {
@@ -102,7 +102,7 @@ func (s *SQLStore) ListPairingDeliveryHeadsContext(ctx context.Context) ([]Pairi
 	for rows.Next() {
 		var delivery PairingDelivery
 		var messageJSON, nextAttempt, createdAt string
-		if err := rows.Scan(&delivery.Sequence, &delivery.PairingID, &delivery.MessageID, &messageJSON,
+		if err := rows.Scan(&delivery.Sequence, &delivery.PairingID, &delivery.RemoteNetworkID, &delivery.MessageID, &messageJSON,
 			&delivery.Attempts, &nextAttempt, &createdAt); err != nil {
 			return nil, err
 		}

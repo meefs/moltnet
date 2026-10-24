@@ -37,3 +37,12 @@ func pairingDeliveryMigration() migration {
 		ON CONFLICT DO NOTHING`)
 	return migration{Version: 12, Name: "pairing_delivery", SQLiteStatements: sqlite, PostgresStatements: postgres}
 }
+
+func pairingDeliveryOutcomeMigration() migration {
+	return migration{Version: 13, Name: "pairing_delivery_outcomes", Statements: []string{
+		`ALTER TABLE pairing_deliveries ADD COLUMN remote_network_id TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE pairing_delivery_states ADD COLUMN rejected BIGINT NOT NULL DEFAULT 0`,
+		`ALTER TABLE pairing_delivery_states ADD COLUMN last_rejection_reason TEXT NOT NULL DEFAULT ''`,
+		`CREATE INDEX pairing_deliveries_pairing_seq ON pairing_deliveries (pairing_id, seq)`,
+	}}
+}

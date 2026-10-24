@@ -27,6 +27,7 @@ func pairingStoreFactories() map[string]func(*testing.T) pairingTestStore {
 			}
 			return value
 		},
+		"postgres": newPairingPostgresTestStore,
 		"sqlite": func(t *testing.T) pairingTestStore {
 			value, err := NewSQLiteStore(filepath.Join(t.TempDir(), "state.db"))
 			if err != nil {

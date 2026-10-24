@@ -25,7 +25,7 @@ func (s *MemoryStore) AppendMessageWithPairingDeliveriesContext(
 		s.pairingDeliverySequence++
 		s.pairingDeliveries = append(s.pairingDeliveries, PairingDelivery{
 			Sequence: s.pairingDeliverySequence, PairingID: id, MessageID: message.ID,
-			Message: message, CreatedAt: now,
+			Message: message, CreatedAt: now, RemoteNetworkID: limits[id].RemoteNetworkID,
 		})
 		if limit, ok := limits[id]; ok {
 			if dropped := s.prunePairingDeliveriesLocked(id, now, limit.MaxAge, limit.MaxPending); dropped > 0 {

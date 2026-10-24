@@ -159,7 +159,7 @@ func TestPairingReceiveSQLiteMigrationBackfillsReceipts(t *testing.T) {
 	}
 	for _, query := range []string{
 		`DROP TABLE pairing_receive_receipts`, `DROP TABLE pairing_deliveries`,
-		`DROP TABLE pairing_delivery_states`, `DELETE FROM schema_migrations WHERE version = 12`,
+		`DROP TABLE pairing_delivery_states`, `DELETE FROM schema_migrations WHERE version >= 12`,
 	} {
 		if _, err := storage.db.Exec(query); err != nil {
 			t.Fatal(err)
@@ -199,7 +199,7 @@ func TestPairingDeliveryPostgres(t *testing.T) {
 	if err := storage.AppendMessage(message); err != nil {
 		t.Fatal(err)
 	}
-	for _, query := range []string{`DROP TABLE pairing_receive_receipts`, `DROP TABLE pairing_deliveries`, `DROP TABLE pairing_delivery_states`, `DELETE FROM schema_migrations WHERE version = 12`} {
+	for _, query := range []string{`DROP TABLE pairing_receive_receipts`, `DROP TABLE pairing_deliveries`, `DROP TABLE pairing_delivery_states`, `DELETE FROM schema_migrations WHERE version >= 12`} {
 		if _, err := storage.db.Exec(query); err != nil {
 			t.Fatal(err)
 		}

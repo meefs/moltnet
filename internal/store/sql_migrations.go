@@ -314,4 +314,5 @@ var sqlMigrations = []migration{
 		`CREATE TABLE follow_checkpoints (key TEXT PRIMARY KEY, checkpoint_json TEXT NOT NULL)`,
 	}},
 	pairingDeliveryMigration(),
+	pairingDeliveryOutcomeMigration(),
 }

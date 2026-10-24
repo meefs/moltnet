@@ -12,23 +12,37 @@ import (
 // PairingDelivery is an outbound record committed with the originating message.
 // Sequence orders accepted messages independently of caller timestamps and IDs.
 type PairingDelivery struct {
-	Sequence    int64
-	PairingID   string
-	MessageID   string
-	Message     protocol.Message
-	Attempts    int
-	NextAttempt time.Time
-	CreatedAt   time.Time
+	Sequence        int64
+	PairingID       string
+	RemoteNetworkID string
+	MessageID       string
+	Message         protocol.Message
+	Attempts        int
+	NextAttempt     time.Time
+	CreatedAt       time.Time
 }
 
 type PairingDeliveryState struct {
-	Pending         int
-	OldestPendingAt time.Time
-	LastError       string
-	Dropped         int64
+	Pending             int
+	OldestPendingAt     time.Time
+	LastError           string
+	Dropped             int64
+	Rejected            int64
+	LastRejectionReason string
+}
+
+// PairingDeliveryResult is persisted with the other completed sends in one worker pass.
+// The full delivery identity prevents stale results from changing replacement rows.
+type PairingDeliveryResult struct {
+	Delivery       PairingDelivery
+	LastError      string
+	RejectedReason string
+	Retry          bool
 }
 
 type PairingDeliveryStore interface {
+	ApplyPairingDeliveryResultsContext(context.Context, []PairingDeliveryResult) error
+	ReconcilePairingDeliveriesContext(context.Context, map[string]string) (map[string]int, error)
 	AppendMessageWithPairingDeliveriesContext(context.Context, protocol.Message, *protocol.Event, []string) (AppendLifecycle, error)
 	ListPairingDeliveryHeadsContext(context.Context) ([]PairingDelivery, error)
 	UpdatePairingDeliveryContext(context.Context, PairingDelivery, string) error
@@ -72,8 +86,9 @@ func clonePairingDeliveryStates(states map[string]PairingDeliveryState) map[stri
 
 // PairingDeliveryLimits apply in the same transaction as the message append.
 type PairingDeliveryLimits struct {
-	MaxAge     time.Duration
-	MaxPending int
+	RemoteNetworkID string
+	MaxAge          time.Duration
+	MaxPending      int
 }
 
 type pairingDeliveryLimitsKey struct{}

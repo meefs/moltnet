@@ -76,3 +76,28 @@ func (s *FileStore) mutatePairingDeliveries(mutate func(*MemoryStore) error) err
 	s.restore(next)
 	return nil
 }
+
+func (s *FileStore) ApplyPairingDeliveryResultsContext(ctx context.Context, results []PairingDeliveryResult) error {
+	if len(results) == 0 {
+		return nil
+	}
+	return s.mutatePairingDeliveries(func(working *MemoryStore) error {
+		return working.ApplyPairingDeliveryResultsContext(ctx, results)
+	})
+}
+
+func (s *FileStore) ReconcilePairingDeliveriesContext(ctx context.Context, destinations map[string]string) (map[string]int, error) {
+	s.persistMu.Lock()
+	defer s.persistMu.Unlock()
+	working := memoryStoreFromSnapshot(s.snapshot())
+	dropped, err := working.ReconcilePairingDeliveriesContext(ctx, destinations)
+	if err != nil || len(dropped) == 0 {
+		return dropped, err
+	}
+	next := snapshotFromMemoryStore(working)
+	if err := s.persistSnapshot(next); err != nil {
+		return nil, err
+	}
+	s.restore(next)
+	return dropped, nil
+}

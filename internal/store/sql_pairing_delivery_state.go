@@ -4,19 +4,37 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 )
 
 func (s *SQLStore) PrunePairingDeliveriesContext(
 	ctx context.Context, pairingID string, now time.Time, maxAge time.Duration, maxPending int,
 ) (int, error) {
-	state, err := s.PairingDeliveryStateContext(ctx, pairingID)
-	if err != nil {
-		return 0, err
+	// Maintenance checks existence through the pairing/sequence index rather
+	// than recounting each backlog on every worker pass. Exact status counts
+	// remain available on demand through PairingDeliveryStateContext.
+	var needsPrune bool
+	clauses := []string{}
+	args := []any{}
+	if maxAge > 0 {
+		clauses = append(clauses, `EXISTS (SELECT 1 FROM pairing_deliveries WHERE pairing_id = ? AND created_at <= ?)`)
+		args = append(args, pairingID, pairingQueueTime(now.Add(-maxAge)))
 	}
-	if state.Pending == 0 || (maxAge <= 0 || now.Sub(state.OldestPendingAt) < maxAge) && (maxPending <= 0 || state.Pending <= maxPending) {
+	if maxPending > 0 {
+		clauses = append(clauses, `EXISTS (SELECT 1 FROM pairing_deliveries WHERE pairing_id = ? ORDER BY seq LIMIT 1 OFFSET ?)`)
+		args = append(args, pairingID, maxPending)
+	}
+	if len(clauses) == 0 {
 		return 0, nil
 	}
+	if err := s.db.QueryRowContext(ctx, bindQuery(s.dialect, `SELECT `+strings.Join(clauses, ` OR `)), args...).Scan(&needsPrune); err != nil {
+		return 0, err
+	}
+	if !needsPrune {
+		return 0, nil
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -84,11 +102,11 @@ func (s *SQLStore) PairingDeliveryStateContext(ctx context.Context, pairingID st
 	var state PairingDeliveryState
 	var oldest sql.NullString
 	err := s.db.QueryRowContext(ctx, bindQuery(s.dialect, `
-		SELECT last_error, dropped,
+		SELECT last_error, dropped, rejected, last_rejection_reason,
 		(SELECT COUNT(*) FROM pairing_deliveries WHERE pairing_id = ?),
 		(SELECT MIN(created_at) FROM pairing_deliveries WHERE pairing_id = ?)
 		FROM pairing_delivery_states WHERE pairing_id = ?
-	`), pairingID, pairingID, pairingID).Scan(&state.LastError, &state.Dropped, &state.Pending, &oldest)
+	`), pairingID, pairingID, pairingID).Scan(&state.LastError, &state.Dropped, &state.Rejected, &state.LastRejectionReason, &state.Pending, &oldest)
 	if errors.Is(err, sql.ErrNoRows) {
 		return state, nil
 	}
