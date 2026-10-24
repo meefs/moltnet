@@ -115,10 +115,10 @@ func TestAttachedRunnerCoalescesIntoFailedPendingNudge(t *testing.T) {
 	retry := nextCall(t, notifier.calls)
 	retry.result <- nil
 
-	if want := "[moltnet] 1 new message in #research from alice. Read: moltnet read room:research --since-last"; first.text != want {
+	if want := "[moltnet] 1 new message in #research from alice. Read: moltnet read --since-last room:research"; first.text != want {
 		t.Fatalf("first nudge = %q, want %q", first.text, want)
 	}
-	if want := "[moltnet] 3 new messages in #research from alice, bob. Read: moltnet read room:research --since-last"; retry.text != want {
+	if want := "[moltnet] 3 new messages in #research from alice, bob. Read: moltnet read --since-last room:research"; retry.text != want {
 		t.Fatalf("retried nudge = %q, want %q", retry.text, want)
 	}
 	select {
@@ -145,7 +145,7 @@ func TestAttachedRunnerSendsOneFollowUpForMessagesDuringDelivery(t *testing.T) {
 	<-released
 	follow := nextCall(t, notifier.calls)
 	follow.result <- nil
-	if want := "[moltnet] 2 new messages in #research from bob, carol. Read: moltnet read room:research --since-last"; follow.text != want {
+	if want := "[moltnet] 2 new messages in #research from bob, carol. Read: moltnet read --since-last room:research"; follow.text != want {
 		t.Fatalf("follow-up nudge = %q, want %q", follow.text, want)
 	}
 }
@@ -181,25 +181,25 @@ func TestNudgeText(t *testing.T) {
 			name:   "room",
 			target: protocol.Target{Kind: protocol.TargetKindRoom, RoomID: "research"},
 			from:   []string{"codex", "claude-code", "codex"},
-			want:   "[moltnet] 3 new messages in #research from codex, claude-code. Read: moltnet read room:research --since-last",
+			want:   "[moltnet] 3 new messages in #research from codex, claude-code. Read: moltnet read --since-last room:research",
 		},
 		{
 			name:   "dm",
 			target: protocol.Target{Kind: protocol.TargetKindDM, DMID: "dm_42"},
 			from:   []string{"alice"},
-			want:   "[moltnet] 1 new message in dm:dm_42 from alice. Read: moltnet read dm:dm_42 --since-last",
+			want:   "[moltnet] 1 new message in dm:dm_42 from alice. Read: moltnet read --since-last dm:dm_42",
 		},
 		{
 			name:   "thread",
 			target: protocol.Target{Kind: protocol.TargetKindThread, RoomID: "research", ThreadID: "th_7"},
 			from:   []string{"bob", "carol"},
-			want:   "[moltnet] 2 new messages in thread:th_7 from bob, carol. Read: moltnet read thread:th_7 --since-last",
+			want:   "[moltnet] 2 new messages in thread:th_7 from bob, carol. Read: moltnet read --since-last thread:th_7",
 		},
 		{
 			name:   "many senders",
 			target: protocol.Target{Kind: protocol.TargetKindRoom, RoomID: "r"},
 			from:   []string{"a", "b", "c", "d", "e", "f", "g"},
-			want:   "[moltnet] 7 new messages in #r from a, b, c, d, e and 2 more. Read: moltnet read room:r --since-last",
+			want:   "[moltnet] 7 new messages in #r from a, b, c, d, e and 2 more. Read: moltnet read --since-last room:r",
 		},
 	}
 	for _, test := range tests {

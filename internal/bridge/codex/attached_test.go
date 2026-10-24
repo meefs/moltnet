@@ -21,11 +21,11 @@ func TestQueueCommand(t *testing.T) {
 		Command:  "/opt/bin/codex",
 		HomePath: "/home/agent",
 	}}
-	spec := QueueCommand(config, "[moltnet] 1 new message in #r. Read: moltnet read room:r --since-last")
+	spec := QueueCommand(config, "[moltnet] 1 new message in #r. Read: moltnet read --since-last room:r")
 	if spec.Command != "/opt/bin/codex" {
 		t.Fatalf("command = %q", spec.Command)
 	}
-	wantArgs := []string{"queue", "--thread", "lmc-work", "--message", "[moltnet] 1 new message in #r. Read: moltnet read room:r --since-last"}
+	wantArgs := []string{"queue", "--thread", "lmc-work", "--message", "[moltnet] 1 new message in #r. Read: moltnet read --since-last room:r"}
 	if !reflect.DeepEqual(spec.Args, wantArgs) {
 		t.Fatalf("args = %#v, want %#v", spec.Args, wantArgs)
 	}

@@ -68,7 +68,7 @@ func (n Nudge) Text() string {
 	if senders := n.senderList(); senders != "" {
 		text += " from " + senders
 	}
-	return text + ". Read: moltnet read " + ref + " --since-last"
+	return text + ". Read: moltnet read --since-last " + ref
 }
 
 func (n Nudge) senderList() string {
