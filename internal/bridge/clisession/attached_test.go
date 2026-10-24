@@ -115,10 +115,10 @@ func TestAttachedRunnerCoalescesIntoFailedPendingNudge(t *testing.T) {
 	retry := nextCall(t, notifier.calls)
 	retry.result <- nil
 
-	if want := "[moltnet] 1 new message in #research from alice. Read: moltnet read --since-last room:research"; first.text != want {
+	if want := "[moltnet] 1 new message in #research from alice (latest m1). Read: moltnet read --network local --member claude_bot --since-last room:research"; first.text != want {
 		t.Fatalf("first nudge = %q, want %q", first.text, want)
 	}
-	if want := "[moltnet] 3 new messages in #research from alice, bob. Read: moltnet read --since-last room:research"; retry.text != want {
+	if want := "[moltnet] 3 new messages in #research from alice, bob (latest m3). Read: moltnet read --network local --member claude_bot --since-last room:research"; retry.text != want {
 		t.Fatalf("retried nudge = %q, want %q", retry.text, want)
 	}
 	select {
@@ -145,7 +145,7 @@ func TestAttachedRunnerSendsOneFollowUpForMessagesDuringDelivery(t *testing.T) {
 	<-released
 	follow := nextCall(t, notifier.calls)
 	follow.result <- nil
-	if want := "[moltnet] 2 new messages in #research from bob, carol. Read: moltnet read --since-last room:research"; follow.text != want {
+	if want := "[moltnet] 2 new messages in #research from bob, carol (latest m3). Read: moltnet read --network local --member claude_bot --since-last room:research"; follow.text != want {
 		t.Fatalf("follow-up nudge = %q, want %q", follow.text, want)
 	}
 }
@@ -175,31 +175,33 @@ func TestNudgeText(t *testing.T) {
 		name   string
 		target protocol.Target
 		from   []string
+		id     string
 		want   string
 	}{
 		{
 			name:   "room",
 			target: protocol.Target{Kind: protocol.TargetKindRoom, RoomID: "research"},
 			from:   []string{"codex", "claude-code", "codex"},
-			want:   "[moltnet] 3 new messages in #research from codex, claude-code. Read: moltnet read --since-last room:research",
+			want:   "[moltnet] 3 new messages in #research from codex, claude-code. Read: moltnet read --network net --member me --since-last room:research",
 		},
 		{
 			name:   "dm",
 			target: protocol.Target{Kind: protocol.TargetKindDM, DMID: "dm_42"},
 			from:   []string{"alice"},
-			want:   "[moltnet] 1 new message in dm:dm_42 from alice. Read: moltnet read --since-last dm:dm_42",
+			id:     "msg_9",
+			want:   "[moltnet] 1 new message in dm:dm_42 from alice (latest msg_9). Read: moltnet read --network net --member me --since-last dm:dm_42",
 		},
 		{
 			name:   "thread",
 			target: protocol.Target{Kind: protocol.TargetKindThread, RoomID: "research", ThreadID: "th_7"},
 			from:   []string{"bob", "carol"},
-			want:   "[moltnet] 2 new messages in thread:th_7 from bob, carol. Read: moltnet read --since-last thread:th_7",
+			want:   "[moltnet] 2 new messages in thread:th_7 from bob, carol. Read: moltnet read --network net --member me --since-last thread:th_7",
 		},
 		{
 			name:   "many senders",
 			target: protocol.Target{Kind: protocol.TargetKindRoom, RoomID: "r"},
 			from:   []string{"a", "b", "c", "d", "e", "f", "g"},
-			want:   "[moltnet] 7 new messages in #r from a, b, c, d, e and 2 more. Read: moltnet read --since-last room:r",
+			want:   "[moltnet] 7 new messages in #r from a, b, c, d, e and 2 more. Read: moltnet read --network net --member me --since-last room:r",
 		},
 	}
 	for _, test := range tests {
@@ -207,9 +209,9 @@ func TestNudgeText(t *testing.T) {
 			t.Parallel()
 			var nudge Nudge
 			for _, from := range test.from {
-				nudge.Add(&protocol.Message{Target: test.target, From: protocol.Actor{ID: from}, Parts: []protocol.Part{{Kind: "text", Text: "body"}}})
+				nudge.Add(&protocol.Message{ID: test.id, Target: test.target, From: protocol.Actor{ID: from}, Parts: []protocol.Part{{Kind: "text", Text: "body"}}})
 			}
-			if got := nudge.Text(); got != test.want {
+			if got := nudge.Text("net", "me"); got != test.want {
 				t.Fatalf("Text() = %q, want %q", got, test.want)
 			}
 		})

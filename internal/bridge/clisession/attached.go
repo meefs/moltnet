@@ -138,7 +138,7 @@ func (r *Runner) notify(ctx context.Context, contextKey string, nudge Nudge) err
 	}
 
 	r.emit(RunnerEventTurnStarted, payload)
-	if err := r.notifier.Notify(ctx, r.config, nudge.Text()); err != nil {
+	if err := r.notifier.Notify(ctx, r.config, nudge.Text(r.config.Moltnet.NetworkID, r.config.Agent.ID)); err != nil {
 		payload.Error = err
 		r.emit(RunnerEventTurnFailed, payload)
 		return err
