@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -19,14 +20,15 @@ func TestInstallMoltnetSkillWritesEndOfTurnFiles(t *testing.T) {
 		path    string
 		want    string
 	}{
-		{runtime: "gemini", path: ".agent/rules/moltnet.md", want: rule},
-		{runtime: "antigravity", path: ".agent/rules/moltnet.md", want: rule},
+		{runtime: "gemini", path: "GEMINI.md", want: "<!-- moltnet:begin -->\n" + rule + "<!-- moltnet:end -->\n"},
+		{runtime: "antigravity", path: "GEMINI.md", want: "<!-- moltnet:begin -->\n" + rule + "<!-- moltnet:end -->\n"},
 		{runtime: "cursor", path: ".cursor/rules/moltnet.mdc", want: "---\nalwaysApply: true\n---\n" + rule},
 		{runtime: "opencode", path: ".opencode/rules/moltnet.md", want: rule},
+		{runtime: "opencode", path: ".opencode/opencode.json", want: "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"instructions\": [\".opencode/rules/moltnet.md\"]\n}\n"},
 		{runtime: "grok-build", path: ".grok/rules/moltnet.md", want: rule},
 	}
 	for _, test := range tests {
-		t.Run(test.runtime, func(t *testing.T) {
+		t.Run(test.runtime+"/"+test.path, func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			installed, err := installMoltnetSkill(test.runtime, root, "skill")
@@ -86,10 +88,74 @@ func TestInstallMoltnetSkillManualRuntimesGetOnlyTheSkill(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", runtime, err)
 		}
-		for _, dir := range []string{".agent", ".cursor", ".opencode", ".grok", ".github"} {
+		for _, dir := range []string{"GEMINI.md", ".agent", ".cursor", ".opencode", ".grok", ".github"} {
 			if _, err := os.Stat(filepath.Join(root, dir)); err == nil {
 				t.Fatalf("%s: unexpected %s written (installed %q)", runtime, dir, installed)
 			}
 		}
+	}
+}
+
+func TestInstallMoltnetSkillKeepsUserContentInGeminiMD(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	path := filepath.Join(root, "GEMINI.md")
+	if err := os.WriteFile(path, []byte("# Project rules\nUse tabs."), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if _, err := installMoltnetSkill("antigravity", root, "skill"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "# Project rules\nUse tabs.\n\n" + turnBlockBegin + "\n" + endOfTurnRule + turnBlockEnd + "\n"
+	if string(got) != want {
+		t.Fatalf("GEMINI.md = %q, want %q", got, want)
+	}
+	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("GEMINI.md mode changed: %v %v", info.Mode(), err)
+	}
+}
+
+func TestWithTurnBlockReplacesOnlyTheMarkedBlock(t *testing.T) {
+	t.Parallel()
+	existing := "intro\n" + turnBlockBegin + "\nold rule\n" + turnBlockEnd + "\noutro\n"
+	want := "intro\n" + turnBlockBegin + "\nnew rule\n" + turnBlockEnd + "\noutro\n"
+	if got := withTurnBlock(existing, "new rule\n"); got != want {
+		t.Fatalf("withTurnBlock() = %q, want %q", got, want)
+	}
+}
+
+func TestInstallMoltnetSkillLeavesExistingOpencodeConfig(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, ".opencode", "opencode.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	userConfig := `{"model": "x"}`
+	if err := os.WriteFile(path, []byte(userConfig), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var notes bytes.Buffer
+	previous := stderr
+	stderr = &notes
+	t.Cleanup(func() { stderr = previous })
+
+	installed, err := installMoltnetSkill("opencode", root, "skill")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != userConfig {
+		t.Fatalf("opencode.json overwritten: %q", got)
+	}
+	if strings.Contains(installed, path) {
+		t.Fatalf("installed paths %q list the untouched config", installed)
+	}
+	if !strings.Contains(notes.String(), `add ".opencode/rules/moltnet.md" to its "instructions"`) {
+		t.Fatalf("missing note, stderr = %q", notes.String())
 	}
 }
