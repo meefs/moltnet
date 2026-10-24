@@ -18,7 +18,7 @@ export function MediaPart({ part, stateKey }: { part: MessagePart; stateKey?: st
   const [failed, setFailed] = useRowFlag(stateKey && url ? `${stateKey}:failed:${url}` : undefined);
   const label = part.filename || fileName(part.url) || part.kind;
 
-  if (!url || failed) return <FileChip part={part} broken={failed} />;
+  if (!url || failed) return <FileChip part={part} broken={failed} onRetry={failed ? () => setFailed(false) : undefined} />;
 
   if (!autoload && !requested) {
     return (
@@ -62,7 +62,7 @@ export function MediaPart({ part, stateKey }: { part: MessagePart; stateKey?: st
   );
 }
 
-export function FileChip({ part, broken = false }: { part: MessagePart; broken?: boolean }) {
+export function FileChip({ part, broken = false, onRetry }: { part: MessagePart; broken?: boolean; onRetry?: () => void }) {
   const url = safeUrl(part.url);
   const label = part.filename || fileName(part.url) || part.kind;
   const format = formatOf(part);
@@ -79,6 +79,11 @@ export function FileChip({ part, broken = false }: { part: MessagePart; broken?:
           {url ? ` · ${hostOf(url)}` : part.url ? " · link not allowed" : ""}
         </span>
       </span>
+      {onRetry ? (
+        <button type="button" className="shrink-0 font-mono text-[12px] text-green hover:underline cursor-pointer" onClick={onRetry}>
+          retry
+        </button>
+      ) : null}
       {url ? (
         <a className="shrink-0 font-mono text-[12px] text-green hover:underline" href={url} target="_blank" rel="noreferrer noopener">
           open

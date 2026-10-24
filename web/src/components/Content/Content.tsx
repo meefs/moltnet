@@ -5,7 +5,6 @@ import { AgentView } from "./AgentView";
 import { EventsView } from "./EventsView";
 import { PairingView } from "./PairingView";
 import { Timeline } from "./Timeline";
-import { RowStateProvider } from "./Timeline/rowState";
 
 export function Content() {
   const { selected } = useSelection();
@@ -31,9 +30,7 @@ export function Content() {
           : "grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)]"
       }
     >
-      <RowStateProvider>
-        <Timeline />
-      </RowStateProvider>
+      <Timeline />
       {showComposer ? <Composer /> : null}
     </section>
   );

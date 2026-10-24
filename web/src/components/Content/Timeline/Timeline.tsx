@@ -50,7 +50,7 @@ export function Timeline() {
   const virtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => parentRef.current,
-    getItemKey: (index) => messages[index]?.id ?? index,
+    getItemKey: (index) => (messages[index] ? rowKeyOf(messages[index]) : index),
     estimateSize: () => ESTIMATED_ROW_HEIGHT,
     overscan: 12,
   });
@@ -222,6 +222,8 @@ export function Timeline() {
     const restore = () => {
       const current = parentRef.current;
       if (!current) return;
+      // getTotalSize() rebuilds measurements from the latest row sizes first.
+      if (anchorIndex >= 0) virtualizer.getTotalSize();
       const anchorEnd = anchorIndex >= 0 ? virtualizer.measurementsCache[anchorIndex]?.end : undefined;
       current.scrollTop = prependRestoreTop(current, snapshot, anchorEnd);
       const nearBottom = isTimelineAtBottom(current);

@@ -64,6 +64,15 @@ describe("row state survives virtualization", () => {
     expect(screen.getByText(/could not load/)).toBeTruthy();
   });
 
+  it("lets the viewer retry a failed load", async () => {
+    const row = message([{ kind: "image", url: "https://cdn.example/flaky.png" }], { id: "m1" });
+    const { container } = timeline([row]);
+    fireEvent.click(await screen.findByRole("button", { name: /load image/ }));
+    fireEvent.error(container.querySelector("img")!);
+    fireEvent.click(screen.getByRole("button", { name: "retry" }));
+    expect(container.querySelector("img")).toBeTruthy();
+  });
+
   it("never shares consent between messages, even without ids and with equal sender and time", async () => {
     const a = message([{ kind: "image", url: "https://a.example/a.png" }]);
     const b = message([{ kind: "image", url: "https://b.example/b.png" }]);

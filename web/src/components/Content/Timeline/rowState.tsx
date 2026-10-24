@@ -22,7 +22,10 @@ function createRowStore(): RowStore {
       const set = listeners.get(key) ?? new Set();
       set.add(listener);
       listeners.set(key, set);
-      return () => set.delete(listener);
+      return () => {
+        set.delete(listener);
+        if (set.size === 0) listeners.delete(key);
+      };
     },
   };
 }
@@ -30,7 +33,8 @@ function createRowStore(): RowStore {
 /**
  * Per-message UI choices (an image the viewer agreed to load, a card switched
  * to raw JSON). Rows are virtualized and unmount when scrolled away, so their
- * own state would reset; this keeps it for as long as the console is open.
+ * own state would reset; this keeps it for as long as the console tab is open
+ * (the provider sits in the app shell, above every view).
  * Each flag notifies only the row reading it.
  */
 export function RowStateProvider({ children }: { children: ReactNode }) {
