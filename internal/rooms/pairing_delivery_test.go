@@ -140,6 +140,11 @@ func TestPairingDeliveryDedupeUsesBoundOriginTuple(t *testing.T) {
 	var first protocol.MessageAccepted
 	for _, id := range []string{"attempt-1", "attempt-2", "attempt-3"} {
 		request.ID = id
+		// Validation compares the authenticated namespace after trimming;
+		// persisted receipt keys must use that same canonical namespace.
+		if id == "attempt-3" {
+			request.Origin.NetworkID = " origin "
+		}
 		status, body := deliveryPost(t, server.URL, "pair-secret", request)
 		if status != http.StatusAccepted {
 			t.Fatalf("duplicate receive status = %d: %s", status, body)
@@ -228,6 +233,7 @@ func deliveryOriginWithClient(t *testing.T, storage deliveryStorage, pairing pro
 	}
 	server := httptest.NewServer(transport.NewHTTPHandler(service, policy))
 	t.Cleanup(server.Close)
+	service.StartPairingDelivery()
 	return service, server
 }
 

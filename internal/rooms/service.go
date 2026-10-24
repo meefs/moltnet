@@ -180,7 +180,6 @@ func NewService(config ServiceConfig) *Service {
 	service.pairingDeliveries, _ = config.Messages.(store.PairingDeliveryStore)
 	service.configureDelivery(config)
 	service.follows = follow.New(service)
-	service.startDeliveryWorker()
 	return service
 }
 

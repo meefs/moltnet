@@ -13,6 +13,7 @@ const pairingRelayErrorRetryAfter = 30 * time.Second
 
 func (s *Service) normalizeOrigin(ctx context.Context, origin protocol.MessageOrigin, messageID string) protocol.MessageOrigin {
 	normalized := origin
+	normalized.NetworkID = strings.TrimSpace(normalized.NetworkID)
 	if strings.TrimSpace(normalized.NetworkID) == "" {
 		normalized.NetworkID = s.networkID
 	}
@@ -71,7 +72,7 @@ func canonicalDMParticipantIDs(defaultNetworkID string, from protocol.Actor, par
 func (s *Service) relayMessage(message protocol.Message) {
 	// Records were committed atomically with the accepted message.
 	if s.pairingDeliveries != nil {
-		s.startDeliveryWorker()
+		s.StartPairingDelivery()
 		s.wakeDeliveryWorker()
 	}
 }

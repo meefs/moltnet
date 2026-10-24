@@ -52,7 +52,9 @@ func (s *Service) outboundPairingIDs(message protocol.Message) []string {
 	return ids
 }
 
-func (s *Service) startDeliveryWorker() {
+// StartPairingDelivery resumes the durable outbox after initial configuration
+// has been applied. New messages also start the worker after acceptance.
+func (s *Service) StartPairingDelivery() {
 	if s.pairingDeliveries == nil || s.pairingClient == nil {
 		return
 	}
