@@ -146,6 +146,10 @@ func TestPairingReceiveDedupeBackends(t *testing.T) {
 			if err := storage.AppendMessage(message); !errors.Is(err, ErrMessageIDConflict) {
 				t.Fatalf("different origin wire ID collision = %v", err)
 			}
+			local := pairingTestMessage("stored-first")
+			if err := storage.AppendMessage(local); !errors.Is(err, ErrMessageIDConflict) {
+				t.Fatalf("local send collided with remote wire ID = %v", err)
+			}
 			message.ID = "new-origin"
 			if err := storage.AppendMessage(message); err != nil {
 				t.Fatal(err)

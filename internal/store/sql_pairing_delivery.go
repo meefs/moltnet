@@ -178,9 +178,6 @@ func (s *SQLStore) CompletePairingDeliveryContext(ctx context.Context, pairingID
 }
 
 func (s *SQLStore) requireMatchingMessageOrigin(ctx context.Context, tx *sql.Tx, message protocol.Message) error {
-	if messageOriginReceipt(message) == "" {
-		return nil
-	}
 	var encoded string
 	if err := tx.QueryRowContext(ctx, bindQuery(s.dialect, `SELECT origin_json FROM messages WHERE id = ?`), message.ID).Scan(&encoded); err != nil {
 		return err

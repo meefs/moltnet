@@ -40,7 +40,7 @@ func (s *MemoryStore) appendMessageLocked(message protocol.Message) (AppendLifec
 		}
 	}
 	_, duplicate := s.messageIDs[message.ID]
-	if key := messageOriginReceipt(message); duplicate && key != "" && s.messageOrigins[message.ID] != key {
+	if duplicate && s.messageOrigins[message.ID] != messageOriginReceipt(message) {
 		return AppendLifecycle{}, ErrMessageIDConflict
 	}
 

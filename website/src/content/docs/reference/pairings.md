@@ -92,11 +92,18 @@ delivery_limits:
 
 Zero uses the default; negative values are invalid. When a bound is exceeded,
 the oldest pending records are dropped. Drops are explicitly logged and added
-to the pairing's cumulative `delivery.dropped` counter. Delivery beyond these
+to the pairing's cumulative `delivery.dropped` counter. An already in-flight copy
+may still arrive after its pending record is dropped. Delivery beyond these
 bounds is not guaranteed; this queue does not backfill earlier room history.
 
 One active sender attempts messages in queue order for each pairing and waits
-for acknowledgment before advancing. A timed-out request may still finish at
+for acknowledgment before advancing. A blocked head record holds the whole
+pairing queue, including later room messages behind a DM the peer has disabled,
+a room whose federation policy changed, or a rejected request. Retries continue
+until the condition is corrected or retention/overflow drops that record; other
+pairings continue independently. This preserves per-pairing attempt order.
+
+A timed-out request may still finish at
 the peer, so strict arrival order across ambiguous timeouts, including relay
 Worker requests, is not guaranteed. Run only one sender for a given queue.
 Relayed messages and follow imports are never queued for another hop.
