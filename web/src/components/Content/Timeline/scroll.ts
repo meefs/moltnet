@@ -4,6 +4,8 @@ export const SCROLL_BOTTOM_STICKY_PX = 32;
 export interface ScrollSnapshot {
   scrollTop: number;
   scrollHeight: number;
+  /** The row the operator was looking at, when one was visible. */
+  anchor?: ScrollAnchor | null;
 }
 
 export interface ScrollAnchor {
@@ -30,9 +32,22 @@ export function captureScrollSnapshot(node: HTMLElement): ScrollSnapshot {
   };
 }
 
-export function restorePrependScroll(node: HTMLElement, snapshot: ScrollSnapshot) {
-  const delta = node.scrollHeight - snapshot.scrollHeight;
-  node.scrollTop = snapshot.scrollTop + Math.max(0, delta);
+/**
+ * Where to scroll after older messages load above the row the operator was
+ * reading. `anchorStart` is that row's position in the virtualizer's own
+ * measurements: an absolute answer that stays right while rows above are
+ * still being measured, where DOM height deltas double-count the
+ * virtualizer's own scroll corrections. The delta is only a fallback.
+ */
+export function prependRestoreTop(
+  node: HTMLElement,
+  snapshot: ScrollSnapshot,
+  anchorStart: number | undefined,
+): number {
+  if (snapshot.anchor && anchorStart !== undefined) {
+    return Math.max(0, anchorStart - snapshot.anchor.offsetTop);
+  }
+  return snapshot.scrollTop + Math.max(0, node.scrollHeight - snapshot.scrollHeight);
 }
 
 export function captureScrollAnchor(node: HTMLElement): ScrollAnchor | null {

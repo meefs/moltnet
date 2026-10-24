@@ -1,4 +1,5 @@
 import { avatarColor, initials, senderOf, shortName } from "../../../lib/sender";
+import { dayKey } from "../../../lib/format";
 import type { Message } from "../../../lib/types";
 import { MessageParts } from "./MessageParts";
 
@@ -92,7 +93,7 @@ export function TimelineMessage({ message, continued = false }: TimelineMessageP
             </time>
           </div>
         )}
-        <MessageParts parts={message.parts} />
+        <MessageParts parts={message.parts} rowKey={rowKeyOf(message)} />
       </div>
     </div>
   );
@@ -101,7 +102,18 @@ export function TimelineMessage({ message, continued = false }: TimelineMessageP
 /** Group rows from one sender that land within five minutes of each other. */
 export function continuesFrom(previous: Message | undefined, message: Message): boolean {
   if (!previous) return false;
+  if (dayKey(previous.created_at) !== dayKey(message.created_at)) return false;
   const gap = Date.parse(message.created_at) - Date.parse(previous.created_at);
   if (!(gap >= 0 && gap < 5 * 60_000)) return false;
   return senderOf(previous).key === senderOf(message).key;
+}
+
+/** Stable identity for remembering per-message UI choices. */
+export function rowKeyOf(message: Message): string {
+  return message.id || `${message.from?.id ?? "?"}@${message.created_at}`;
+}
+
+/** A new calendar day starts at this message. */
+export function startsDay(previous: Message | undefined, message: Message): boolean {
+  return !previous || dayKey(previous.created_at) !== dayKey(message.created_at);
 }

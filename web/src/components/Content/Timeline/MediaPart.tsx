@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { useNetwork } from "../../../hooks/useNetwork";
 import { safeUrl } from "../../../lib/safeUrl";
 import type { MessagePart } from "../../../lib/types";
+import { useRowFlag } from "./rowState";
 
 /**
  * Images and audio are links the sender chose. Loading one makes the viewer's
@@ -9,11 +9,11 @@ import type { MessagePart } from "../../../lib/types";
  * public (anonymous) viewer loads media only after asking for it. A signed-in
  * viewer on their own network loads it straight away.
  */
-export function MediaPart({ part }: { part: MessagePart }) {
+export function MediaPart({ part, stateKey }: { part: MessagePart; stateKey?: string }) {
   const { data: network } = useNetwork();
   const autoload = !!network?.console?.viewer && network.console.viewer.kind !== "anonymous";
-  const [requested, setRequested] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [requested, setRequested] = useRowFlag(stateKey && `${stateKey}:load`);
+  const [failed, setFailed] = useRowFlag(stateKey && `${stateKey}:failed`);
   const url = safeUrl(part.url);
   const label = part.filename || fileName(part.url) || part.kind;
 
