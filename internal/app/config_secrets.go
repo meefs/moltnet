@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
@@ -12,6 +13,11 @@ import (
 func validatePairings(pairings []protocol.Pairing) error {
 	for index, pairing := range pairings {
 		name := fmt.Sprintf("pairings[%d]", index)
+		if limits := pairing.DeliveryLimits; limits != nil {
+			if limits.MaxPending < 0 || limits.MaxAgeSeconds < 0 || limits.MaxAgeSeconds > int64((1<<63-1)/time.Second) {
+				return fmt.Errorf("%s.delivery_limits requires nonnegative max_pending and representable max_age_seconds", name)
+			}
+		}
 		if strings.TrimSpace(pairing.ID) == "" {
 			return fmt.Errorf("%s.id is required", name)
 		}

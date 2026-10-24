@@ -3,6 +3,7 @@ package rooms
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 
 	"github.com/noopolis/moltnet/internal/store"
@@ -89,11 +90,19 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 	lifecycle, err := s.appendAndPublishMessage(ctx, request, message, event)
 	if err != nil {
 		if errors.Is(err, store.ErrDuplicateMessage) {
+			var duplicate *store.DuplicateMessageError
+			if errors.As(err, &duplicate) {
+				message.ID = duplicate.MessageID
+				event.ID = eventIDForMessage(message.ID)
+			}
 			return protocol.MessageAccepted{
 				MessageID: message.ID,
 				EventID:   event.ID,
 				Accepted:  true,
 			}, nil
+		}
+		if errors.Is(err, store.ErrMessageIDConflict) {
+			return protocol.MessageAccepted{}, &Error{status: http.StatusConflict, msg: err.Error(), cause: err}
 		}
 		if errors.Is(err, store.ErrDMTopologyConflict) {
 			return protocol.MessageAccepted{}, dmTopologyConflictError()
@@ -124,7 +133,22 @@ func (s *Service) appendAndPublishMessage(
 		lifecycle store.AppendLifecycle
 		err       error
 	)
+	pairingIDs := s.outboundPairingIDs(message)
 	switch {
+	case s.pairingDeliveries != nil:
+		var durableEvent *protocol.Event
+		if s.deliveryStore != nil {
+			durableEvent = &event
+		}
+		limits := make(map[string]store.PairingDeliveryLimits)
+		for _, pairing := range s.snapshotRelayPairings() {
+			age, size := deliveryBounds(pairing)
+			limits[pairing.ID] = store.PairingDeliveryLimits{MaxAge: age, MaxPending: size}
+		}
+		appendCtx := store.WithPairingDeliveryLimits(ctx, limits)
+		lifecycle, err = s.pairingDeliveries.AppendMessageWithPairingDeliveriesContext(appendCtx, message, durableEvent, pairingIDs)
+	case len(pairingIDs) > 0:
+		err = errors.New("message store does not support durable pairing delivery")
 	case s.deliveryStore != nil:
 		lifecycle, err = s.deliveryStore.AppendMessageEventWithLifecycleContext(ctx, message, event)
 	case s.lifecycleMessages != nil:
@@ -137,6 +161,10 @@ func (s *Service) appendAndPublishMessage(
 	}
 	if err != nil {
 		return store.AppendLifecycle{}, err
+	}
+
+	for pairingID, dropped := range lifecycle.PairingDeliveriesDropped {
+		s.logDroppedDeliveries(ctx, pairingID, dropped)
 	}
 
 	// The durable append above succeeded and was not a duplicate, so stamp and
