@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -58,7 +59,9 @@ func (s *SQLStore) insertPairingDeliveries(
 	var dropped map[string]int
 	now := time.Now().UTC()
 	limits := pairingDeliveryLimitsFromContext(ctx)
-	for _, id := range protocol.UniqueTrimmedStrings(pairingIDs) {
+	ids := protocol.UniqueTrimmedStrings(pairingIDs)
+	slices.Sort(ids) // All multi-pairing transactions acquire state locks in this order.
+	for _, id := range ids {
 		if err := s.lockPairingDeliveryState(ctx, tx, id); err != nil {
 			return nil, err
 		}

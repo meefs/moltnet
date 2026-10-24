@@ -104,6 +104,9 @@ that no longer allows the message, or HTTP 4xx other than 408/429) remove only
 that message and let the next one proceed. Each rejection is logged, increments
 `delivery.rejected`, and retains `delivery.last_rejection_reason`. Rejected
 messages remain in local history but are not automatically replayed after a fix.
+A credential or route error such as 401/403/404 can reject every queued message
+for that pairing. Correct the configuration before sending again. Disabling
+local DMs also rejects queued DMs when the new configuration loads.
 
 On startup, revoked/removed pairings and changed remote network IDs purge the
 old backlog and increment `delivery.dropped`. Legacy outbox rows without a remote

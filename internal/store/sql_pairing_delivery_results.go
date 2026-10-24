@@ -1,8 +1,10 @@
 package store
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
+	"slices"
 )
 
 func (s *SQLStore) ApplyPairingDeliveryResultsContext(ctx context.Context, results []PairingDeliveryResult) error {
@@ -14,6 +16,13 @@ func (s *SQLStore) ApplyPairingDeliveryResultsContext(ctx context.Context, resul
 		return err
 	}
 	defer rollback(tx)
+	results = slices.Clone(results)
+	slices.SortFunc(results, func(a, b PairingDeliveryResult) int {
+		if order := cmp.Compare(a.Delivery.PairingID, b.Delivery.PairingID); order != 0 {
+			return order
+		}
+		return cmp.Compare(a.Delivery.Sequence, b.Delivery.Sequence)
+	})
 	for _, result := range results {
 		if err := s.applyPairingDeliveryResultTx(ctx, tx, result); err != nil {
 			return err

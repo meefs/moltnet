@@ -214,10 +214,11 @@ func deliveryOrigin(t *testing.T, storage deliveryStorage, pairing protocol.Pair
 	return deliveryOriginWithClient(t, storage, pairing, pairings.NewClient())
 }
 
-func deliveryOriginWithClient(t *testing.T, storage deliveryStorage, pairing protocol.Pairing, client rooms.PairingClient) (*rooms.Service, *httptest.Server) {
+func deliveryOriginWithClient(t *testing.T, storage deliveryStorage, pairing protocol.Pairing, client rooms.PairingClient, disableDM ...bool) (*rooms.Service, *httptest.Server) {
 	t.Helper()
 	service := rooms.NewService(rooms.ServiceConfig{
-		NetworkID: "origin", Store: storage, Messages: storage, Broker: events.NewBroker(),
+		DisableDirectMessages: len(disableDM) > 0 && disableDM[0],
+		NetworkID:             "origin", Store: storage, Messages: storage, Broker: events.NewBroker(),
 		Pairings: []protocol.Pairing{pairing}, PairingClient: client,
 		DeliveryRetryMin: 10 * time.Millisecond, DeliveryRetryMax: 30 * time.Millisecond,
 		DeliveryPollInterval: 5 * time.Millisecond, DeliveryTimeout: 60 * time.Millisecond,

@@ -81,27 +81,39 @@ func (s *Service) runDeliveryWorker() {
 	active := make(map[string]bool)
 	finished := make(chan store.PairingDeliveryResult, 8)
 	var configuredDestinations map[string]string
+	var pendingResults []store.PairingDeliveryResult
+	var persistAfter time.Time
+	persistAttempts := 0
 	for {
 		select {
 		case <-s.lifecycleCtx.Done():
 			return
 		case result := <-finished:
-			results := []store.PairingDeliveryResult{result}
-			// Persist all completed sends available in this worker pass together.
+			pendingResults = append(pendingResults, result)
 			for len(finished) > 0 {
-				results = append(results, <-finished)
-			}
-			if err := s.pairingDeliveries.ApplyPairingDeliveryResultsContext(s.lifecycleCtx, results); err != nil {
-				s.logDeliveryStoreError(err)
-			}
-			for _, result := range results {
-				delete(active, result.Delivery.PairingID)
+				pendingResults = append(pendingResults, <-finished)
 			}
 		case <-ticker.C:
 		case <-s.relayWake:
 		}
 		if s.lifecycleCtx.Err() != nil {
 			return
+		}
+		if len(pendingResults) > 0 && !persistAfter.After(time.Now()) {
+			// Keep these pairings active until their results commit. A store
+			// outage retries persistence with backoff, never the network send.
+			if err := s.pairingDeliveries.ApplyPairingDeliveryResultsContext(s.lifecycleCtx, pendingResults); err != nil {
+				s.logDeliveryStoreError(err)
+				persistAttempts++
+				persistAfter = time.Now().Add(s.deliveryBackoff(persistAttempts))
+			} else {
+				for _, result := range pendingResults {
+					delete(active, result.Delivery.PairingID)
+				}
+				pendingResults = nil
+				persistAttempts = 0
+				persistAfter = time.Time{}
+			}
 		}
 		pairings := s.snapshotRelayPairings()
 		destinations := make(map[string]string, len(pairings))
@@ -200,6 +212,9 @@ func (s *Service) reconcileDeliveryDestinations(destinations map[string]string) 
 }
 
 func (s *Service) sendQueuedMessage(ctx context.Context, pairing protocol.Pairing, message protocol.Message) error {
+	if message.Target.Kind == protocol.TargetKindDM && s.disableDirectMessages {
+		return fmt.Errorf("%w: local direct messages disabled", errDeliveryRejected)
+	}
 	if message.Origin.NetworkID != s.networkID || message.Origin.ReceivedVia != "" {
 		return fmt.Errorf("%w: invalid relay origin", errDeliveryRejected)
 	}

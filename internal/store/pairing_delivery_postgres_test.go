@@ -29,6 +29,7 @@ func newPairingPostgresTestStore(t *testing.T) pairingTestStore {
 		t.Fatal(err)
 	}
 	config.RuntimeParams["search_path"] = schema
+	config.RuntimeParams["application_name"] = schema
 	db := stdlib.OpenDB(*config)
 	storage, err := newSQLStore(db, dialectPostgres)
 	t.Cleanup(func() {
