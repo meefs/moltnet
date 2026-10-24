@@ -22,6 +22,15 @@ func (a *Adapter) Name() string {
 }
 
 func (a *Adapter) Run(ctx context.Context, config bridgeconfig.Config) error {
+	if config.Runtime.IsAttached() {
+		return clisession.RunAttached(
+			ctx,
+			config,
+			AttachedNotifier{},
+			loop.NewMoltnetClient(config),
+			bridgeutil.NewBackoff(bridgeutil.DefaultReconnectBaseDelay, bridgeutil.DefaultReconnectMaxDelay),
+		)
+	}
 	if strings.TrimSpace(config.Runtime.WorkspacePath) == "" {
 		return fmt.Errorf("codex adapter requires runtime.workspace_path")
 	}
