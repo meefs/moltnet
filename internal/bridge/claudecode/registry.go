@@ -32,8 +32,9 @@ type sessionTarget struct {
 	Token      string
 	// SessionID is stamped on the frame so a recycled socket or pid drops it.
 	SessionID string
-	// Bypass is set when the session's transcript says bypassPermissions; such
-	// a session holds a cross-session message that names no permission mode.
+	// Bypass is set when the session's transcript (or, before it has one, its
+	// launch flags) says bypassPermissions; such a session holds a
+	// cross-session message that names no permission mode.
 	Bypass bool
 }
 
@@ -42,10 +43,11 @@ type registry struct {
 	dir       string
 	uid       int
 	alive     func(pid int) bool
+	args      func(pid int) []string
 }
 
 func newRegistry(configDir string) registry {
-	return registry{configDir: configDir, dir: filepath.Join(configDir, "sessions"), uid: os.Getuid(), alive: processAlive}
+	return registry{configDir: configDir, dir: filepath.Join(configDir, "sessions"), uid: os.Getuid(), alive: processAlive, args: processArgs}
 }
 
 // claudeConfigDir mirrors Claude Code's own lookup: CLAUDE_CONFIG_DIR, else
@@ -110,11 +112,15 @@ func (r registry) find(session string) (sessionTarget, error) {
 	}
 
 	record := reachable[0]
+	mode := latestPermissionMode(transcriptPath(r.configDir, record.Cwd, record.SessionID))
+	if mode == "" {
+		mode = launchPermissionMode(r.args(record.PID))
+	}
 	return sessionTarget{
 		SocketPath: record.MessagingSocketPath,
 		Token:      r.peerToken(record.PID, record.MessagingSocketPath),
 		SessionID:  record.SessionID,
-		Bypass:     latestPermissionMode(transcriptPath(r.configDir, record.Cwd, record.SessionID)) == permissionModeBypass,
+		Bypass:     mode == permissionModeBypass,
 	}, nil
 }
 
