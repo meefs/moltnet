@@ -99,7 +99,7 @@ func TestAttachedRunnerCoalescesIntoFailedPendingNudge(t *testing.T) {
 	notifier := scriptedNotifier{calls: make(chan notifyCall)}
 	var first notifyCall
 	released := make(chan struct{})
-	streamer := pacedStreamer{
+	streamer := holdOpenStreamer{pacedStreamer{
 		events: []protocol.Event{roomEvent("m1", "alice"), roomEvent("m2", "bob"), roomEvent("m3", "alice")},
 		// Hold the first nudge in flight while the later messages arrive.
 		afterFirst: func() { first = nextCall(t, notifier.calls) },
@@ -107,7 +107,7 @@ func TestAttachedRunnerCoalescesIntoFailedPendingNudge(t *testing.T) {
 			first.result <- errors.New("session unreachable")
 			close(released)
 		},
-	}
+	}}
 	cancel, wg := runAttached(t, streamer, notifier)
 	defer func() { cancel(); wg.Wait() }()
 
@@ -134,11 +134,11 @@ func TestAttachedRunnerSendsOneFollowUpForMessagesDuringDelivery(t *testing.T) {
 	notifier := scriptedNotifier{calls: make(chan notifyCall)}
 	var first notifyCall
 	released := make(chan struct{})
-	streamer := pacedStreamer{
+	streamer := holdOpenStreamer{pacedStreamer{
 		events:      []protocol.Event{roomEvent("m1", "alice"), roomEvent("m2", "bob"), roomEvent("m3", "carol")},
 		afterFirst:  func() { first = nextCall(t, notifier.calls) },
 		afterEvents: func() { first.result <- nil; close(released) },
-	}
+	}}
 	cancel, wg := runAttached(t, streamer, notifier)
 	defer func() { cancel(); wg.Wait() }()
 
@@ -157,7 +157,7 @@ func TestAttachedRunnerSkipsBootstrapAndUnmatchedMessages(t *testing.T) {
 	own := roomEvent("m0", "claude_bot")
 	other := roomEvent("m1", "alice")
 	other.Message.Target.RoomID = "elsewhere"
-	streamer := pacedStreamer{events: []protocol.Event{own, other}}
+	streamer := holdOpenStreamer{pacedStreamer{events: []protocol.Event{own, other}}}
 	cancel, wg := runAttached(t, streamer, notifier)
 	defer func() { cancel(); wg.Wait() }()
 
@@ -215,5 +215,50 @@ func TestNudgeText(t *testing.T) {
 				t.Fatalf("Text() = %q, want %q", got, test.want)
 			}
 		})
+	}
+}
+
+type failingNotifier struct{}
+
+func (failingNotifier) Name() string { return "fake-attached" }
+
+func (failingNotifier) Notify(context.Context, bridgeconfig.Config, string) error {
+	return errors.New("session unreachable")
+}
+
+// holdOpenStreamer keeps the stream open after its events until the runner
+// stops, like a live connection.
+type holdOpenStreamer struct{ pacedStreamer }
+
+func (s holdOpenStreamer) StreamEventsReady(
+	ctx context.Context,
+	config bridgeconfig.Config,
+	onReady func(),
+	handle func(protocol.Event) error,
+) error {
+	if err := s.pacedStreamer.StreamEventsReady(ctx, config, onReady, handle); err != nil {
+		return err
+	}
+	<-ctx.Done()
+	return nil
+}
+
+func TestAttachedRunnerReturnsAfterCleanStreamCloseWithUndeliverableNudge(t *testing.T) {
+	t.Parallel()
+
+	done := make(chan error, 1)
+	go func() {
+		// The stream closes cleanly right after one message whose nudge can
+		// never be delivered; Run must still return instead of retrying forever.
+		done <- RunAttached(context.Background(), attachedTestConfig(), failingNotifier{},
+			pacedStreamer{events: []protocol.Event{roomEvent("m1", "alice")}}, zeroBackoff{})
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Run() error = %v", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Run() did not return after a clean stream close")
 	}
 }

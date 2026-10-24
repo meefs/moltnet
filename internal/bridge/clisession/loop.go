@@ -97,6 +97,10 @@ func Run(
 func (r *Runner) Run(ctx context.Context) error {
 	attempt := 0
 	bootstrapped := false
+	// Attached nudge workers retry until delivered; a clean stream close
+	// cancels them so Run returns like managed mode instead of hanging.
+	workCtx, stopWork := context.WithCancel(ctx)
+	defer stopWork()
 
 	for {
 		if ctx.Err() != nil {
@@ -136,7 +140,7 @@ func (r *Runner) Run(ctx context.Context) error {
 				return nil
 			}
 			if r.notifier != nil {
-				return r.enqueueNudge(ctx, event)
+				return r.enqueueNudge(workCtx, event)
 			}
 			return r.enqueueEventDelivery(ctx, event)
 		})
@@ -162,6 +166,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		cancelStream()
 		if err == nil || ctx.Err() != nil {
 			if err == nil {
+				if r.notifier != nil {
+					stopWork()
+				}
 				r.waitForQueues()
 			}
 			return err
