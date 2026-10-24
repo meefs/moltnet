@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -61,7 +62,12 @@ func unreadFixture(t *testing.T, dmsEnabled bool) (string, func(target string, m
 				seen = true
 			}
 		}
-		_ = json.NewEncoder(response).Encode(protocol.MessagePage{Messages: page})
+		// Oldest-first window of at most limit messages, like the server.
+		hasMore := false
+		if limit, _ := strconv.Atoi(request.URL.Query().Get("limit")); limit > 0 && len(page) > limit {
+			page, hasMore = page[:limit], true
+		}
+		_ = json.NewEncoder(response).Encode(protocol.MessagePage{Messages: page, Page: protocol.PageInfo{HasMore: hasMore}})
 	}))
 	t.Cleanup(server.Close)
 	rewriteClientConfigBaseURL(t, workspace, server.URL)
@@ -228,5 +234,25 @@ func TestRunReadSinceLastWithoutTargetHidesOwnMessages(t *testing.T) {
 	}
 	if again := runReadArgs(t, "--since-last"); again != "" {
 		t.Fatalf("unread output after own messages = %q, want silence", again)
+	}
+}
+
+func TestRunReadSinceLastWithoutTargetPagesPastOwnMessages(t *testing.T) {
+	workspace, add, _ := unreadFixture(t, false)
+	cwd := mustGetwd(t)
+	defer func() { _ = os.Chdir(cwd) }()
+	if err := os.Chdir(workspace); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"o1", "o2", "o3", "o4", "o5"} {
+		add("/v1/rooms/research/messages", textMessage(id, "alpha", "my own "+id))
+	}
+	add("/v1/rooms/research/messages", textMessage("b1", "bob", "behind my replies"))
+	got := runReadArgs(t, "--since-last", "--limit", "2")
+	if got != untrustedMessagesHeader+"\nroom:research (1 new)\n  bob: behind my replies\n" {
+		t.Fatalf("unread output = %q, want bob's message past two pages of own messages", got)
+	}
+	if again := runReadArgs(t, "--since-last", "--limit", "2"); again != "" {
+		t.Fatalf("second unread output = %q, want silence", again)
 	}
 }

@@ -50,7 +50,7 @@ func runReadUnread(configPath string, networkID string, memberID string, overrid
 	var blocks []string
 	var stopErr error
 	for _, target := range targets {
-		page, reset, err := fetchSinceLast(client, &cursor, target, protocol.PageRequest{Limit: limit})
+		page, reset, err := fetchSkippingOwnPages(client, cursor, target, limit, self)
 		if err != nil {
 			stopErr = fmt.Errorf("stopped early at %s:%s: %w", target.kind, target.id, err)
 			break
@@ -100,6 +100,43 @@ func runReadUnread(configPath string, networkID string, memberID string, overrid
 		}
 	}
 	return stopErr
+}
+
+// maxOwnPages bounds how many pages made only of the agent's own messages
+// one target may skip in a single check.
+const maxOwnPages = 10
+
+// fetchSkippingOwnPages fetches one target's unread page. A full page made
+// only of self's messages would print nothing while others' messages wait
+// behind it, so such a page is consumed (its cursor advanced: nothing in it
+// needs showing) and the next one fetched, up to maxOwnPages.
+func fetchSkippingOwnPages(client *moltnetclient.Client, cursor readCursorIdentity, target targetRef, limit int, self string) (protocol.MessagePage, bool, error) {
+	reset := false
+	for skipped := 0; ; skipped++ {
+		page, pageReset, err := fetchSinceLast(client, &cursor, target, protocol.PageRequest{Limit: limit})
+		if err != nil {
+			return protocol.MessagePage{}, false, err
+		}
+		reset = reset || pageReset
+		if !page.Page.HasMore || !onlyFrom(page.Messages, self) || skipped >= maxOwnPages {
+			return page, reset, nil
+		}
+		if err := advanceSinceLast(cursor, target, page); err != nil {
+			return protocol.MessagePage{}, false, err
+		}
+	}
+}
+
+func onlyFrom(messages []protocol.Message, self string) bool {
+	if self == "" || len(messages) == 0 {
+		return false
+	}
+	for _, message := range messages {
+		if message.From.ID != self {
+			return false
+		}
+	}
+	return true
 }
 
 // untrustedMessagesHeader opens every untargeted read: message bodies come
