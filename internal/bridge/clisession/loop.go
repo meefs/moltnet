@@ -58,6 +58,7 @@ type Runner struct {
 	queueWG  sync.WaitGroup
 	mu       sync.Mutex
 	observe  RunnerObserver
+	notifier Notifier
 }
 
 func NewRunner(
@@ -96,6 +97,10 @@ func Run(
 func (r *Runner) Run(ctx context.Context) error {
 	attempt := 0
 	bootstrapped := false
+	// Attached nudge workers retry until delivered; a clean stream close
+	// cancels them so Run returns like managed mode instead of hanging.
+	workCtx, stopWork := context.WithCancel(ctx)
+	defer stopWork()
 
 	for {
 		if ctx.Err() != nil {
@@ -134,6 +139,9 @@ func (r *Runner) Run(ctx context.Context) error {
 			if !loop.ShouldHandle(r.config, event) {
 				return nil
 			}
+			if r.notifier != nil {
+				return r.enqueueNudge(workCtx, event)
+			}
 			return r.enqueueEventDelivery(ctx, event)
 		})
 
@@ -158,13 +166,16 @@ func (r *Runner) Run(ctx context.Context) error {
 		cancelStream()
 		if err == nil || ctx.Err() != nil {
 			if err == nil {
+				if r.notifier != nil {
+					stopWork()
+				}
 				r.waitForQueues()
 			}
 			return err
 		}
 		attempt++
 
-		observability.Logger(ctx, "bridge."+r.driver.Name(), "agent_id", r.config.Agent.ID, "error", err).
+		observability.Logger(ctx, "bridge."+r.name(), "agent_id", r.config.Agent.ID, "error", err).
 			Warn("CLI bridge inbound stream error")
 
 		select {
@@ -185,6 +196,10 @@ func readBootstrapResult(results <-chan error) (error, bool) {
 }
 
 func (r *Runner) sendBootstrapDeliveries(ctx context.Context) error {
+	if r.notifier != nil {
+		// An attached session is already running; there is nothing to bootstrap.
+		return nil
+	}
 	for _, target := range BootstrapTargets(r.config) {
 		prompt := bridgeutil.RenderCompactBootstrapMessage(r.config.Moltnet.NetworkID, target, true)
 		if err := r.dispatch(ctx, Delivery{

@@ -22,6 +22,7 @@ type wakeQueue struct {
 	contextKey string
 	mu         sync.Mutex
 	pending    []queuedDelivery
+	nudge      *Nudge
 	running    bool
 }
 
@@ -124,7 +125,7 @@ func (r *Runner) removeQueueIfIdle(queue *wakeQueue) {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 
-	if queue.running || len(queue.pending) > 0 {
+	if queue.running || len(queue.pending) > 0 || queue.nudge != nil {
 		return
 	}
 	if r.queues[queue.contextKey] == queue {

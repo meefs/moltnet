@@ -80,6 +80,10 @@ type RuntimeConfig struct {
 	ReceiptStorePath string                `json:"receipt_store_path,omitempty" yaml:"receipt_store_path,omitempty"`
 	SessionPrefix    string                `json:"session_prefix,omitempty" yaml:"session_prefix,omitempty"`
 	Driver           string                `json:"driver,omitempty" yaml:"driver,omitempty"`
+	// Mode selects managed (Moltnet runs the CLI per wake, the default) or
+	// attached (Moltnet nudges an already-open session named by Session).
+	Mode    string `json:"mode,omitempty" yaml:"mode,omitempty"`
+	Session string `json:"session,omitempty" yaml:"session,omitempty"`
 }
 
 type RoomBinding struct {
@@ -181,6 +185,9 @@ func (c Config) Validate() error {
 	}
 
 	if err := validateRuntimeFieldCompatibility(c.Runtime); err != nil {
+		return err
+	}
+	if err := validateRuntimeMode(c.Runtime); err != nil {
 		return err
 	}
 
@@ -297,6 +304,9 @@ func validateRuntimeFieldCompatibility(runtime RuntimeConfig) error {
 func validateRuntimeSeam(runtime RuntimeConfig) error {
 	switch runtime.Kind {
 	case RuntimeClaudeCode, RuntimeCodex:
+		if runtime.IsAttached() {
+			return nil
+		}
 		if strings.TrimSpace(runtime.WorkspacePath) == "" {
 			return fmt.Errorf("bridge config runtime.workspace_path is required for %s", runtime.Kind)
 		}

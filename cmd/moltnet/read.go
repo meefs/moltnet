@@ -24,7 +24,8 @@ func runRead(args []string) error {
 		// in read_cursor.go, not here -- this help text is user/agent-facing,
 		// and those are internal doc references.
 		sinceLast = flags.Bool("since-last", false, "only messages after this identity's last successfully read message for this target")
-		targetArg = flags.String("target", "", "target in the form room:<id>, thread:<id>, or dm:<id> (or the first positional argument)")
+		targetArg = flags.String("target", "", "target in the form room:<id>, thread:<id>, or dm:<id> (or the first positional argument); omit with --since-last to read everything unread")
+		stopHook  = flags.Bool("stop-hook", false, "with --since-last and no target, print new messages as Stop-hook JSON {\"decision\":\"block\",\"reason\":...}")
 	)
 	override := bindOperatorOverrideFlags(flags)
 
@@ -46,6 +47,13 @@ func runRead(args []string) error {
 	}
 	if flags.NArg() > 1 || (flags.NArg() == 1 && *targetArg != "") {
 		return fmt.Errorf("read does not accept positional arguments once --target is given")
+	}
+
+	if targetValue == "" && *sinceLast {
+		return runReadUnread(*configPath, *networkID, *memberID, *override, *limit, *stopHook)
+	}
+	if *stopHook {
+		return fmt.Errorf("--stop-hook requires --since-last with no target")
 	}
 
 	target, err := parseTarget(targetValue)
@@ -83,61 +91,18 @@ func runRead(args []string) error {
 	// after it (read_cursor.go's resolveReadCursorIdentity/lookupReadCursor
 	// implement the binding storage decision -- one file, two key
 	// derivations, never another identity's entry).
-	var cursor readCursorIdentity
+	var cursor *readCursorIdentity
 	if *sinceLast {
-		cursor, err = resolveReadCursorIdentity(*configPath, *networkID, attachment, usingFallback, strings.TrimSpace(override.baseURL) != "")
+		identity, err := resolveReadCursorIdentity(*configPath, *networkID, attachment, usingFallback, strings.TrimSpace(override.baseURL) != "")
 		if err != nil {
 			return err
 		}
-		stored, err := lookupReadCursor(cursor.path, readCursorKey(cursor, target))
-		if err != nil {
-			return err
-		}
-		if stored != "" {
-			pageRequest.After = stored
-		}
+		cursor = &identity
 	}
 
-	cursorReset := false
-	page, err := fetchTargetMessages(commandContext(), client, target, pageRequest)
+	page, cursorReset, err := readTargetPage(client, cursor, target, pageRequest)
 	if err != nil {
-		if *sinceLast && pageRequest.After != "" && isInvalidCursorError(err) {
-			// PLAN.md 7C.2's documented "cursor older than retained
-			// history" behavior: rather than hard-failing an otherwise
-			// healthy identity/target resolution, this self-heals to a
-			// fresh baseline -- exactly first-use's unfiltered fetch --
-			// and the success path below persists a fresh, valid cursor
-			// from it, same as any other successful --since-last read.
-			// cursorReset also stamps a machine-readable "cursor_reset"
-			// marker on the printed payload below, so an agent -- the
-			// audience --since-last exists for -- parsing stdout can tell
-			// this gap apart from a clean delta, not just a human reading
-			// this stderr note.
-			fmt.Fprintf(stderr, "note: stored --since-last cursor for %s:%s is older than retained history; showing the latest messages instead\n", target.kind, target.id)
-			cursorReset = true
-			pageRequest.After = ""
-			page, err = fetchTargetMessages(commandContext(), client, target, pageRequest)
-		}
-		if err != nil {
-			return err
-		}
-	}
-
-	// The cursor advances on a successful fetch only -- never on error, and
-	// never before the fetch above has actually returned -- and only when
-	// there is a new "last seen" message to remember; an empty result (no
-	// history yet, or genuinely nothing new since last time) leaves any
-	// existing cursor untouched rather than clobbering it with nothing.
-	// Every message page (ascending order, whether via the default,
-	// unfiltered branch or the After-filtered one -- internal/store's
-	// pageMessagesDescending/pageInfoForSlice) puts the newest message
-	// fetched last, so that is always the correct next cursor regardless of
-	// which branch produced it.
-	if *sinceLast && len(page.Messages) > 0 {
-		newest := page.Messages[len(page.Messages)-1].ID
-		if err := advanceReadCursor(cursor.path, readCursorKey(cursor, target), newest); err != nil {
-			return err
-		}
+		return err
 	}
 
 	if cursorReset {
@@ -158,6 +123,80 @@ func runRead(args []string) error {
 type readPage struct {
 	protocol.MessagePage
 	CursorReset bool `json:"cursor_reset,omitempty"`
+}
+
+// readTargetPage fetches one target's page. With a cursor (--since-last) it
+// reads only what follows the stored cursor and advances it; without one it
+// is a plain fetch.
+func readTargetPage(
+	client *moltnetclient.Client,
+	cursor *readCursorIdentity,
+	target targetRef,
+	pageRequest protocol.PageRequest,
+) (protocol.MessagePage, bool, error) {
+	page, cursorReset, err := fetchSinceLast(client, cursor, target, pageRequest)
+	if err != nil {
+		return protocol.MessagePage{}, false, err
+	}
+	if cursor != nil {
+		if err := advanceSinceLast(*cursor, target, page); err != nil {
+			return protocol.MessagePage{}, false, err
+		}
+	}
+	return page, cursorReset, nil
+}
+
+// fetchSinceLast fetches one target's page after its stored cursor (when
+// cursor is set) without advancing it, so a caller can advance only once the
+// messages were actually shown.
+func fetchSinceLast(
+	client *moltnetclient.Client,
+	cursor *readCursorIdentity,
+	target targetRef,
+	pageRequest protocol.PageRequest,
+) (protocol.MessagePage, bool, error) {
+	if cursor != nil {
+		stored, err := lookupReadCursor(cursor.path, readCursorKey(*cursor, target))
+		if err != nil {
+			return protocol.MessagePage{}, false, err
+		}
+		if stored != "" {
+			pageRequest.After = stored
+		}
+	}
+
+	cursorReset := false
+	page, err := fetchTargetMessages(commandContext(), client, target, pageRequest)
+	if err != nil {
+		if cursor != nil && pageRequest.After != "" && isInvalidCursorError(err) {
+			// PLAN.md 7C.2's documented "cursor older than retained
+			// history" behavior: rather than hard-failing an otherwise
+			// healthy identity/target resolution, this self-heals to a
+			// fresh baseline -- exactly first-use's unfiltered fetch --
+			// and advancing persists a fresh, valid cursor from it.
+			// cursorReset also stamps a machine-readable "cursor_reset"
+			// marker on the printed payload, so an agent parsing stdout
+			// can tell this gap apart from a clean delta.
+			fmt.Fprintf(stderr, "note: stored --since-last cursor for %s:%s is older than retained history; showing the latest messages instead\n", target.kind, target.id)
+			cursorReset = true
+			pageRequest.After = ""
+			page, err = fetchTargetMessages(commandContext(), client, target, pageRequest)
+		}
+		if err != nil {
+			return protocol.MessagePage{}, false, err
+		}
+	}
+	return page, cursorReset, nil
+}
+
+// advanceSinceLast moves the target's cursor to the newest fetched message.
+// An empty page leaves any existing cursor untouched. Every message page is
+// ascending, so the newest message fetched is last.
+func advanceSinceLast(cursor readCursorIdentity, target targetRef, page protocol.MessagePage) error {
+	if len(page.Messages) == 0 {
+		return nil
+	}
+	return advanceReadCursor(cursor.path, readCursorKey(cursor, target), page.Messages[len(page.Messages)-1].ID)
 }
 
 // fetchTargetMessages dispatches to the one ListXMessages client call

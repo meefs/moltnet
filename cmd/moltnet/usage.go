@@ -17,6 +17,7 @@ func buildUsage() string {
   moltnet pair show <pairing-id> [--base-url <url>] [--token-env <env>] [--network <id>]
   moltnet participants --target room:<id>|thread:<id>|dm:<id> [--network <id>] [--member <id>]
   moltnet read --target room:<id>|thread:<id>|dm:<id> [--limit 20] [--since-last] [--network <id>] [--member <id>]
+  moltnet read --since-last [--stop-hook] [--network <id>] [--member <id>]   (everything unread; silent when nothing is new)
   moltnet register-agent --base-url <url> [--agent <id>] [--name <name>]
   moltnet relay deploy [--name <script-name>] [--token-env <env>] [--subdomain <name>] [--save-token] [--forget-token] [--print-manual] [--config <path>] [--id <network-id>]
   moltnet follow list|add|remove
