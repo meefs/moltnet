@@ -191,3 +191,16 @@ func TestRunReadSinceLastWithoutTargetKeepsEarlierMessagesWhenALaterTargetFails(
 		t.Fatalf("read after recovery = %q", next)
 	}
 }
+
+func TestRenderUnreadBlockMarksMoreAndEmptyMessages(t *testing.T) {
+	t.Parallel()
+	page := protocol.MessagePage{
+		Messages: []protocol.Message{{ID: "m1", From: protocol.Actor{ID: "bob"}, Parts: []protocol.Part{{Kind: "data"}}}},
+		Page:     protocol.PageInfo{HasMore: true},
+	}
+	got := renderUnreadBlock(targetRef{kind: protocol.TargetKindRoom, id: "research"}, page, false)
+	want := "room:research (showing 1 of more; run moltnet read --since-last room:research again)\n  bob: (no text content)"
+	if got != want {
+		t.Fatalf("renderUnreadBlock() = %q, want %q", got, want)
+	}
+}

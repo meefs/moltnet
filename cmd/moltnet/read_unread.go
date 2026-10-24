@@ -51,7 +51,7 @@ func runReadUnread(configPath string, networkID string, memberID string, overrid
 		}
 		if len(page.Messages) > 0 {
 			shown = append(shown, fetched{target: target, page: page})
-			blocks = append(blocks, renderUnreadBlock(target, page.Messages, reset))
+			blocks = append(blocks, renderUnreadBlock(target, page, reset))
 		}
 	}
 	if len(blocks) == 0 {
@@ -131,8 +131,12 @@ func unreadTargets(client *moltnetclient.Client, attachment clientconfig.Attachm
 	return targets, nil
 }
 
-func renderUnreadBlock(target targetRef, messages []protocol.Message, reset bool) string {
+func renderUnreadBlock(target targetRef, page protocol.MessagePage, reset bool) string {
+	messages := page.Messages
 	header := fmt.Sprintf("%s:%s (%d new)", target.kind, target.id, len(messages))
+	if page.Page.HasMore {
+		header = fmt.Sprintf("%s:%s (showing %d of more; run moltnet read --since-last %s:%s again)", target.kind, target.id, len(messages), target.kind, target.id)
+	}
 	if reset {
 		header += " (cursor reset: older messages may have been missed)"
 	}
@@ -156,6 +160,9 @@ func messageText(message protocol.Message) string {
 		case part.URL != "":
 			parts = append(parts, "["+part.Kind+"] "+part.URL)
 		}
+	}
+	if len(parts) == 0 {
+		return "(no text content)"
 	}
 	return strings.ReplaceAll(strings.Join(parts, " "), "\n", "\n    ")
 }
