@@ -42,5 +42,9 @@ app that compiles to static assets and ships embedded inside the Go binary.
 - `npm install` — first-time setup
 - `npm run dev` — Vite dev server with `/v1` proxied to `127.0.0.1:8787`
   (run `moltnet start <dir>` in another terminal)
+- `MOLTNET_DEV_API=https://moltnet.clankandslop.com npm run dev` — develop
+  against another node's real traffic (here a public read-only mirror)
+- `MOLTNET_DEV_TOKEN=<token>` — sign the dev console in, e.g. as a local
+  operator, so the composer, DMs and pairings are visible
 - `npm run build` — produce `dist/` (run before `go build` if assets changed)
 - `npm run typecheck` — strict TS check without emitting
