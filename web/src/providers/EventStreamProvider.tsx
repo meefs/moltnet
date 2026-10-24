@@ -21,6 +21,19 @@ interface EventStreamState {
 const EventStreamContext = createContext<EventStreamState | null>(null);
 
 const MAX_EVENTS = 1000;
+
+// Order in which this tab received each event. Read state compares receipt
+// order, never server timestamps against the browser clock.
+const receipts = new WeakMap<MoltnetEvent, number>();
+let receiptCounter = 0;
+
+export function receiptOf(event: MoltnetEvent): number {
+  return receipts.get(event) ?? 0;
+}
+
+export function latestReceipt(): number {
+  return receiptCounter;
+}
 const EVENT_TYPES = [
   "message.created",
   "room.created",
@@ -94,6 +107,7 @@ export function EventStreamProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      receipts.set(payload, ++receiptCounter);
       setEvents((prev) => [payload, ...prev].slice(0, MAX_EVENTS));
 
       if (payload.type === "room.removed" && payload.room?.id) {

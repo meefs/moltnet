@@ -24,6 +24,13 @@ function mount(parts: MessagePart[]) {
 const image: MessagePart = { kind: "image", url: "https://cdn.example/chart.png", media_type: "image/png" };
 
 describe("media parts", () => {
+  it("loads nothing while the viewer is still unknown", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+    const { container } = mount([image, { kind: "audio", url: "https://cdn.example/a.mp3" }]);
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("audio")).toBeNull();
+  });
+
   it("asks an anonymous viewer before loading an image", async () => {
     const { client, container } = mount([image]);
     await waitFor(() => expect(client.getQueryData(["network"])).toBeTruthy());

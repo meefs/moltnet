@@ -11,11 +11,10 @@ export interface Sender {
   /** Local pairing or follow the message arrived through. */
   via?: string;
   viaKind?: "pairing" | "follow";
-  remote: boolean;
   verified: boolean;
 }
 
-export function senderOf(message: Message, networkId?: string): Sender {
+export function senderOf(message: Message): Sender {
   const via = message.origin?.received_via?.trim();
   const follow = via?.startsWith("follow:") ? via.slice("follow:".length) : undefined;
   const author = follow ? message.origin?.claimed_author ?? message.from : message.from;
@@ -24,15 +23,14 @@ export function senderOf(message: Message, networkId?: string): Sender {
   const relayed = follow && claimedNetwork && claimedNetwork !== message.origin?.claimed_discovery_network_id;
   const id = relayed ? `${authorId}@${claimedNetwork}` : authorId;
   const claimedName = author?.name?.trim();
-  const senderNetwork = message.from?.network_id?.trim();
   return {
-    key: `${via ?? ""}|${id}`,
+    // Any change in route, identity, role or trust starts a new header.
+    key: [via ?? "", id, message.from?.type ?? "unknown", message.from?.credential_bound === true && !via ? "bound" : ""].join("|"),
     id,
     alias: claimedName && claimedName !== authorId ? claimedName : undefined,
     role: message.from?.type ?? "unknown",
     via: follow ?? via,
     viaKind: via ? (follow ? "follow" : "pairing") : undefined,
-    remote: Boolean(via) || Boolean(senderNetwork && networkId && senderNetwork !== networkId),
     verified: message.from?.credential_bound === true && !via,
   };
 }
@@ -50,4 +48,10 @@ export function initials(id: string): string {
   const words = base.split(/[-_.\s]+/).filter(Boolean);
   const letters = words.length > 1 ? words[0]![0]! + words[1]![0]! : base.slice(0, 2);
   return letters.toUpperCase();
+}
+
+/** The part of an id after its network prefix: "clank-newsroom:brass" → "brass". */
+export function shortName(id: string): string {
+  const split = id.indexOf(":");
+  return split > 0 ? id.slice(split + 1) : id;
 }

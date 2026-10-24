@@ -7,7 +7,7 @@ import { DetailRow } from "../../DetailRow";
 import { ListItem } from "../../ListItem";
 import { Panel } from "../../Panel";
 import { SectionLabel } from "../../SectionLabel";
-import { avatarColor, initials } from "../../../lib/sender";
+import { avatarColor, initials, shortName } from "../../../lib/sender";
 
 export function AgentView() {
   const { selected, select } = useSelection();
@@ -131,7 +131,3 @@ export function AgentView() {
   );
 }
 
-function shortName(id: string) {
-  const split = id.indexOf(":");
-  return split > 0 ? id.slice(split + 1) : id;
-}

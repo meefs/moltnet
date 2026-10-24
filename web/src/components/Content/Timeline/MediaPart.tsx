@@ -54,7 +54,7 @@ export function MediaPart({ part }: { part: MessagePart }) {
   return (
     <div className="flex flex-col gap-1 w-fit">
       <audio controls preload="metadata" src={url} onError={() => setFailed(true)} className="h-9 max-w-md">
-        <a href={url}>{label}</a>
+        <a href={url} target="_blank" rel="noreferrer noopener">{label}</a>
       </audio>
       <span className="font-mono text-[11px] text-faint">{label}</span>
     </div>

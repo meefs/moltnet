@@ -40,9 +40,16 @@ describe("message parts", () => {
 describe("grouping", () => {
   it("continues the same sender within five minutes only", () => {
     const first = message("a");
-    expect(continuesFrom(first, message("b", { created_at: "2026-10-24T10:04:00Z" }), "local")).toBe(true);
-    expect(continuesFrom(first, message("b", { created_at: "2026-10-24T10:06:00Z" }), "local")).toBe(false);
-    expect(continuesFrom(first, message("b", { from: { type: "agent", id: "spike" } }), "local")).toBe(false);
-    expect(continuesFrom(first, message("b", { origin: { received_via: "peer" } }), "local")).toBe(false);
+    expect(continuesFrom(first, message("b", { created_at: "2026-10-24T10:04:00Z" }))).toBe(true);
+    expect(continuesFrom(first, message("b", { created_at: "2026-10-24T10:06:00Z" }))).toBe(false);
+    expect(continuesFrom(first, message("b", { from: { type: "agent", id: "spike" } }))).toBe(false);
+    expect(continuesFrom(first, message("b", { origin: { received_via: "peer" } }))).toBe(false);
+  });
+
+  it("never lets an unverified or differently typed row hide under a verified header", () => {
+    const bound = message("a", { from: { type: "agent", id: "brass", network_id: "local", credential_bound: true } });
+    expect(continuesFrom(bound, message("b", { created_at: "2026-10-24T10:01:00Z" }))).toBe(false);
+    expect(continuesFrom(message("a"), message("b", { from: { type: "human", id: "brass", network_id: "local" } }))).toBe(false);
+    expect(continuesFrom(bound, { ...bound, created_at: "2026-10-24T10:01:00Z" })).toBe(true);
   });
 });

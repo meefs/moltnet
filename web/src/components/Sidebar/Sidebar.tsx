@@ -17,16 +17,19 @@ export function Sidebar() {
   const { data: network } = useNetwork();
   const directMessagesEnabled =
     supportsDirectMessages(network) && (network?.console?.can_read_dms ?? true);
+  // Wait for the network's answer before asking for pairings: the defaults
+  // below are for older servers that omit these fields, not for "loading".
   const pairingsEnabled =
-    (network?.capabilities?.pairings ?? true) &&
-    (network?.console?.can_read_pairings ?? true);
+    !!network &&
+    (network.capabilities?.pairings ?? true) &&
+    (network.console?.can_read_pairings ?? true);
   const { data: agents = [], error: agentsError } = useAgents();
   const agentsEnabled = !(
     agentsError instanceof ApiError && [401, 403].includes(agentsError.status)
   );
   const { data: rooms = [] } = useRooms();
   const { data: dms = [] } = useDMs();
-  const { data: pairings } = usePairings();
+  const { data: pairings } = usePairings({ enabled: pairingsEnabled });
   const { events } = useEventStream();
   const { selected, select } = useSelection();
   const eventsActive = selected?.kind === "events";

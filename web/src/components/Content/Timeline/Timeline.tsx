@@ -284,6 +284,23 @@ export function Timeline() {
     selectedKey,
   ]);
 
+  // Rows can grow after they were measured (an image or audio player loading).
+  // The virtualizer only compensates for rows above the viewport, so while the
+  // operator is following the newest message, keep the bottom pinned.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const hasMessages = messages.length > 0;
+  useEffect(() => {
+    const node = contentRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (!autoFollowRef.current || snapshotRef.current) return;
+      const scroller = parentRef.current;
+      if (scroller) pinToBottom(scroller);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMessages, selectedKey]);
+
   // ─── Trigger fetch-older when the user scrolls near the top ─────────────────
   useEffect(() => {
     maybeFetchOlder(parentRef.current);
@@ -318,6 +335,7 @@ export function Timeline() {
             </p>
           ) : (
             <div
+              ref={contentRef}
               style={{
                 height: `${virtualizer.getTotalSize()}px`,
                 width: "100%",
@@ -351,7 +369,7 @@ export function Timeline() {
                     <TimelineMessage
                       message={message}
                       networkId={network?.id}
-                      continued={continuesFrom(messages[virtualItem.index - 1], message, network?.id)}
+                      continued={continuesFrom(messages[virtualItem.index - 1], message)}
                     />
                   </div>
                 );

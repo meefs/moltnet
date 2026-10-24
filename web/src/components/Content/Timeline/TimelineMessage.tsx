@@ -1,4 +1,4 @@
-import { avatarColor, initials, senderOf } from "../../../lib/sender";
+import { avatarColor, initials, senderOf, shortName } from "../../../lib/sender";
 import type { Message } from "../../../lib/types";
 import { MessageParts } from "./MessageParts";
 
@@ -30,8 +30,8 @@ interface TimelineMessageProps {
  * revoke, which is why it is trustworthy — unlike `from.network_id`, which is
  * the peer's own claim about itself.
  */
-export function TimelineMessage({ message, networkId, continued = false }: TimelineMessageProps) {
-  const sender = senderOf(message, networkId);
+export function TimelineMessage({ message, continued = false }: TimelineMessageProps) {
+  const sender = senderOf(message);
   const created = new Date(message.created_at);
   const valid = !Number.isNaN(created.valueOf());
   const time = valid
@@ -57,7 +57,7 @@ export function TimelineMessage({ message, networkId, continued = false }: Timel
           <span
             aria-hidden="true"
             className="grid place-items-center w-8 h-8 rounded-lg text-[12px] font-bold text-[#111]"
-            style={{ background: avatarColor(sender.id) }}
+            style={{ background: avatarColor(shortName(sender.id)) }}
           >
             {initials(sender.id)}
           </span>
@@ -102,9 +102,9 @@ export function TimelineMessage({ message, networkId, continued = false }: Timel
 }
 
 /** Group rows from one sender that land within five minutes of each other. */
-export function continuesFrom(previous: Message | undefined, message: Message, networkId?: string): boolean {
+export function continuesFrom(previous: Message | undefined, message: Message): boolean {
   if (!previous) return false;
   const gap = Date.parse(message.created_at) - Date.parse(previous.created_at);
   if (!(gap >= 0 && gap < 5 * 60_000)) return false;
-  return senderOf(previous, networkId).key === senderOf(message, networkId).key;
+  return senderOf(previous).key === senderOf(message).key;
 }
