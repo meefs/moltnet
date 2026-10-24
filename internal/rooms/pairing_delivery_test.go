@@ -2,6 +2,7 @@ package rooms_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -127,7 +128,7 @@ func TestPairingDeliverySQLiteSenderRestart(t *testing.T) {
 }
 
 func TestPairingDeliveryDedupeUsesBoundOriginTuple(t *testing.T) {
-	peer, receive := deliveryReceiver(t)
+	peer, receive, memory := deliveryReceiverWithStore(t)
 	server := httptest.NewServer(receive)
 	t.Cleanup(server.Close)
 	request := protocol.SendMessageRequest{
@@ -136,11 +137,29 @@ func TestPairingDeliveryDedupeUsesBoundOriginTuple(t *testing.T) {
 		From:   protocol.Actor{Type: "agent", ID: "writer", NetworkID: "origin"},
 		Parts:  []protocol.Part{{Kind: "text", Text: "one-origin-message"}},
 	}
+	var first protocol.MessageAccepted
 	for _, id := range []string{"attempt-1", "attempt-2", "attempt-3"} {
 		request.ID = id
-		if status, body := deliveryPost(t, server.URL, "pair-secret", request); status != http.StatusAccepted {
+		status, body := deliveryPost(t, server.URL, "pair-secret", request)
+		if status != http.StatusAccepted {
 			t.Fatalf("duplicate receive status = %d: %s", status, body)
 		}
+		var accepted protocol.MessageAccepted
+		if err := json.Unmarshal([]byte(body), &accepted); err != nil {
+			t.Fatal(err)
+		}
+		if id == "attempt-1" {
+			first = accepted
+			if !first.Accepted || first.MessageID != "attempt-1" || first.EventID == "" {
+				t.Fatalf("first acknowledgment = %#v", first)
+			}
+		} else if !accepted.Accepted || accepted.MessageID != first.MessageID || accepted.EventID != first.EventID {
+			t.Fatalf("retry acknowledgment = %#v, want stored identity %#v", accepted, first)
+		}
+	}
+	request.ID, request.Origin.MessageID = "attempt-1", "another-origin-message"
+	if status, body := deliveryPost(t, server.URL, "pair-secret", request); status != http.StatusConflict {
+		t.Fatalf("wire ID collision should be refused: %d: %s", status, body)
 	}
 	request.ID = "forged-attempt"
 	request.Origin.NetworkID, request.From.NetworkID = "forged", "forged"
@@ -148,15 +167,25 @@ func TestPairingDeliveryDedupeUsesBoundOriginTuple(t *testing.T) {
 		t.Fatalf("credential origin binding bypassed: %d: %s", status, body)
 	}
 	assertDeliveryTexts(t, peer, "one-origin-message")
+	if heads, err := memory.ListPairingDeliveryHeadsContext(context.Background()); err != nil || len(heads) != 0 {
+		t.Fatalf("received messages queued for another hop: %#v, %v", heads, err)
+	}
 }
 
 func deliveryReceiver(t *testing.T) (*rooms.Service, http.Handler) {
+	t.Helper()
+	service, handler, _ := deliveryReceiverWithStore(t)
+	return service, handler
+}
+
+func deliveryReceiverWithStore(t *testing.T) (*rooms.Service, http.Handler, *store.MemoryStore) {
 	t.Helper()
 	memory := store.NewMemoryStore()
 	service := rooms.NewService(rooms.ServiceConfig{
 		NetworkID: "peer", Store: memory, Messages: memory, Broker: events.NewBroker(),
 		RequirePairNetworkBinding: true,
-		Pairings:                  []protocol.Pairing{{ID: "origin", RemoteNetworkID: "origin"}},
+		Pairings:                  []protocol.Pairing{{ID: "origin", RemoteNetworkID: "origin", RemoteBaseURL: "http://127.0.0.1:1"}},
+		PairingClient:             pairings.NewClient(),
 	})
 	t.Cleanup(func() { _ = service.Close() })
 	createDeliveryRoom(t, service)
@@ -166,7 +195,7 @@ func deliveryReceiver(t *testing.T) (*rooms.Service, http.Handler) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return service, transport.NewHTTPHandler(service, policy)
+	return service, transport.NewHTTPHandler(service, policy), memory
 }
 
 type deliveryStorage interface {
