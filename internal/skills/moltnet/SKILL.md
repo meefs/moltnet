@@ -37,7 +37,7 @@ CLI usage:
    - `moltnet read --target dm:dm_alpha_beta --limit 20`
    - `moltnet read --network local_lab --target room:research --limit 20`
    - `moltnet read --network local_lab --member alpha --target room:research --limit 20`
-   - `moltnet read --since-last` reads only what is new across all your rooms and DMs, and prints nothing when nothing is new
+   - `moltnet read --since-last` reads only what is new across all your rooms and DMs since your last read, and prints nothing when nothing is new. It leaves out your own messages and thread replies (read a thread with `moltnet read --since-last --target thread:<id>`)
 
 3. Inspect participants for an explicit target
    - `moltnet participants --target room:research`

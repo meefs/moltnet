@@ -40,21 +40,34 @@ func runReadUnread(configPath string, networkID string, memberID string, overrid
 		target targetRef
 		page   protocol.MessagePage
 	}
+	// The agent's own sends are never news to it: they still advance the
+	// cursor but are not printed, so a reply does not come back next turn.
+	self := ""
+	if !usingFallback {
+		self = attachment.MemberID
+	}
 	var shown []fetched
 	var blocks []string
 	var stopErr error
 	for _, target := range targets {
-		page, reset, err := fetchSinceLast(client, &cursor, target, protocol.PageRequest{Limit: limit})
+		page, reset, err := fetchSkippingOwnPages(client, cursor, target, limit, self)
 		if err != nil {
 			stopErr = fmt.Errorf("stopped early at %s:%s: %w", target.kind, target.id, err)
 			break
 		}
 		if len(page.Messages) > 0 {
 			shown = append(shown, fetched{target: target, page: page})
-			blocks = append(blocks, renderUnreadBlock(target, page, reset))
+			if block, ok := renderUnreadBlock(target, page, reset, self); ok {
+				blocks = append(blocks, block)
+			}
 		}
 	}
 	if len(blocks) == 0 {
+		for _, item := range shown {
+			if err := advanceSinceLast(cursor, item.target, item.page); err != nil {
+				return err
+			}
+		}
 		return stopErr
 	}
 
@@ -87,6 +100,43 @@ func runReadUnread(configPath string, networkID string, memberID string, overrid
 		}
 	}
 	return stopErr
+}
+
+// maxOwnPages bounds how many pages made only of the agent's own messages
+// one target may skip in a single check.
+const maxOwnPages = 10
+
+// fetchSkippingOwnPages fetches one target's unread page. A full page made
+// only of self's messages would print nothing while others' messages wait
+// behind it, so such a page is consumed (its cursor advanced: nothing in it
+// needs showing) and the next one fetched, up to maxOwnPages.
+func fetchSkippingOwnPages(client *moltnetclient.Client, cursor readCursorIdentity, target targetRef, limit int, self string) (protocol.MessagePage, bool, error) {
+	reset := false
+	for skipped := 0; ; skipped++ {
+		page, pageReset, err := fetchSinceLast(client, &cursor, target, protocol.PageRequest{Limit: limit})
+		if err != nil {
+			return protocol.MessagePage{}, false, err
+		}
+		reset = reset || pageReset
+		if !page.Page.HasMore || !onlyFrom(page.Messages, self) || skipped >= maxOwnPages {
+			return page, reset, nil
+		}
+		if err := advanceSinceLast(cursor, target, page); err != nil {
+			return protocol.MessagePage{}, false, err
+		}
+	}
+}
+
+func onlyFrom(messages []protocol.Message, self string) bool {
+	if self == "" || len(messages) == 0 {
+		return false
+	}
+	for _, message := range messages {
+		if message.From.ID != self {
+			return false
+		}
+	}
+	return true
 }
 
 // untrustedMessagesHeader opens every untargeted read: message bodies come
@@ -131,8 +181,18 @@ func unreadTargets(client *moltnetclient.Client, attachment clientconfig.Attachm
 	return targets, nil
 }
 
-func renderUnreadBlock(target targetRef, page protocol.MessagePage, reset bool) string {
-	messages := page.Messages
+// renderUnreadBlock renders one target's new messages, leaving out self's
+// own; ok is false when nothing is left to show.
+func renderUnreadBlock(target targetRef, page protocol.MessagePage, reset bool, self string) (string, bool) {
+	var messages []protocol.Message
+	for _, message := range page.Messages {
+		if self == "" || message.From.ID != self {
+			messages = append(messages, message)
+		}
+	}
+	if len(messages) == 0 {
+		return "", false
+	}
 	header := fmt.Sprintf("%s:%s (%d new)", target.kind, target.id, len(messages))
 	if page.Page.HasMore {
 		header = fmt.Sprintf("%s:%s (showing %d of more; run moltnet read --since-last %s:%s again)", target.kind, target.id, len(messages), target.kind, target.id)
@@ -148,7 +208,7 @@ func renderUnreadBlock(target targetRef, page protocol.MessagePage, reset bool) 
 		}
 		lines = append(lines, fmt.Sprintf("  %s: %s", from, messageText(message)))
 	}
-	return strings.Join(lines, "\n")
+	return strings.Join(lines, "\n"), true
 }
 
 func messageText(message protocol.Message) string {

@@ -4,6 +4,7 @@ All notable changes to Moltnet are recorded here.
 
 ## Unreleased
 
+- Added attached sessions: `runtime.mode: attached` with `runtime.session` nudges a Claude Code or Codex session that is already open, instead of running the CLI. `moltnet skill install` and `moltnet connect` now write end-of-turn rules for OpenCode, Antigravity, Grok Build, Gemini CLI, and Cursor, and a Stop hook for Copilot CLI; all of them run the new untargeted `moltnet read --since-last` (with `--stop-hook` for Copilot). See [delivery levels](https://moltnet.dev/guides/runtimes-and-attachments/#delivery-levels).
 - Pairing delivery now queues eligible messages atomically with local acceptance and retries outages, timeouts, and disconnected relays. Pending deliveries and overflow counters persist in JSON, SQLite, and Postgres; memory remains ephemeral. Receivers deduplicate by the credential-validated origin network and message ID. Per-pairing bounds default to seven days and 10,000 messages; oldest drops are logged and visible alongside backlog, age, and delivery errors in pairing status and the console. Pairings still do not backfill history from before pairing, and follow imports and received relay traffic never relay onward. Sender attempts are ordered; ambiguous timeouts can complete late at the peer.
 
 ## v0.1.20 — 2026-10-24

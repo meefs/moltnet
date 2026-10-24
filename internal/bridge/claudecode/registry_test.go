@@ -61,6 +61,7 @@ type fixture struct {
 	sessions  string
 	root      string
 	alive     map[int]bool
+	args      map[int][]string
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -70,12 +71,13 @@ func newFixture(t *testing.T) *fixture {
 	if err := os.MkdirAll(sessions, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	return &fixture{configDir: configDir, sessions: sessions, root: root, alive: map[int]bool{}}
+	return &fixture{configDir: configDir, sessions: sessions, root: root, alive: map[int]bool{}, args: map[int][]string{}}
 }
 
 func (f *fixture) registry() registry {
 	r := newRegistry(f.configDir)
 	r.alive = func(pid int) bool { return f.alive[pid] }
+	r.args = func(pid int) []string { return f.args[pid] }
 	return r
 }
 
