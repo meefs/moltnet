@@ -20,3 +20,11 @@ This package exposes Moltnet over network transports.
 - Keep handlers thin.
 - Map transport requests into domain calls and domain events back into wire envelopes.
 - Preserve a clean boundary so future transports can be added without rewriting core logic.
+
+## Hub Rooms
+
+- `hub.go` serves `GET /v1/hub/control` (observe, admin, or pair: the
+  service admits only networks the room's log ever admitted) and the
+  admin-only `GET|POST /v1/hub/rooms`, `POST /v1/hub/rooms/control` and
+  `POST /v1/hub/rooms/join`. A stale submission answers 412 with code
+  `stale_membership_epoch`.

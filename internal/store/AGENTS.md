@@ -23,3 +23,13 @@ This package owns persistence interfaces and implementations.
 - SQLite as the local default
 - Postgres for shared or hosted deployments
 - object storage integration for large artifacts later
+
+## Hub Rooms
+
+- `hub.go` defines `HubStore`: hub rooms, control logs, receipts, per-room
+  origin seqs. All four backends implement it (`hub_memory.go`,
+  `hub_file.go`, `sql_hub.go`, migration 16).
+- Receipts are written inside the message append (`WithHubReceipt`) and
+  checked before origin dedupe: a different receipt at a seq, a second
+  placement of an event, or a broken chain is `ErrHubReceiptConflict`, never
+  a duplicate.

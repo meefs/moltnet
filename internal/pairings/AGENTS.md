@@ -19,3 +19,5 @@ This package owns remote Moltnet pairing discovery and relay helpers.
 - keep discovery and relay logic explicit
 - use explicit remote base URLs from pairing config
 - do not pretend paired networks share one flat namespace
+- `FetchRoomControl` pulls a hub room's control log from its home; relay
+  pairings allow exactly `GET /v1/hub/control` beyond the original routes.

@@ -80,3 +80,8 @@ both stamped from `internal/rooms/causal.go`:
   signed with domain separation, parsed strictly. `global_room_id`,
   `membership_epoch`, and per-room `origin_seq` are reserved optional fields
   for hub rooms. None of this enters the machine v1 contract.
+- `hub.go` / `hub_signing.go` — hub rooms: global room ids
+  (`<home fingerprint>/<room id>`), the home-signed control log
+  (`moltnet.room-control.v1`) and receipts (`moltnet.room-receipt.v1`),
+  canonical, domain-separated and parsed strictly. `Pairing.Scope: rooms`
+  marks a room link.
