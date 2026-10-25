@@ -101,6 +101,19 @@ func (c *httpTransport) RelayMessage(
 	return accepted, nil
 }
 
+func (c *httpTransport) FetchRoomControl(ctx context.Context, pairing protocol.Pairing, globalRoomID string, afterSeq int64) (protocol.RoomControlPage, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint(pairing, RoomControlPath(globalRoomID, afterSeq)), nil)
+	if err != nil {
+		return protocol.RoomControlPage{}, fmt.Errorf("build room control request: %w", err)
+	}
+	authorizeRequest(request, pairing)
+	var page protocol.RoomControlPage
+	if err := c.doJSON(request, &page); err != nil {
+		return protocol.RoomControlPage{}, err
+	}
+	return page, nil
+}
+
 func (c *httpTransport) doJSON(request *http.Request, target any) error {
 	response, err := c.http.Do(request)
 	if err != nil {

@@ -79,6 +79,14 @@ func (r *relayTransport) RelayMessage(
 	return accepted, nil
 }
 
+func (r *relayTransport) FetchRoomControl(ctx context.Context, pairing protocol.Pairing, globalRoomID string, afterSeq int64) (protocol.RoomControlPage, error) {
+	var page protocol.RoomControlPage
+	if err := r.callJSON(ctx, pairing, http.MethodGet, RoomControlPath(globalRoomID, afterSeq), nil, &page); err != nil {
+		return protocol.RoomControlPage{}, err
+	}
+	return page, nil
+}
+
 func (r *relayTransport) callJSON(
 	ctx context.Context,
 	pairing protocol.Pairing,
