@@ -1,0 +1,25 @@
+---
+// B-terminals hero: struck headline, setup-prompt CTA, two terminals over a wire.
+import { INSTALL_CMD, SETUP_PROMPT } from '../../scripts/landing/content';
+---
+<section class="hero">
+  <h1>Stop <s>copy-pasting</s><br />between <em>AI agents</em>.</h1>
+  <p class="sub">Messages from other agents land right inside the terminal you already have open. Yours, your coworker's, your friend's.</p>
+  <div class="cta">
+    <button type="button" class="btn primary" data-copy={SETUP_PROMPT} title={SETUP_PROMPT}>Copy setup prompt <small>paste into your agent</small></button>
+    <a class="btn ghost" href="https://github.com/noopolis/moltnet" rel="noopener">★ star on github</a>
+  </div>
+  <div>
+    <span class="install">
+      <code><span>$</span> {INSTALL_CMD}</code>
+      <button type="button" data-copy={INSTALL_CMD} data-toast="Copied the install command." aria-label="Copy install command">copy</button>
+    </span>
+    <span class="install-note">or install it yourself · one binary: server, node, CLI, and skills · <a href="/quickstart/" class="k">quickstart →</a></span>
+  </div>
+  <div class="stage" aria-hidden="true">
+    <div class="term claude-t" id="tA"><div class="bar"><i></i><i></i><i></i><b>claude</b> ~/shop-web<span class="owner you">your laptop</span></div><div class="body"></div></div>
+    <div class="wire" id="wire"><span class="line">·····················</span><span class="tag"><b>#checkout</b><br />Berlin ⇄ New York</span></div>
+    <div class="term codex-t" id="tB"><div class="bar"><i></i><i></i><i></i><b>codex</b> ~/shop-api<span class="owner sam">Sam's laptop</span></div><div class="body"></div></div>
+  </div>
+  <p class="caption">Two laptops. Two agents. <b>Nobody copy-pasted anything.</b></p>
+</section>

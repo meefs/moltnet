@@ -1,10 +1,8 @@
 ---
-// Simple branded site title used in the docs nav.
+// Bracket logo used in the docs header: [ moltnet ].
 ---
-<a href="/" class="site-title">
-  <span class="mark">
-    <span class="base">molt</span><span class="accent">net</span>
-  </span>
+<a href="/" class="site-title" aria-label="Moltnet home">
+  <span class="mark">[ <b>moltnet</b> ]</span>
 </a>
 
 <style>
@@ -15,17 +13,16 @@
   }
 
   .mark {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 0.92rem;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 1rem;
     line-height: 1;
+    color: var(--ink);
+    white-space: nowrap;
   }
 
-  .base {
-    color: #f3eee7;
-  }
-
-  .accent {
-    color: #3ddc84;
+  .mark b {
+    color: var(--green);
+    font-weight: 600;
   }
 </style>

@@ -1,0 +1,53 @@
+/* Hero: headline, CTAs, and two real-looking terminals joined by a text wire. */
+.hero { max-width: 1240px; margin: 0 auto; padding: 46px 24px 0; text-align: center; }
+.hero h1 { font-size: clamp(42px, 6vw, 80px); }
+.hero h1 s { white-space: nowrap; }
+.hero .sub { margin: 18px auto 0; max-width: 30em; }
+.cta { margin-top: 28px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+.install { margin: 18px auto 0; display: inline-flex; align-items: center; gap: 10px; max-width: 100%; padding: 6px 6px 6px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font: 13.5px var(--mono); color: var(--sub); }
+.install code { white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+.install code::-webkit-scrollbar { display: none; }
+.install code span { color: var(--accent); }
+.install button { flex: none; height: 30px; padding: 0 12px; border-radius: 7px; border: 1px solid var(--line-2); background: transparent; color: var(--ink); font: 12px var(--mono); cursor: pointer; }
+.install button:hover { border-color: var(--accent); color: var(--accent); }
+.install-note { display: block; margin-top: 8px; color: var(--mute); font: 12.5px var(--mono); }
+
+.stage { margin-top: 46px; display: grid; grid-template-columns: minmax(0, 1fr) 170px minmax(0, 1fr); text-align: left; align-items: center; }
+.term { background: #050605; border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden; font: 13.5px/1.6 var(--mono); transition: border-color .3s, box-shadow .3s; }
+.term.lit { border-color: var(--green); box-shadow: 0 0 0 4px rgba(61,220,132,.1), 0 0 60px -20px var(--green); }
+.term .bar { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); color: var(--mute); font-size: 12.5px; white-space: nowrap; }
+.term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #2a302c; flex: none; }
+.term .bar b { color: var(--ink); font-weight: 500; margin-left: 6px; }
+.term .bar .owner { margin-left: auto; }
+.owner { font: 500 11px var(--mono); padding: 1px 6px; border-radius: 5px; border: 1px solid currentColor; }
+.owner.you { color: var(--you); }
+.owner.sam { color: var(--sam); }
+.term .body { height: 300px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; color: var(--sub); }
+.term .body > div { animation: in .3s both; white-space: pre-wrap; overflow-wrap: anywhere; }
+.term .nudge { color: var(--bg); background: var(--green); padding: 1px 6px; border-radius: 4px; width: fit-content; font-weight: 600; }
+.term .cmd { color: var(--ink); }
+.term .cmd::before { content: "⏺ "; color: var(--green); }
+.term .msg { color: var(--ink); padding-left: 14px; border-left: 2px solid var(--line-2); }
+.term .msg b { font-weight: 600; }
+.term .msg .you { color: var(--you); }
+.term .msg .sam { color: var(--sam); }
+.term .say { color: #e9ece9; }
+.term .say::before { content: "⏺ "; color: var(--claude); }
+.term .dim { color: var(--mute); }
+.codex-t .say::before { content: "• "; color: var(--codex); }
+@keyframes in { from { opacity: 0; transform: translateY(5px); } }
+
+/* the wire between machines, drawn in text */
+.wire { position: relative; font: 13px var(--mono); color: var(--green-dim); text-align: center; white-space: pre; overflow: hidden; }
+.wire .line { letter-spacing: 1px; }
+.wire .tag { display: block; margin-top: 8px; color: var(--mute); font-size: 11.5px; }
+.wire .tag b { color: var(--green); font-weight: 500; }
+.wire .pkt { position: absolute; top: 0; color: var(--green); font-weight: 700; text-shadow: 0 0 10px var(--green); transition: left 1.1s linear; }
+.caption { margin-top: 20px; color: var(--mute); font: 14px var(--mono); }
+.caption b { color: var(--ink); font-weight: 500; }
+
+@media (prefers-reduced-motion: reduce) {
+  .term, .wire .pkt { transition: none; }
+  .term .body > div { animation: none; }
+}

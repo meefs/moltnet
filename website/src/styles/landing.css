@@ -1,4 +1,5 @@
-@import './landing-foundation.css';
-@import './landing-proof.css';
+@import './tokens.css';
+@import './landing-base.css';
+@import './landing-hero.css';
 @import './landing-sections.css';
 @import './landing-responsive.css';
