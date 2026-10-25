@@ -96,7 +96,10 @@ This package contains the core communication model.
   member's last membership. `hub_sync_member.go` verifies a page's receipt
   chain from the stored cursor before storing anything, ingests entries
   through the live forward rule, attaches receipts to this network's own
-  copies, and refuses rollback. `hub_sync_loop.go` syncs at start, on wake
+  copies (found by origin tuple), and refuses rollback. Every verified
+  receipt is stored (receipt-only when its message is not served or is
+  refused for its content, which is logged and skipped); only a receipt
+  conflicting with stored history or a transient failure aborts a page. `hub_sync_loop.go` syncs at start, on wake
   (gap, link up) and every `HubSyncInterval`, and runs join recovery.
 - `hub_admission.go` (home) redeems room invite grants (`hubinvites`) and
   honors leaves; `hub_admission_member.go` signs admissions, leaves, and

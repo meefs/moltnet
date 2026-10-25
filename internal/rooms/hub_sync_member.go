@@ -36,7 +36,7 @@ func (s *Service) notePlacement(ctx context.Context, hub store.HubRoom, placed s
 	}
 	switch {
 	case placed.RoomSeq == cursor.Seq+1 && (cursor.Seq == 0 || placed.PrevDigest == cursor.Digest):
-		if err := s.hubs.AdvanceHubSyncCursorContext(ctx, store.HubSyncCursor{GlobalRoomID: hub.GlobalRoomID, Seq: placed.RoomSeq, Digest: placed.Digest}); err != nil {
+		if err := s.hubs.AdvanceHubSyncCursorContext(ctx, store.HubSyncCursor{GlobalRoomID: hub.GlobalRoomID, Seq: placed.RoomSeq, Digest: placed.Digest, MembershipEpoch: placed.MembershipEpoch}); err != nil {
 			logHub(ctx, hub.GlobalRoomID).Warn("could not advance the hub sync cursor", "error", err)
 		}
 	case placed.RoomSeq > cursor.Seq+1:
@@ -116,14 +116,15 @@ func (s *Service) verifySyncChain(ctx context.Context, hub store.HubRoom, cursor
 		return cursor, err
 	}
 	next := cursor
-	var epoch int64
+	// Epochs after the cursor may not go backwards. The cursor keeps its
+	// receipt's epoch, and every verified receipt is stored (receipt-only
+	// when its message is not served), so the floor survives pages.
+	epoch := cursor.MembershipEpoch
 	if cursor.Seq > 0 {
-		// The receipt at the cursor is stored when this member could see
-		// its message; epochs after it may not go backwards.
 		if stored, err := s.hubs.HubReceiptsAfterContext(ctx, hub.GlobalRoomID, protocol.HubEpochV1, cursor.Seq-1, 1); err != nil {
 			return cursor, err
 		} else if len(stored) == 1 && stored[0].RoomSeq == cursor.Seq {
-			epoch = stored[0].MembershipEpoch
+			epoch = max(epoch, stored[0].MembershipEpoch)
 		}
 	}
 	for _, entry := range page.Entries {
@@ -144,7 +145,7 @@ func (s *Service) verifySyncChain(ctx context.Context, hub store.HubRoom, cursor
 		if entry.Message != nil && (entry.Message.Receipt == nil || *entry.Message.Receipt != entry.Receipt) {
 			return cursor, fmt.Errorf("%w: entry message carries a different receipt", store.ErrHubReceiptConflict)
 		}
-		epoch, next = receipt.MembershipEpoch, store.HubSyncCursor{GlobalRoomID: hub.GlobalRoomID, Seq: receipt.RoomSeq, Digest: digest}
+		epoch, next = receipt.MembershipEpoch, store.HubSyncCursor{GlobalRoomID: hub.GlobalRoomID, Seq: receipt.RoomSeq, Digest: digest, MembershipEpoch: receipt.MembershipEpoch}
 	}
 	if next.Seq != page.ThroughSeq {
 		return cursor, fmt.Errorf("%w: page accounts for seqs up to %d but claims %d", store.ErrHubReceiptConflict, next.Seq, page.ThroughSeq)
@@ -152,31 +153,96 @@ func (s *Service) verifySyncChain(ctx context.Context, hub store.HubRoom, cursor
 	return next, nil
 }
 
-// storeSyncEntries ingests each visible entry through the same acceptance
-// rule as a live forward; this network's own messages attach their
-// receipt to the local copy instead.
+// storeSyncEntries stores every entry of a verified page. A visible entry
+// is ingested through the same acceptance rule as a live forward, and this
+// network's own messages (found by origin tuple) attach their receipt. Every
+// receipt is stored, receipt-only when its message is not served or is
+// refused, so each one meets the store's conflict rules. A receipt that
+// contradicts stored history aborts the page; an entry refused for its
+// content is logged and skipped, and the cursor still advances past it.
 func (s *Service) storeSyncEntries(ctx context.Context, hub store.HubRoom, pairing protocol.Pairing, entries []protocol.RoomSyncEntry) error {
+	roster, _, err := s.hubRoster(ctx, hub, 0)
+	if err != nil {
+		return err
+	}
 	for _, entry := range entries {
-		if entry.Message == nil {
-			continue
-		}
-		request := stripPeerTestimony(*entry.Message)
-		request.Origin = canonicalOriginIDs(request.Origin)
-		if request.Origin.NetworkID == s.networkID {
-			if err := s.attachOwnReceipt(ctx, hub, request.Origin.MessageID, entry.Receipt); err != nil {
-				return err
-			}
-			continue
-		}
-		in, err := s.checkHubIngressFrom(ctx, pairing, request)
+		receipt, digest, err := protocol.VerifyRoomReceipt(entry.Receipt, roster.HomeKey)
 		if err != nil {
-			return err
+			return signatureRejectedError("invalid room receipt: " + err.Error())
 		}
-		if _, err := s.acceptHubForward(ctx, in, false); err != nil && !errors.Is(err, store.ErrDuplicateMessage) {
+		stored := false
+		if entry.Message != nil {
+			if err := s.storeSyncMessage(ctx, hub, pairing, *entry.Message, entry.Receipt); err == nil {
+				stored = true
+			} else if !syncContentRefusal(err) {
+				return err
+			} else {
+				logHub(ctx, hub.GlobalRoomID).Warn("hub sync skips an entry refused for its content; its receipt is kept", "room_seq", receipt.RoomSeq, "error", err)
+			}
+		}
+		if stored {
+			continue
+		}
+		record := store.HubReceiptRecord{GlobalRoomID: receipt.GlobalRoomID, HubEpoch: receipt.HubEpoch, MembershipEpoch: receipt.MembershipEpoch,
+			RoomSeq: receipt.RoomSeq, EventID: receipt.EventID, Digest: digest, PrevDigest: receipt.PrevReceiptHash, Receipt: entry.Receipt}
+		if err := s.hubs.StoreHubReceiptContext(ctx, record); err != nil {
+			if errors.Is(err, store.ErrHubReceiptConflict) {
+				logHub(ctx, hub.GlobalRoomID).Error("refusing a hub sync receipt that conflicts with stored history", "room_seq", receipt.RoomSeq, "error", err)
+				return hubConflictError(err)
+			}
 			return err
 		}
 	}
 	return nil
+}
+
+func (s *Service) storeSyncMessage(ctx context.Context, hub store.HubRoom, pairing protocol.Pairing, message protocol.SendMessageRequest, receipt protocol.SignedRoomReceipt) error {
+	request := stripPeerTestimony(message)
+	request.Origin = canonicalOriginIDs(request.Origin)
+	if request.Origin.NetworkID == s.networkID {
+		return s.attachOwnSyncReceipt(ctx, hub, request, receipt)
+	}
+	in, err := s.checkHubIngressFrom(ctx, pairing, request)
+	if err != nil {
+		return err
+	}
+	if _, err := s.acceptHubForward(ctx, in, false); err != nil && !errors.Is(err, store.ErrDuplicateMessage) {
+		return err
+	}
+	return nil
+}
+
+// attachOwnSyncReceipt finds this network's own copy of a synced message by
+// its signed origin tuple (a caller may have chosen the origin message id,
+// so it is not the local id) and attaches the receipt.
+func (s *Service) attachOwnSyncReceipt(ctx context.Context, hub store.HubRoom, request protocol.SendMessageRequest, receipt protocol.SignedRoomReceipt) error {
+	if request.Envelope == nil {
+		return hubInvalidError("own hub message in sync carries no envelope")
+	}
+	envelope, _, err := protocol.ParseSignedEnvelope(*request.Envelope)
+	if err != nil || envelope.OriginNetworkID != s.networkID {
+		return signatureRejectedError("own hub message in sync has an unusable envelope")
+	}
+	own, ok, err := s.hubs.EnvelopeForOriginContext(ctx, s.networkID, envelope.OriginMessageID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return hubInvalidError(fmt.Sprintf("no stored copy of own message %s", envelope.OriginMessageID))
+	}
+	return s.attachOwnReceipt(ctx, hub, own.MessageID, receipt)
+}
+
+// syncContentRefusal reports whether a sync entry was refused for what it
+// says (a definitive 4xx: bad signature, not a writer, unusable content,
+// an origin fork) rather than because it contradicts the room's receipt
+// history or something failed transiently. Only the former is skipped.
+func syncContentRefusal(err error) bool {
+	if errors.Is(err, store.ErrHubReceiptConflict) || errors.Is(err, store.ErrHubSyncRollback) {
+		return false
+	}
+	var refusal *Error
+	return errors.As(err, &refusal) && refusal.status >= 400 && refusal.status < 500
 }
 
 // attachOwnReceipt gives this network's own copy of a message it sent to
