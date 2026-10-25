@@ -197,7 +197,7 @@ default) or, with --global, into every well-known global agent home instead.
 --runtime accepts any name and defaults to none, which installs the generic
 skill under .agents/skills/moltnet/SKILL.md — there is no built-in default
 runtime, since assuming one that does not match the caller's actual agent
-would be silently wrong. Known runtimes (openclaw, picoclaw, tinyclaw,
+would be silently wrong. Known runtimes (openclaw, picoclaw,
 claude-code, codex) get their runtime-specific file placement instead; any
 other name still installs the same usable generic skill.
 

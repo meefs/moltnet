@@ -39,32 +39,6 @@ func TestRuntimeConfigNormalized(t *testing.T) {
 			want: RuntimeConfig{Kind: RuntimePicoClaw, Command: DefaultPicoClawCommand, ConfigPath: "/tmp/pico/config.json"},
 		},
 		{
-			name: "tinyclaw local api",
-			in:   RuntimeConfig{Kind: RuntimeTinyClaw},
-			want: RuntimeConfig{
-				Kind:        RuntimeTinyClaw,
-				Channel:     DefaultTinyClawChannel,
-				InboundURL:  "http://127.0.0.1:3777/api/message",
-				OutboundURL: "http://127.0.0.1:3777/api/responses/pending?channel=moltnet",
-				AckURL:      "http://127.0.0.1:3777/api/responses",
-			},
-		},
-		{
-			name: "tinyclaw derives base from explicit inbound url",
-			in: RuntimeConfig{
-				Kind:       RuntimeTinyClaw,
-				Channel:    "moltnet:local:penny",
-				InboundURL: "http://127.0.0.1:3888/api/message",
-			},
-			want: RuntimeConfig{
-				Kind:        RuntimeTinyClaw,
-				Channel:     "moltnet:local:penny",
-				InboundURL:  "http://127.0.0.1:3888/api/message",
-				OutboundURL: "http://127.0.0.1:3888/api/responses/pending?channel=moltnet%3Alocal%3Apenny",
-				AckURL:      "http://127.0.0.1:3888/api/responses",
-			},
-		},
-		{
 			name: "claude code command",
 			in:   RuntimeConfig{Kind: RuntimeClaudeCode, WorkspacePath: "/tmp/claude"},
 			want: RuntimeConfig{Kind: RuntimeClaudeCode, Command: DefaultClaudeCodeCommand, WorkspacePath: "/tmp/claude"},
