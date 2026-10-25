@@ -101,6 +101,14 @@ func (s *Service) acceptHubSubmission(ctx context.Context, in hubIngress) (proto
 	if !s.pairCredentialMatchesOrigin(ctx, claims, origin, s.requirePairNetworkBinding) {
 		return protocol.MessageAccepted{}, hubForbiddenError("this pairing does not speak for the message's origin network")
 	}
+	// A retry of an event already placed gets its placement back before any
+	// epoch or role check: the ack may have been lost while the room moved
+	// on, and a 412 here would make the sender re-sign a delivered message.
+	if existing, placed, err := s.hubs.HubReceiptForEventContext(ctx, in.hub.GlobalRoomID, in.digest); err != nil {
+		return protocol.MessageAccepted{}, err
+	} else if placed {
+		return protocol.MessageAccepted{MessageID: existing.MessageID, EventID: eventIDForMessage(existing.MessageID), Accepted: true}, nil
+	}
 	roster, _, err := s.hubRoster(ctx, in.hub, 0)
 	if err != nil {
 		return protocol.MessageAccepted{}, err

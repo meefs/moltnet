@@ -50,11 +50,10 @@ func (s *Service) sendQueuedHubMessage(ctx context.Context, pairing protocol.Pai
 	if envelope == nil {
 		return fmt.Errorf("%w: hub message has no signed envelope", errDeliveryRejected)
 	}
-	if !hub.IsHome() {
-		if envelope, err = s.currentEpochEnvelope(ctx, hub, message, *envelope, false); err != nil {
-			return err
-		}
-	}
+	// A member always sends the bytes it stored first, even if it has since
+	// learned a newer epoch: the home may already have placed them (a lost
+	// ack). It re-signs only when the home answers 412, which the home sends
+	// only for an event it has not placed.
 	if _, _, err := s.refreshPairingDiagnostics(ctx, pairing, pairingCheckRelayRoom); err != nil {
 		return err
 	}
@@ -67,7 +66,7 @@ func (s *Service) sendQueuedHubMessage(ctx context.Context, pairing protocol.Pai
 	if !hub.IsHome() && staleEpochResponse(err) {
 		// Retry-class, never a rejection: learn the new roster first (the
 		// join notice), re-sign under the new epoch, resend once.
-		if request.Envelope, err = s.currentEpochEnvelope(ctx, hub, message, *envelope, true); err != nil {
+		if request.Envelope, err = s.currentEpochEnvelope(ctx, hub, message, *envelope); err != nil {
 			return err
 		}
 		accepted, err = s.pairingClient.RelayMessage(ctx, pairing, request)
@@ -92,12 +91,10 @@ func staleEpochResponse(err error) bool {
 // currentEpochEnvelope returns envelope if it was signed under this
 // network's current epoch for the room, else re-signs the same message
 // (same origin seq and created_at) under it and replaces the stored copy.
-// sync first pulls the control log from the home.
-func (s *Service) currentEpochEnvelope(ctx context.Context, hub store.HubRoom, message protocol.Message, envelope protocol.SignedEnvelope, sync bool) (*protocol.SignedEnvelope, error) {
-	roster, _, err := s.hubRoster(ctx, hub, 0)
-	if sync {
-		roster, err = s.syncHubControl(ctx, hub)
-	}
+// It first pulls the control log from the home, and runs only after the
+// home answered 412 (the event was not placed).
+func (s *Service) currentEpochEnvelope(ctx context.Context, hub store.HubRoom, message protocol.Message, envelope protocol.SignedEnvelope) (*protocol.SignedEnvelope, error) {
+	roster, err := s.syncHubControl(ctx, hub)
 	if err != nil {
 		return nil, err
 	}

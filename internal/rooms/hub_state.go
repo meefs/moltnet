@@ -41,7 +41,7 @@ func hubUnavailableError(message string) error {
 
 func staleEpochError(current int64) error {
 	return &Error{status: http.StatusPreconditionFailed, cause: ErrStaleMembershipEpoch,
-		msg: fmt.Sprintf("%s: the room is at membership epoch %d; sync its control log and re-sign", protocol.StaleMembershipEpochCode, current)}
+		msg: fmt.Sprintf("%s: the room is at membership epoch %d and this event was not placed; sync its control log and re-sign", protocol.StaleMembershipEpochCode, current)}
 }
 
 func (s *Service) hubRooms(ctx context.Context) ([]store.HubRoom, error) {
