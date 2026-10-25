@@ -31,6 +31,8 @@ type Network struct {
 	Capabilities NetworkCapabilities `json:"capabilities,omitempty"`
 	Console      *NetworkConsole     `json:"console,omitempty"`
 	Warnings     []NetworkWarning    `json:"warnings,omitempty"`
+	// Identity is the network's public signing key, when it has one.
+	Identity *NetworkIdentity `json:"identity,omitempty"`
 }
 
 type NetworkConsole struct {
@@ -244,6 +246,11 @@ type SendMessageRequest struct {
 	// derived from it: harnesses such as daimon's turn harness set this, the
 	// model never does.
 	CauseEventIDs []string `json:"cause_event_ids,omitempty"`
+	// Envelope is the origin network's signed statement of this message,
+	// sent beside it on pairing relays (moltnet.envelope.v1). Receivers
+	// accept it only from pair-scoped credentials; local callers cannot
+	// supply one.
+	Envelope *SignedEnvelope `json:"envelope,omitempty"`
 }
 
 type MessageAccepted struct {
