@@ -63,9 +63,9 @@ func SignRoomControl(event RoomControlEvent, sign func([]byte) []byte) (SignedRo
 	}, digest, nil
 }
 
-// VerifyRoomControl strictly parses a control event and checks the home's
-// signature. Chain, epoch and membership rules are the caller's.
-func VerifyRoomControl(signed SignedRoomControl, homeKey ed25519.PublicKey) (RoomControlEvent, string, error) {
+// ParseRoomControlUnverified strictly parses a control event without
+// checking its signature (used to read the key a genesis names).
+func ParseRoomControlUnverified(signed SignedRoomControl) (RoomControlEvent, string, error) {
 	var event RoomControlEvent
 	raw, err := parseStrictCanonical(signed.Control, &event)
 	if err != nil {
@@ -77,7 +77,16 @@ func VerifyRoomControl(signed SignedRoomControl, homeKey ed25519.PublicKey) (Roo
 	if reencoded, err := CanonicalJSONBytes(roomControlValue(event)); err != nil || !bytes.Equal(reencoded, raw) {
 		return RoomControlEvent{}, "", fmt.Errorf("%w: non-canonical field shapes", ErrRoomControlMalformed)
 	}
-	digest := domainDigest(roomControlDigestDomain, raw)
+	return event, domainDigest(roomControlDigestDomain, raw), nil
+}
+
+// VerifyRoomControl strictly parses a control event and checks the home's
+// signature. Chain, epoch and membership rules are the caller's.
+func VerifyRoomControl(signed SignedRoomControl, homeKey ed25519.PublicKey) (RoomControlEvent, string, error) {
+	event, digest, err := ParseRoomControlUnverified(signed)
+	if err != nil {
+		return RoomControlEvent{}, "", err
+	}
 	if !verifyDomainSignature(homeKey, roomControlSignatureDomain, digest, signed.Signature) {
 		return RoomControlEvent{}, "", ErrRoomControlSignature
 	}
