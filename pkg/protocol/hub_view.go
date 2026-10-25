@@ -38,3 +38,16 @@ type HubControlInfo struct {
 
 // HubTrustSelf labels this network's own entry in a roster.
 const HubTrustSelf = "self"
+
+// HubRoomSummary is the operator view the hub administration endpoints
+// return (POST /v1/hub/rooms, /v1/hub/rooms/control, ...): a hub room with
+// its current roster as network id -> role.
+type HubRoomSummary struct {
+	GlobalRoomID    string            `json:"global_room_id"`
+	LocalRoomID     string            `json:"local_room_id"`
+	HomeNetworkID   string            `json:"home_network_id"`
+	HomePairingID   string            `json:"home_pairing_id,omitempty"`
+	MembershipEpoch int64             `json:"membership_epoch"`
+	History         string            `json:"history"`
+	Members         map[string]string `json:"members"`
+}

@@ -26,6 +26,25 @@ func buildUsage() string {
   moltnet room list --base-url <url> --token-env <env>
   moltnet room remove --room <id> --base-url <url> --token-env <env>
   moltnet room join <id> --credential-env <env> [--config <path>] [--member <id>] [--network <id>]
+
+Shared rooms (one room across several networks; this network or a peer is its home):
+  moltnet room share <room> [--history from_join|full_history]
+  moltnet room invite <room> [--role writer|reader|admin] [--id <pairing-id>] [--relay-url <url>] [--relay-token-env <env>] [--restart]
+  moltnet room join <moltnet-invite:...> [--local-room <id>] [--force] [--restart]
+  moltnet room members <room>
+  moltnet room remove <room> <network-id>
+  moltnet room leave <room>
+  (all take [--config <server config>] [--network <id>] [--base-url <url> --token-env <env>])
+
+"room share" makes a local room shared, homed here: the home signs its
+membership log, orders messages, and fans them out. "room invite" mints a
+room-scoped invite (a room link pairing plus a one-time grant) and prints the
+home's key fingerprint; "room join <code>" on the joining network pins that
+key as verified, writes the link, and the server finishes the join after a
+restart. "room members" lists member networks with this network's trust in
+each key ("introduced by <home>" is not proof of identity). "room remove"
+(home only) and "room leave" (members) stop future traffic; copies already
+delivered cannot be erased.
   moltnet service install|uninstall|start|stop|status [--config <path>] [--id <network-id>]
   moltnet status [--network <id>] [--verbose] [--config <path>] [--member <id>]
   moltnet admin agent remove --agent <id> --base-url <url> --token-env <env>
@@ -168,6 +187,25 @@ func buildRoomUsage() string {
   moltnet room list --base-url <url> --token-env <env>
   moltnet room remove --room <id> --base-url <url> --token-env <env>
   moltnet room join <id> --credential-env <env> [--config <path>] [--member <id>] [--network <id>]
+
+Shared rooms (one room across several networks; this network or a peer is its home):
+  moltnet room share <room> [--history from_join|full_history]
+  moltnet room invite <room> [--role writer|reader|admin] [--id <pairing-id>] [--relay-url <url>] [--relay-token-env <env>] [--restart]
+  moltnet room join <moltnet-invite:...> [--local-room <id>] [--force] [--restart]
+  moltnet room members <room>
+  moltnet room remove <room> <network-id>
+  moltnet room leave <room>
+  (all take [--config <server config>] [--network <id>] [--base-url <url> --token-env <env>])
+
+"room share" makes a local room shared, homed here: the home signs its
+membership log, orders messages, and fans them out. "room invite" mints a
+room-scoped invite (a room link pairing plus a one-time grant) and prints the
+home's key fingerprint; "room join <code>" on the joining network pins that
+key as verified, writes the link, and the server finishes the join after a
+restart. "room members" lists member networks with this network's trust in
+each key ("introduced by <home>" is not proof of identity). "room remove"
+(home only) and "room leave" (members) stop future traffic; copies already
+delivered cannot be erased.
 
 "room create" writes the room into rooms[] in the resolved Moltnet server
 config -- reliably and safely, the same writeback "pair invite" uses for

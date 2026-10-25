@@ -47,6 +47,8 @@ type PairingWriteback struct {
 	RemoteNetworkName string
 	Token             string
 	Relay             *PairingRelayWriteback
+	// Scope "rooms" writes a room link (shared rooms only).
+	Scope string
 }
 
 // PairingRelayWriteback is the plaintext pairings[].relay entry.
@@ -268,6 +270,9 @@ func pairingWritebackMap(pairing PairingWriteback) map[string]any {
 	}
 	if pairing.RemoteNetworkName != "" {
 		entry["remote_network_name"] = pairing.RemoteNetworkName
+	}
+	if pairing.Scope != "" {
+		entry["scope"] = pairing.Scope
 	}
 	if pairing.Relay != nil {
 		entry["relay"] = map[string]any{
