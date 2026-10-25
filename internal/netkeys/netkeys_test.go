@@ -288,3 +288,68 @@ func TestPinStoreConcurrentWritersKeepEveryPin(t *testing.T) {
 		t.Fatalf("pins after concurrent writes = %d, %v", len(pins), err)
 	}
 }
+
+func TestIdentityUnreadableKeySaysWhy(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root reads any file")
+	}
+	dir := t.TempDir()
+	if _, _, err := LoadOrCreateIdentity(dir); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, identityFileName)
+	if err := os.Chmod(path, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(path, 0o600) })
+	_, err := LoadIdentity(dir)
+	if err == nil || !strings.Contains(err.Error(), "not readable by this user") {
+		t.Fatalf("unreadable key error = %v", err)
+	}
+}
+
+func TestPinStoreSeesOutOfProcessChangesThroughItsCache(t *testing.T) {
+	dir := t.TempDir()
+	server := OpenPinStore(dir)
+	pin, _ := testPin(t, "alpha")
+	if _, err := server.PinKey(pin); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, _ := server.Lookup("alpha"); !ok {
+		t.Fatal("pin missing")
+	}
+	// The CLI is another process with its own store over the same file.
+	if removed, err := OpenPinStore(dir).Forget("alpha"); err != nil || !removed {
+		t.Fatalf("cli forget = %v, %v", removed, err)
+	}
+	if _, ok, err := server.Lookup("alpha"); ok || err != nil {
+		t.Fatalf("server still sees a forgotten pin: %v, %v", ok, err)
+	}
+}
+
+func TestPinLookupIsNotBlockedByAWriterWaitingForTheFileLock(t *testing.T) {
+	dir := t.TempDir()
+	store := OpenPinStore(dir)
+	pin, _ := testPin(t, "alpha")
+	if _, err := store.PinKey(pin); err != nil {
+		t.Fatal(err)
+	}
+	release, err := acquireFileLock(filepath.Join(dir, pinsFileName) + ".lock") // another process writing
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	other, _ := testPin(t, "beta")
+	go func() { _, _ = store.PinKey(other) }() // waits on the file lock
+	time.Sleep(50 * time.Millisecond)
+	done := make(chan struct{})
+	go func() {
+		_, _, _ = store.Lookup("alpha")
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("lookup blocked behind a writer waiting for the file lock")
+	}
+}

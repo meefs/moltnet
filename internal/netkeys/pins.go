@@ -61,6 +61,7 @@ type PinStore struct {
 	path   string
 	mu     sync.Mutex
 	memory map[string]Pin
+	cache  pinCache
 	now    func() time.Time
 }
 
@@ -199,10 +200,13 @@ func (s *PinStore) Forget(networkID string) (bool, error) {
 	return removed, err
 }
 
+// update serializes writers with the cross-process file lock first and
+// only then takes the in-process mutex, so lookups are never stuck behind a
+// writer waiting for another process's lock.
 func (s *PinStore) update(mutate func(map[string]Pin) (bool, error)) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.path == "" {
+		s.mu.Lock()
+		defer s.mu.Unlock()
 		_, err := mutate(s.memory)
 		return err
 	}
@@ -214,6 +218,8 @@ func (s *PinStore) update(mutate func(map[string]Pin) (bool, error)) error {
 		return err
 	}
 	defer unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	pins, err := s.readLocked()
 	if err != nil {
 		return err
@@ -222,21 +228,27 @@ func (s *PinStore) update(mutate func(map[string]Pin) (bool, error)) error {
 	if err != nil || !changed {
 		return err
 	}
+	s.cache = pinCache{}
 	return writePinsFile(s.path, pins)
 }
 
 func (s *PinStore) readLocked() (map[string]Pin, error) {
 	if s.path == "" {
-		copied := make(map[string]Pin, len(s.memory))
-		for id, pin := range s.memory {
-			copied[id] = pin
-		}
-		return copied, nil
+		return copyPins(s.memory), nil
 	}
-	raw, err := os.ReadFile(s.path)
+	info, err := os.Stat(s.path)
 	if errors.Is(err, os.ErrNotExist) {
+		s.cache = pinCache{}
 		return map[string]Pin{}, nil
 	}
+	if err != nil {
+		return nil, fmt.Errorf("read key pins: %w", err)
+	}
+	stamp := stampOf(info)
+	if s.cache.valid && s.cache.stamp == stamp {
+		return copyPins(s.cache.pins), nil
+	}
+	raw, err := os.ReadFile(s.path)
 	if err != nil {
 		return nil, fmt.Errorf("read key pins: %w", err)
 	}
@@ -244,8 +256,10 @@ func (s *PinStore) readLocked() (map[string]Pin, error) {
 	if err != nil {
 		// Fail closed: a damaged trust store must never read as "no pins",
 		// which would silently re-open first-contact pinning.
+		s.cache = pinCache{}
 		return nil, fmt.Errorf("key pins file %s is invalid (%v); fix or remove it deliberately", s.path, err)
 	}
+	s.cache = pinCache{valid: true, stamp: stamp, pins: copyPins(pins)}
 	return pins, nil
 }
 
