@@ -22,6 +22,8 @@ type signedOriginView struct {
 	protocol.MessageOrigin
 	Signature   string `json:"signature,omitempty"`
 	Fingerprint string `json:"fingerprint,omitempty"`
+	// IntroducedBy names the room home that vouched for an introduced key.
+	IntroducedBy string `json:"introduced_by,omitempty"`
 }
 
 // signedMessageView shadows the embedded Message.Origin: encoding/json
@@ -61,7 +63,7 @@ func writeMessagePage(response http.ResponseWriter, ctx context.Context, service
 
 func signedView(message protocol.Message, signature rooms.MessageSignature) signedMessageView {
 	view := signedMessageView{
-		Origin: signedOriginView{MessageOrigin: message.Origin, Signature: signature.State, Fingerprint: signature.Fingerprint},
+		Origin: signedOriginView{MessageOrigin: message.Origin, Signature: signature.State, Fingerprint: signature.Fingerprint, IntroducedBy: signature.IntroducedBy},
 	}
 	if envelope := signature.Signed; envelope != nil {
 		receivedAt, localMentions := message.CreatedAt, message.Mentions

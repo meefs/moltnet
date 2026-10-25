@@ -20,6 +20,7 @@ type hubService interface {
 	HubRoomsContext(ctx context.Context) ([]rooms.HubRoomView, error)
 	HubControlPageContext(ctx context.Context, globalRoomID string, afterSeq int64) (protocol.RoomControlPage, error)
 	HubSyncPageContext(ctx context.Context, globalRoomID string, afterSeq, controlAfter int64) (protocol.RoomSyncPage, error)
+	RoomHubContext(ctx context.Context, roomID string) (protocol.HubRoomInfo, error)
 }
 
 var hubControlScopes = []authn.Scope{authn.ScopeObserve, authn.ScopeAdmin, authn.ScopePair}
@@ -51,6 +52,10 @@ func registerHubRoutes(mux *http.ServeMux, policy *authn.Policy, service Service
 		}
 		page, err := hubs.HubSyncPageContext(request.Context(), query.Get("room"), after, controlAfter)
 		respondHub(response, page, err, http.StatusOK)
+	}))
+	mux.HandleFunc("GET /v1/rooms/{roomID}/hub", publicInOpen(policy, service, readScopes, func(response http.ResponseWriter, request *http.Request) {
+		info, err := hubs.RoomHubContext(request.Context(), request.PathValue("roomID"))
+		respondHub(response, info, err, http.StatusOK)
 	}))
 	mux.HandleFunc("GET /v1/hub/rooms", authorizedWithVerifier(policy, service, authn.ScopeAdmin, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		views, err := hubs.HubRoomsContext(request.Context())

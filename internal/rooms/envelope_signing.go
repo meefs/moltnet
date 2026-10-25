@@ -100,6 +100,8 @@ type MessageSignature struct {
 	// messages; HTTP renders the signed facts from it, never from the local
 	// projection (which carries receive time and locally resolved mentions).
 	Signed *protocol.MessageEnvelope
+	// IntroducedBy names the room home that vouched for an introduced key.
+	IntroducedBy string
 }
 
 // MessageSignatures reports origin signature state for messages received
@@ -126,6 +128,11 @@ func (s *Service) MessageSignatures(ctx context.Context, messages []protocol.Mes
 	for _, message := range messages {
 		if record, ok := records[message.ID]; ok {
 			signature := MessageSignature{State: record.State, Fingerprint: record.Fingerprint}
+			if record.State == protocol.SignatureStateIntroduced {
+				if pin, ok, err := s.keyPins.Lookup(record.OriginNetworkID); err == nil && ok && pin.Fingerprint == record.Fingerprint {
+					signature.IntroducedBy = pin.IntroducedBy
+				}
+			}
 			if signedState(record.State) {
 				envelope, _, err := protocol.ParseSignedEnvelope(record.Envelope)
 				if err != nil {

@@ -163,11 +163,12 @@ func pinAsInvite(t *testing.T, pins *netkeys.PinStore, network string, identity 
 type wireMessage struct {
 	ID     string `json:"id"`
 	Origin struct {
-		NetworkID   string `json:"network_id"`
-		MessageID   string `json:"message_id"`
-		ReceivedVia string `json:"received_via"`
-		Signature   string `json:"signature"`
-		Fingerprint string `json:"fingerprint"`
+		NetworkID    string `json:"network_id"`
+		MessageID    string `json:"message_id"`
+		ReceivedVia  string `json:"received_via"`
+		Signature    string `json:"signature"`
+		Fingerprint  string `json:"fingerprint"`
+		IntroducedBy string `json:"introduced_by"`
 	} `json:"origin"`
 	Parts []protocol.Part `json:"parts"`
 }
