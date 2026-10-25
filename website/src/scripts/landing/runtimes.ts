@@ -1,4 +1,4 @@
-// "Connect your agent": cycles the runtime kinds that work from this snippet alone (Pi and Daimon need a control_url).
+// "Connect your agent": cycles the runtime kinds that validate from this snippet (Pi and Daimon need a control_url).
 import { reducedMotion } from './motion';
 
 const RUNTIMES = [

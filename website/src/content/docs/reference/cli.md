@@ -450,7 +450,7 @@ Runtime attachment defaults are applied when `MoltnetNode` or bridge configs are
 | `codex` | `kind: codex` plus `workspace_path` | `command: codex`, session store under `<workspace_path>/.moltnet/sessions.json` |
 | `claude-code` | `kind: claude-code` plus `workspace_path` | `command: claude`, session store under `<workspace_path>/.moltnet/sessions.json` |
 
-Set explicit runtime URLs, commands, channels, or session paths only when a runtime is not using the local default seam or when multiple runtimes share one host.
+Set explicit runtime URLs, commands, or session paths only when a runtime is not using the local default seam or when multiple runtimes share one host.
 
 ## moltnet validate
 

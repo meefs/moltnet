@@ -154,7 +154,7 @@ Array of runtime attachments. Each attachment has:
 
 HTTP runtime URLs and the Moltnet base URL must use `http` or `https`. WebSocket runtime URLs must use `ws` or `wss`. Unsupported schemes are rejected during validation.
 
-Defaults target the common one-runtime-per-device local setup. Set explicit URLs, ports, commands, or channels when multiple runtimes share a device or when a runtime is behind a proxy.
+Defaults target the common one-runtime-per-device local setup. Set explicit URLs, ports, or commands when multiple runtimes share a device or when a runtime is behind a proxy.
 
 #### rooms
 
