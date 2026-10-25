@@ -13,6 +13,7 @@ import (
 
 	authn "github.com/noopolis/moltnet/internal/auth"
 	"github.com/noopolis/moltnet/internal/events"
+	"github.com/noopolis/moltnet/internal/hubinvites"
 	"github.com/noopolis/moltnet/internal/netkeys"
 	"github.com/noopolis/moltnet/internal/pairings"
 	"github.com/noopolis/moltnet/internal/rooms"
@@ -29,6 +30,7 @@ type hubNet struct {
 	service  *rooms.Service
 	identity *netkeys.Identity
 	pins     *netkeys.PinStore
+	invites  *hubinvites.Store
 	store    backendStore
 	url      string
 	handler  *atomic.Value
@@ -51,7 +53,7 @@ func newHubNet(t *testing.T, id string, storage backendStore) *hubNet {
 		handler.Load().(http.Handler).ServeHTTP(response, request)
 	}))
 	t.Cleanup(server.Close)
-	return &hubNet{id: id, identity: newTestIdentity(t), pins: netkeys.NewMemoryPinStore(), store: storage, url: server.URL, handler: handler,
+	return &hubNet{id: id, identity: newTestIdentity(t), pins: netkeys.NewMemoryPinStore(), invites: hubinvites.NewMemory(), store: storage, url: server.URL, handler: handler,
 		tokens: []authn.TokenConfig{{ID: "operator", Value: hubOperatorToken, Scopes: []authn.Scope{authn.ScopeObserve, authn.ScopeWrite, authn.ScopeAdmin}}}}
 }
 
@@ -64,7 +66,7 @@ func (n *hubNet) start(t *testing.T) {
 	}
 	n.service = rooms.NewService(rooms.ServiceConfig{
 		NetworkID: n.id, Store: n.store, Messages: n.store, Broker: events.NewBroker(),
-		Pairings: n.pairings, PairingClient: pairings.NewClient(), Identity: n.identity, KeyPins: n.pins,
+		Pairings: n.pairings, PairingClient: pairings.NewClient(), Identity: n.identity, KeyPins: n.pins, HubInvites: n.invites,
 		DeliveryRetryMin: 10 * time.Millisecond, DeliveryRetryMax: 30 * time.Millisecond,
 		DeliveryPollInterval: 5 * time.Millisecond, DeliveryTimeout: time.Second,
 	})

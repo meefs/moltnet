@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/noopolis/moltnet/internal/hubinvites"
 	"github.com/noopolis/moltnet/internal/netkeys"
 	"github.com/noopolis/moltnet/internal/observability"
 )
@@ -59,4 +60,14 @@ func loadNetworkKeys(config Config) (*netkeys.Identity, *netkeys.PinStore, error
 		observability.Logger(context.Background(), "app.keys", "fingerprint", identity.Fingerprint()).Info("generated network signing key")
 	}
 	return identity, netkeys.OpenPinStore(dir), nil
+}
+
+// hubInvitesFor keeps shared-room invite grants and pending joins beside
+// the keys; without a durable keys directory hub rooms are unavailable
+// anyway, so an in-memory store is enough.
+func hubInvitesFor(config Config) *hubinvites.Store {
+	if dir := config.KeysDir(); dir != "" {
+		return hubinvites.Open(dir)
+	}
+	return hubinvites.NewMemory()
 }

@@ -18,6 +18,9 @@ type HubJoinRequest struct {
 	PairingID    string `json:"pairing_id"`
 	GlobalRoomID string `json:"global_room_id"`
 	LocalRoomID  string `json:"local_room_id,omitempty"`
+	// Admit redeems a room invite first: the home admits this network over
+	// the invite's pairing (a pending join from `moltnet room join`).
+	Admit bool `json:"admit,omitempty"`
 }
 
 type roomControlClient interface {
@@ -62,6 +65,10 @@ func (s *Service) JoinHubRoomContext(ctx context.Context, request HubJoinRequest
 	if err := requireHubOperator(ctx); err != nil {
 		return HubRoomView{}, err
 	}
+	return s.joinHubRoom(ctx, request)
+}
+
+func (s *Service) joinHubRoom(ctx context.Context, request HubJoinRequest) (HubRoomView, error) {
 	if err := s.requireHubs(); err != nil {
 		return HubRoomView{}, err
 	}
@@ -84,7 +91,12 @@ func (s *Service) JoinHubRoomContext(ctx context.Context, request HubJoinRequest
 	if !pinned || pin.Fingerprint != homeFingerprint || pin.Trust == protocol.KeyTrustIntroduced {
 		return HubRoomView{}, hubForbiddenError(fmt.Sprintf("hub room %s is not homed by the key pinned for %q over this pairing", request.GlobalRoomID, home))
 	}
-	events, err := s.fetchRoomControl(ctx, pairing, request.GlobalRoomID, 0)
+	var events []protocol.SignedRoomControl
+	if request.Admit {
+		events, err = s.requestAdmission(ctx, pairing, request.GlobalRoomID)
+	} else {
+		events, err = s.fetchRoomControl(ctx, pairing, request.GlobalRoomID, 0)
+	}
 	if err != nil {
 		return HubRoomView{}, err
 	}
@@ -99,8 +111,10 @@ func (s *Service) JoinHubRoomContext(ctx context.Context, request HubJoinRequest
 	if roster.GlobalRoomID != request.GlobalRoomID || roster.HomeNetworkID != home {
 		return HubRoomView{}, hubForbiddenError("hub room genesis names a different home")
 	}
-	if _, member := roster.Members[s.networkID]; !member {
+	if self, member := roster.Members[s.networkID]; !member {
 		return HubRoomView{}, hubForbiddenError(fmt.Sprintf("network %q is not a member of hub room %s", s.networkID, request.GlobalRoomID))
+	} else if self.Fingerprint != s.identity.Fingerprint() {
+		return HubRoomView{}, hubForbiddenError(fmt.Sprintf("hub room %s admits %q under a key that is not this network's", request.GlobalRoomID, s.networkID))
 	}
 	localRoomID := strings.TrimSpace(request.LocalRoomID)
 	if localRoomID == "" {

@@ -48,6 +48,7 @@ func (s *Service) syncAllHubRooms(ctx context.Context) {
 		return
 	}
 	s.recoverHubJoins(ctx)
+	s.finishPendingJoins(ctx)
 	rooms, err := s.hubRooms(ctx)
 	if err != nil {
 		return

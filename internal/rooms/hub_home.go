@@ -128,6 +128,12 @@ func (s *Service) AppendHubControlContext(ctx context.Context, request HubContro
 	if err := requireHubOperator(ctx); err != nil {
 		return HubRoomView{}, err
 	}
+	return s.appendHubControl(ctx, request)
+}
+
+// appendHubControl signs and appends a control event on the home; callers
+// have authorized the request (an operator, an admission, a leave).
+func (s *Service) appendHubControl(ctx context.Context, request HubControlRequest) (HubRoomView, error) {
 	if err := s.requireHubs(); err != nil {
 		return HubRoomView{}, err
 	}

@@ -107,6 +107,7 @@ func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
 		PairingClient:             pairingClient,
 		Identity:                  identity,
 		KeyPins:                   keyPins,
+		HubInvites:                hubInvitesFor(config),
 	})
 
 	config.Auth.Tokens = bindPairingNetworks(config.Auth.Tokens, config.Pairings)

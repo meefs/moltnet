@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/noopolis/moltnet/internal/follow"
+	"github.com/noopolis/moltnet/internal/hubinvites"
 	"github.com/noopolis/moltnet/internal/netkeys"
 	"github.com/noopolis/moltnet/internal/observability"
 	"github.com/noopolis/moltnet/internal/store"
@@ -61,6 +62,9 @@ type ServiceConfig struct {
 	// HubSyncInterval is how often member hub rooms catch up from their
 	// home without a gap or reconnect prompting it (default 30s).
 	HubSyncInterval time.Duration
+	// HubInvites holds shared-room invite grants and pending joins. Nil
+	// means an in-memory store (tests and keyless servers).
+	HubInvites *hubinvites.Store
 }
 
 type Service struct {
@@ -97,6 +101,7 @@ type Service struct {
 	hubSyncInterval      time.Duration
 	identity             *netkeys.Identity
 	keyPins              *netkeys.PinStore
+	hubInvites           *hubinvites.Store
 	deliveryRetryMin     time.Duration
 	deliveryRetryMax     time.Duration
 	deliveryPollInterval time.Duration
@@ -203,6 +208,9 @@ func NewService(config ServiceConfig) *Service {
 	service.identity, service.keyPins = config.Identity, config.KeyPins
 	if service.keyPins == nil {
 		service.keyPins = netkeys.NewMemoryPinStore()
+	}
+	if service.hubInvites = config.HubInvites; service.hubInvites == nil {
+		service.hubInvites = hubinvites.NewMemory()
 	}
 	service.configureDelivery(config)
 	service.configureHubSync(config)

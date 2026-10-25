@@ -21,6 +21,9 @@ type hubService interface {
 	HubControlPageContext(ctx context.Context, globalRoomID string, afterSeq int64) (protocol.RoomControlPage, error)
 	HubSyncPageContext(ctx context.Context, globalRoomID string, afterSeq, controlAfter int64) (protocol.RoomSyncPage, error)
 	RoomHubContext(ctx context.Context, roomID string) (protocol.HubRoomInfo, error)
+	AdmitHubMemberContext(ctx context.Context, admission protocol.SignedRoomAdmission) (protocol.RoomControlPage, error)
+	LeaveHubPeerContext(ctx context.Context, request protocol.RoomLeaveRequest) (protocol.RoomControlPage, error)
+	LeaveHubRoomContext(ctx context.Context, globalRoomID string) (rooms.HubRoomView, error)
 }
 
 var hubControlScopes = []authn.Scope{authn.ScopeObserve, authn.ScopeAdmin, authn.ScopePair}
@@ -57,6 +60,33 @@ func registerHubRoutes(mux *http.ServeMux, policy *authn.Policy, service Service
 		info, err := hubs.RoomHubContext(request.Context(), request.PathValue("roomID"))
 		respondHub(response, info, err, http.StatusOK)
 	}))
+	mux.HandleFunc("POST /v1/hub/admit", authorizedWithVerifier(policy, service, authn.ScopePair, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		var payload protocol.SignedRoomAdmission
+		if err := decodeJSON(response, request, &payload); err != nil {
+			writeError(response, http.StatusBadRequest, err)
+			return
+		}
+		page, err := hubs.AdmitHubMemberContext(request.Context(), payload)
+		respondHub(response, page, err, http.StatusOK)
+	})))
+	mux.HandleFunc("POST /v1/hub/leave", authorizedWithVerifier(policy, service, authn.ScopePair, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		var payload protocol.RoomLeaveRequest
+		if err := decodeJSON(response, request, &payload); err != nil {
+			writeError(response, http.StatusBadRequest, err)
+			return
+		}
+		page, err := hubs.LeaveHubPeerContext(request.Context(), payload)
+		respondHub(response, page, err, http.StatusOK)
+	})))
+	mux.HandleFunc("POST /v1/hub/rooms/leave", authorizedWithVerifier(policy, service, authn.ScopeAdmin, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		var payload protocol.RoomLeaveRequest
+		if err := decodeJSON(response, request, &payload); err != nil {
+			writeError(response, http.StatusBadRequest, err)
+			return
+		}
+		view, err := hubs.LeaveHubRoomContext(request.Context(), payload.GlobalRoomID)
+		respondHub(response, view, err, http.StatusOK)
+	})))
 	mux.HandleFunc("GET /v1/hub/rooms", authorizedWithVerifier(policy, service, authn.ScopeAdmin, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		views, err := hubs.HubRoomsContext(request.Context())
 		respondHub(response, map[string]any{"rooms": views}, err, http.StatusOK)

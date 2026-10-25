@@ -22,6 +22,9 @@ var inboundAllowedRequests = map[string]map[string]struct{}{
 	},
 	http.MethodPost: {
 		"/v1/messages": {},
+		// Hub room invite redemption and leaving (members ask the home).
+		"/v1/hub/admit": {},
+		"/v1/hub/leave": {},
 	},
 }
 
