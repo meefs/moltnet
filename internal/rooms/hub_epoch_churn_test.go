@@ -6,7 +6,6 @@ import (
 	"sort"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/noopolis/moltnet/internal/rooms"
 	"github.com/noopolis/moltnet/internal/store"
@@ -20,11 +19,11 @@ func TestHubHomePostsNeverRegressTheEpochUnderControlChurn(t *testing.T) {
 	hubs := h.home.store.(store.HubStore)
 	ctx := context.Background()
 	stop := make(chan struct{})
-	var wg sync.WaitGroup
+	var operator, wg sync.WaitGroup
 	// Operator flips beta's role; every flip bumps the epoch under hubMu.
-	wg.Add(1)
+	operator.Add(1)
 	go func() {
-		defer wg.Done()
+		defer operator.Done()
 		roles := []string{protocol.RoomRoleAdmin, protocol.RoomRoleWriter}
 		for i := 0; ; i++ {
 			select {
@@ -48,17 +47,9 @@ func TestHubHomePostsNeverRegressTheEpochUnderControlChurn(t *testing.T) {
 			}
 		}(p)
 	}
-	deadline := time.After(4 * time.Second)
-	done := make(chan struct{})
-	go func() { wg.Wait(); close(done) }()
-	go func() {
-		select {
-		case <-deadline:
-		case <-done:
-		}
-		close(stop)
-	}()
-	<-done
+	wg.Wait()
+	close(stop)
+	operator.Wait()
 
 	page, err := h.home.service.ListRoomMessages("research", "", 2000)
 	if err != nil {
