@@ -101,19 +101,31 @@ func (s *Service) HubSyncPageContext(ctx context.Context, globalRoomID string, a
 			entry.Message = &request
 		}
 		next := syncEncodedSize(entry) + 1
-		if entry.Message != nil && next > protocol.MaxRoomSyncEntryBytes {
-			logHub(ctx, globalRoomID).Warn("hub sync serves a message too large for any page receipt-only", "room_seq", record.RoomSeq, "bytes", next)
-			entry.Message = nil
+		if len(page.Entries) > 0 || len(page.Control) > 0 {
+			if size+next > syncPageBytes {
+				page.More = true
+				break
+			}
+		} else if entry.Message != nil && !fitsTransportAlone(page, entry, record.RoomSeq) {
+			// Alone on its page it may use the whole transport limit; only a
+			// message within the page's own bytes of it cannot, and the
+			// member is told so instead of it vanishing.
+			logHub(ctx, globalRoomID).Warn("hub sync withholds a message too large for a page even alone", "room_seq", record.RoomSeq, "bytes", next)
+			entry.Message, entry.Withheld = nil, protocol.RoomSyncWithheldTooLarge
 			next = syncEncodedSize(entry) + 1
-		}
-		if (len(page.Entries) > 0 || len(page.Control) > 0) && size+next > syncPageBytes {
-			page.More = true
-			break
 		}
 		page.Entries, size = append(page.Entries, entry), size+next
 		page.ThroughSeq = record.RoomSeq
 	}
 	return page, nil
+}
+
+// fitsTransportAlone reports whether page carrying entry alone (at seq, the
+// longer "more":false) encodes within the pairing transport limit, less
+// the newline the JSON encoder appends to every response.
+func fitsTransportAlone(page protocol.RoomSyncPage, entry protocol.RoomSyncEntry, seq int64) bool {
+	page.Entries, page.ThroughSeq, page.More = []protocol.RoomSyncEntry{entry}, seq, false
+	return syncEncodedSize(page) <= syncTransportBytes-1
 }
 
 // hubSyncMessages rebuilds, for the visible receipts, the exact hub request
@@ -150,8 +162,10 @@ func (s *Service) hubSyncMessages(ctx context.Context, hub store.HubRoom, receip
 		if err != nil {
 			return nil, err
 		}
-		signed, receipt := envelope.Envelope, byMessage[id].Receipt
-		request.Envelope, request.Receipt = &signed, &receipt
+		// The entry carries the receipt; the message does not repeat it, so an
+		// entry is no larger than the live delivery of the same message.
+		signed := envelope.Envelope
+		request.Envelope, request.Receipt = &signed, nil
 		result[id] = request
 	}
 	return result, nil
@@ -159,6 +173,10 @@ func (s *Service) hubSyncMessages(ctx context.Context, hub store.HubRoom, receip
 
 // syncPageBytes is protocol.MaxRoomSyncPageBytes (tests lower it).
 var syncPageBytes = protocol.MaxRoomSyncPageBytes
+
+// syncTransportBytes is the pairing transport limit a single-entry page may
+// use: protocol.MaxPairingPayloadBytes, the limit HTTP and relay share.
+const syncTransportBytes = protocol.MaxPairingPayloadBytes
 
 // syncEncodedSize is value's JSON size (the page's wire size, near enough).
 func syncEncodedSize(value any) int {

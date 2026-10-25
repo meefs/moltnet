@@ -84,3 +84,30 @@ func TestHubSyncCursorKeepsItsEpochAndRefusesARegression(t *testing.T) {
 		})
 	}
 }
+
+func TestHubWithheldReceiptsPersistUntilAMessageBindsThem(t *testing.T) {
+	for name, open := range hubBackends(t) {
+		t.Run(name, func(t *testing.T) {
+			storage := newEpochOrderStore(t, open)
+			ctx := context.Background()
+			withheld := epochReceipt(1, 1, "e1", "d1", "")
+			withheld.Withheld = "too_large"
+			if err := storage.StoreHubReceiptContext(ctx, withheld); err != nil {
+				t.Fatal(err)
+			}
+			if err := storage.StoreHubReceiptContext(ctx, epochReceipt(2, 1, "e2", "d2", "d1")); err != nil {
+				t.Fatal(err)
+			}
+			listed, err := storage.HubWithheldReceiptsContext(ctx, hubTestGlobal)
+			if err != nil || len(listed) != 1 || listed[0].RoomSeq != 1 || listed[0].Withheld != "too_large" {
+				t.Fatalf("withheld = %#v, %v", listed, err)
+			}
+			if err := appendWithReceipt(storage, hubMessage("m1", "alpha"), epochReceipt(1, 1, "e1", "d1", "")); err != nil {
+				t.Fatal(err)
+			}
+			if listed, _ := storage.HubWithheldReceiptsContext(ctx, hubTestGlobal); len(listed) != 0 {
+				t.Fatalf("a bound receipt is still listed withheld: %#v", listed)
+			}
+		})
+	}
+}

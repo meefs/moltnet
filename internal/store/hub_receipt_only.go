@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 )
 
 // Receipt-only storage. A member's catch-up carries receipts whose message
@@ -123,4 +124,35 @@ func (s *SQLStore) EnvelopeForOriginContext(ctx context.Context, originNetworkID
 		return MessageEnvelopeRecord{}, false, fmt.Errorf("decode message envelope: %w", err)
 	}
 	return record, true, nil
+}
+
+func (s *MemoryStore) HubWithheldReceiptsContext(_ context.Context, globalRoomID string) ([]HubReceiptRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []HubReceiptRecord
+	for _, record := range s.hub.Receipts {
+		if record.GlobalRoomID == globalRoomID && record.Withheld != "" && record.MessageID == "" {
+			result = append(result, record)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].RoomSeq < result[j].RoomSeq })
+	return result, nil
+}
+
+func (s *SQLStore) HubWithheldReceiptsContext(ctx context.Context, globalRoomID string) ([]HubReceiptRecord, error) {
+	rows, err := s.db.QueryContext(ctx, bindQuery(s.dialect, `SELECT `+hubReceiptColumns+` FROM hub_receipts
+		WHERE global_room_id = ? AND withheld <> '' AND message_id = '' ORDER BY room_seq ASC`), globalRoomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var records []HubReceiptRecord
+	for rows.Next() {
+		record, err := scanHubReceipt(rows)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+	return records, rows.Err()
 }

@@ -47,6 +47,13 @@ func (s *Service) hubRoomInfo(ctx context.Context, hub store.HubRoom) (protocol.
 	sort.SliceStable(info.Members, func(i, j int) bool {
 		return info.Members[i].NetworkID == hub.HomeNetworkID && info.Members[j].NetworkID != hub.HomeNetworkID
 	})
+	withheld, err := s.hubs.HubWithheldReceiptsContext(ctx, hub.GlobalRoomID)
+	if err != nil {
+		return protocol.HubRoomInfo{}, err
+	}
+	for _, record := range withheld {
+		info.Withheld = append(info.Withheld, protocol.HubWithheldInfo{RoomSeq: record.RoomSeq, MembershipEpoch: record.MembershipEpoch, Reason: record.Withheld})
+	}
 	for _, record := range records {
 		event, _, err := protocol.ParseRoomControlUnverified(record.Control)
 		if err != nil {

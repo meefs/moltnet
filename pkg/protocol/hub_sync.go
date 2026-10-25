@@ -10,23 +10,34 @@ package protocol
 // MaxRoomSyncPage bounds one GET /v1/hub/sync page.
 const MaxRoomSyncPage = 200
 
-// MaxRoomSyncPageBytes is the encoded size a sync page aims to stay under,
-// control events included: pairing transports (HTTP and relay) accept
-// responses up to 1 MiB. A page always carries at least one control event or
-// entry, so it always advances.
+// MaxPairingPayloadBytes is the largest JSON body a pairing transport
+// carries in either direction: an HTTP request or response, or a relay
+// frame's payload. Live hub delivery and catch-up share it.
+const MaxPairingPayloadBytes = 1 << 20
+
+// MaxRoomSyncPageBytes is the encoded size a sync page of several entries
+// aims to stay under, control events included. A page always carries at
+// least one control event or entry, so it always advances; a page with one
+// entry may grow to the transport limit (MaxPairingPayloadBytes).
 const MaxRoomSyncPageBytes = 640 << 10
 
-// MaxRoomSyncEntryBytes caps one entry. A message too large to ever fit a
-// page travels receipt-only, so the chain still advances; such a message
-// could not cross a pairing transport live either.
-const MaxRoomSyncEntryBytes = 900 << 10
+// RoomSyncWithheldTooLarge marks a sync entry whose message the home
+// accepted but cannot fit in any page, even alone (it came within the page's
+// own few hundred bytes of the transport limit). The member stores the
+// receipt as withheld and shows it; it is never treated as delivered.
+const RoomSyncWithheldTooLarge = "too_large"
 
 // RoomSyncEntry is one placed room seq. Message is nil for a seq the
 // caller may not see (placed while it was not a member, or before its join
 // in a from_join room): the receipt alone keeps the chain verifiable.
+//
+// The message carries no receipt of its own in a page (Receipt is the one):
+// that keeps an entry no larger than the live delivery of the same message.
+// Withheld names why a visible message is missing (RoomSyncWithheldTooLarge).
 type RoomSyncEntry struct {
-	Receipt SignedRoomReceipt   `json:"receipt"`
-	Message *SendMessageRequest `json:"message,omitempty"`
+	Receipt  SignedRoomReceipt   `json:"receipt"`
+	Message  *SendMessageRequest `json:"message,omitempty"`
+	Withheld string              `json:"withheld,omitempty"`
 }
 
 // RoomSyncPage is GET /v1/hub/sync's response. ThroughSeq is the last room

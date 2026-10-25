@@ -25,7 +25,7 @@ func hubRoomsMigration() migration {
 		`CREATE TABLE IF NOT EXISTS hub_receipts (
 			global_room_id TEXT NOT NULL, hub_epoch BIGINT NOT NULL, room_seq BIGINT NOT NULL,
 			event_id TEXT NOT NULL, digest TEXT NOT NULL, prev_digest TEXT NOT NULL, message_id TEXT NOT NULL,
-			receipt_json TEXT NOT NULL, membership_epoch BIGINT NOT NULL DEFAULT 0,
+			receipt_json TEXT NOT NULL, membership_epoch BIGINT NOT NULL DEFAULT 0, withheld TEXT NOT NULL DEFAULT '',
 			PRIMARY KEY (global_room_id, hub_epoch, room_seq), UNIQUE (global_room_id, event_id)
 		)`,
 		`CREATE INDEX IF NOT EXISTS hub_receipts_message ON hub_receipts (message_id)`,
@@ -149,12 +149,12 @@ func (s *SQLStore) HubControlLogContext(ctx context.Context, globalRoomID string
 	return records, rows.Err()
 }
 
-const hubReceiptColumns = `global_room_id, hub_epoch, room_seq, event_id, digest, prev_digest, message_id, receipt_json, membership_epoch`
+const hubReceiptColumns = `global_room_id, hub_epoch, room_seq, event_id, digest, prev_digest, message_id, receipt_json, membership_epoch, withheld`
 
 func scanHubReceipt(row interface{ Scan(...any) error }) (HubReceiptRecord, error) {
 	var record HubReceiptRecord
 	var encoded string
-	if err := row.Scan(&record.GlobalRoomID, &record.HubEpoch, &record.RoomSeq, &record.EventID, &record.Digest, &record.PrevDigest, &record.MessageID, &encoded, &record.MembershipEpoch); err != nil {
+	if err := row.Scan(&record.GlobalRoomID, &record.HubEpoch, &record.RoomSeq, &record.EventID, &record.Digest, &record.PrevDigest, &record.MessageID, &encoded, &record.MembershipEpoch, &record.Withheld); err != nil {
 		return HubReceiptRecord{}, err
 	}
 	if err := json.Unmarshal([]byte(encoded), &record.Receipt); err != nil {
@@ -250,8 +250,8 @@ func (s *SQLStore) insertHubReceipt(ctx context.Context, tx *sql.Tx, record *Hub
 	if record == nil {
 		return nil
 	}
-	_, err := tx.ExecContext(ctx, bindQuery(s.dialect, `INSERT INTO hub_receipts (`+hubReceiptColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
-		record.GlobalRoomID, record.HubEpoch, record.RoomSeq, record.EventID, record.Digest, record.PrevDigest, record.MessageID, marshalJSON(record.Receipt), record.MembershipEpoch)
+	_, err := tx.ExecContext(ctx, bindQuery(s.dialect, `INSERT INTO hub_receipts (`+hubReceiptColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+		record.GlobalRoomID, record.HubEpoch, record.RoomSeq, record.EventID, record.Digest, record.PrevDigest, record.MessageID, marshalJSON(record.Receipt), record.MembershipEpoch, record.Withheld)
 	if err != nil {
 		return fmt.Errorf("%w: insert hub receipt: %v", ErrHubReceiptConflict, err)
 	}

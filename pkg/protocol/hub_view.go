@@ -14,6 +14,16 @@ type HubRoomInfo struct {
 	History         string           `json:"history"`
 	Members         []HubMemberInfo  `json:"members"`
 	Events          []HubControlInfo `json:"events"`
+	// Withheld lists placed messages this member may see but never received:
+	// the home withheld them from catch-up (too large for a page).
+	Withheld []HubWithheldInfo `json:"withheld,omitempty"`
+}
+
+// HubWithheldInfo is one placed message a member was not given.
+type HubWithheldInfo struct {
+	RoomSeq         int64  `json:"room_seq"`
+	MembershipEpoch int64  `json:"membership_epoch"`
+	Reason          string `json:"reason"`
 }
 
 // HubMemberInfo is one member network. Trust is this network's trust in

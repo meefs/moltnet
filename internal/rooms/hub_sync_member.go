@@ -145,7 +145,9 @@ func (s *Service) verifySyncChain(ctx context.Context, hub store.HubRoom, cursor
 		case receipt.MembershipEpoch < epoch || receipt.MembershipEpoch > roster.Epoch:
 			return cursor, fmt.Errorf("%w: seq %d at epoch %d out of order", store.ErrHubReceiptConflict, receipt.RoomSeq, receipt.MembershipEpoch)
 		}
-		if entry.Message != nil && (entry.Message.Receipt == nil || *entry.Message.Receipt != entry.Receipt) {
+		// A page's message carries no receipt of its own (the entry's is it);
+		// one that does must carry exactly that one.
+		if entry.Message != nil && entry.Message.Receipt != nil && *entry.Message.Receipt != entry.Receipt {
 			return cursor, fmt.Errorf("%w: entry message carries a different receipt", store.ErrHubReceiptConflict)
 		}
 		epoch, next = receipt.MembershipEpoch, store.HubSyncCursor{GlobalRoomID: hub.GlobalRoomID, Seq: receipt.RoomSeq, Digest: digest, MembershipEpoch: receipt.MembershipEpoch}
@@ -188,6 +190,12 @@ func (s *Service) storeSyncEntries(ctx context.Context, hub store.HubRoom, pairi
 		}
 		record := store.HubReceiptRecord{GlobalRoomID: receipt.GlobalRoomID, HubEpoch: receipt.HubEpoch, MembershipEpoch: receipt.MembershipEpoch,
 			RoomSeq: receipt.RoomSeq, EventID: receipt.EventID, Digest: digest, PrevDigest: receipt.PrevReceiptHash, Receipt: entry.Receipt}
+		if entry.Message == nil && entry.Withheld != "" {
+			// Visible but not given: kept as withheld (shown, never treated
+			// as delivered), not as a message this member may not see.
+			record.Withheld = entry.Withheld
+			logHub(ctx, hub.GlobalRoomID).Warn("the home withheld a message from catch-up", "room_seq", receipt.RoomSeq, "reason", entry.Withheld)
+		}
 		if err := s.hubs.StoreHubReceiptContext(ctx, record); err != nil {
 			if errors.Is(err, store.ErrHubReceiptConflict) {
 				logHub(ctx, hub.GlobalRoomID).Error("refusing a hub sync receipt that conflicts with stored history", "room_seq", receipt.RoomSeq, "error", err)
@@ -202,6 +210,9 @@ func (s *Service) storeSyncEntries(ctx context.Context, hub store.HubRoom, pairi
 func (s *Service) storeSyncMessage(ctx context.Context, hub store.HubRoom, pairing protocol.Pairing, message protocol.SendMessageRequest, receipt protocol.SignedRoomReceipt) error {
 	request := stripPeerTestimony(message)
 	request.Origin = canonicalOriginIDs(request.Origin)
+	if request.Receipt == nil {
+		request.Receipt = &receipt
+	}
 	if request.Origin.NetworkID == s.networkID {
 		return s.attachOwnSyncReceipt(ctx, hub, request, receipt)
 	}

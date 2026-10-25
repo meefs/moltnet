@@ -57,6 +57,9 @@ type HubReceiptRecord struct {
 	PrevDigest      string                     `json:"prev_digest,omitempty"`
 	MessageID       string                     `json:"message_id"`
 	Receipt         protocol.SignedRoomReceipt `json:"receipt"`
+	// Withheld is why a member holds this receipt without a message it may
+	// see (protocol.RoomSyncWithheldTooLarge); empty otherwise.
+	Withheld string `json:"withheld,omitempty"`
 }
 
 // HubStore persists hub rooms, their control logs and message receipts.

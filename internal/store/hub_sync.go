@@ -41,6 +41,9 @@ type HubSyncStore interface {
 	StoreHubReceiptContext(ctx context.Context, record HubReceiptRecord) error
 	// EnvelopeForOriginContext finds a stored envelope by origin tuple.
 	EnvelopeForOriginContext(ctx context.Context, originNetworkID, originMessageID string) (MessageEnvelopeRecord, bool, error)
+	// HubWithheldReceiptsContext lists receipts stored as withheld (a
+	// visible message the home did not give) that no message has bound.
+	HubWithheldReceiptsContext(ctx context.Context, globalRoomID string) ([]HubReceiptRecord, error)
 }
 
 func checkCursorAdvance(stored, next HubSyncCursor) (bool, error) {

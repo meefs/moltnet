@@ -15,7 +15,7 @@ import (
 )
 
 const defaultPairingRequestTimeout = 10 * time.Second
-const maxPairingResponseBytes = 1 << 20
+const maxPairingResponseBytes = protocol.MaxPairingPayloadBytes
 
 type httpTransport struct {
 	http *http.Client
