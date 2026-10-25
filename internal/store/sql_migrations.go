@@ -317,4 +317,5 @@ var sqlMigrations = []migration{
 	pairingDeliveryOutcomeMigration(),
 	pairingDeliveryBindingMigration(),
 	messageEnvelopeMigration(),
+	hubRoomsMigration(),
 }

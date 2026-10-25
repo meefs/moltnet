@@ -23,6 +23,7 @@ type snapshot struct {
 	DirectMembers           map[string]map[string]struct{}           `json:"direct_members"`
 	Agents                  map[string]fileSnapshotAgentRegistration `json:"agents,omitempty"`
 	MessageEnvelopes        map[string]MessageEnvelopeRecord         `json:"message_envelopes,omitempty"`
+	Hub                     *hubState                                `json:"hub,omitempty"`
 }
 
 type fileSnapshotAgentRegistration struct {
@@ -175,6 +176,7 @@ func (s *FileStore) snapshot() snapshot {
 		DirectMembers:           cloneMembers(s.MemoryStore.directMembers),
 		Agents:                  snapshotAgents(s.MemoryStore.agents),
 		MessageEnvelopes:        cloneEnvelopes(s.MemoryStore.envelopes),
+		Hub:                     snapshotHub(s.MemoryStore.hub),
 	}
 }
 
@@ -201,6 +203,7 @@ func (s *FileStore) restore(state snapshot) {
 	s.MemoryStore.messageOrigins = collectMessageOrigins(s.MemoryStore.roomMessages, s.MemoryStore.threadMessages, s.MemoryStore.directMessages)
 	s.MemoryStore.originReceipts = collectOriginReceipts(s.MemoryStore.roomMessages, s.MemoryStore.threadMessages, s.MemoryStore.directMessages)
 	s.MemoryStore.envelopes = cloneEnvelopes(state.MessageEnvelopes)
+	s.MemoryStore.hub = restoreHub(state.Hub)
 	s.MemoryStore.originDigests = collectOriginDigests(s.MemoryStore.originReceipts, s.MemoryStore.envelopes)
 	s.MemoryStore.messageIDs = collectMessageIDs(
 		s.MemoryStore.roomMessages,
@@ -229,6 +232,7 @@ func snapshotFromMemoryStore(memory *MemoryStore) snapshot {
 		DirectMembers:           cloneMembers(memory.directMembers),
 		Agents:                  snapshotAgents(memory.agents),
 		MessageEnvelopes:        cloneEnvelopes(memory.envelopes),
+		Hub:                     snapshotHub(memory.hub),
 	}
 }
 
@@ -253,7 +257,25 @@ func memoryStoreFromSnapshot(state snapshot) *MemoryStore {
 	memory.messageOrigins = collectMessageOrigins(memory.roomMessages, memory.threadMessages, memory.directMessages)
 	memory.originReceipts = collectOriginReceipts(memory.roomMessages, memory.threadMessages, memory.directMessages)
 	memory.envelopes = cloneEnvelopes(state.MessageEnvelopes)
+	memory.hub = restoreHub(state.Hub)
 	memory.originDigests = collectOriginDigests(memory.originReceipts, memory.envelopes)
 	memory.messageIDs = collectMessageIDs(memory.roomMessages, memory.threadMessages, memory.directMessages)
 	return memory
+}
+
+// snapshotHub omits the hub section entirely while there are no hub rooms,
+// so snapshots of networks that never use hub rooms are unchanged.
+func snapshotHub(state hubState) *hubState {
+	if len(state.Rooms) == 0 && len(state.OriginSeqs) == 0 {
+		return nil
+	}
+	cloned := state.clone()
+	return &cloned
+}
+
+func restoreHub(state *hubState) hubState {
+	if state == nil {
+		return newHubState()
+	}
+	return state.clone()
 }
