@@ -25,7 +25,13 @@ export function senderOf(message: Message): Sender {
   const claimedName = author?.name?.trim();
   return {
     // Any change in route, identity, role or trust starts a new header.
-    key: [via ?? "", id, message.from?.type ?? "unknown", message.from?.credential_bound === true && !via ? "bound" : ""].join("|"),
+    key: [
+      via ?? "",
+      id,
+      message.from?.type ?? "unknown",
+      message.from?.credential_bound === true && !via ? "bound" : "",
+      signatureKey(message),
+    ].join("|"),
     id,
     alias: claimedName && claimedName !== authorId ? claimedName : undefined,
     role: message.from?.type ?? "unknown",
@@ -33,6 +39,13 @@ export function senderOf(message: Message): Sender {
     viaKind: via ? (follow ? "follow" : "pairing") : undefined,
     verified: message.from?.credential_bound === true && !via,
   };
+}
+
+/** A signed row's verdict and key; unsigned rows share the empty key. */
+function signatureKey(message: Message): string {
+  const signature = message.origin?.signature;
+  if (!signature || signature === "unsigned") return "";
+  return `${signature}:${message.origin?.fingerprint ?? ""}:${message.origin?.introduced_by ?? ""}`;
 }
 
 const AVATAR_COLORS = ["#3ddc84", "#f5c451", "#8bd3ff", "#d97757", "#c4a7ff", "#ff8fb1", "#7ee0d0", "#e8e8e8"];

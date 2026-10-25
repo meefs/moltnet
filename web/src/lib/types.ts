@@ -157,7 +157,21 @@ export interface MessageOrigin {
    *  operator authored; everything else is the peer's own claim. Empty for
    *  locally-originated messages. */
   received_via?: string;
+  /** Server-stamped verdict on the message's signed envelope. Absent on
+   *  live stream events and on networks that predate shared rooms. */
+  signature?: MessageSignature;
+  /** Signing key fingerprint, `sha256:<64 hex>`. */
+  fingerprint?: string;
+  /** For `introduced`: the room home network that vouched for the key. */
+  introduced_by?: string;
 }
+
+export type MessageSignature =
+  | "verified"
+  | "introduced"
+  | "unconfirmed"
+  | "invalid"
+  | "unsigned";
 
 export interface Message {
   id?: string;
@@ -167,7 +181,52 @@ export interface Message {
   target: MessageTarget;
   parts: MessagePart[];
   mentions?: string[];
+  /** Mentions this network resolved locally (signed messages only). */
+  local_mentions?: string[];
+  /** For a signed message: the origin's signed creation time. */
   created_at: string;
+  /** When this network received the message. */
+  received_at?: string;
+}
+
+/** Trust this network holds in a shared-room member's key. */
+export type HubTrust = "verified" | "introduced" | "unconfirmed" | "self";
+
+export interface RoomHubMember {
+  network_id: string;
+  role?: string;
+  fingerprint?: string;
+  trust?: HubTrust | string;
+}
+
+export type RoomHubEventKind =
+  | "genesis"
+  | "add"
+  | "remove"
+  | "leave"
+  | "set_role"
+  | "set_policy";
+
+export interface RoomHubEvent {
+  seq: number;
+  epoch?: number;
+  kind: RoomHubEventKind | string;
+  network_id?: string;
+  role?: string;
+  history?: string;
+  created_at: string;
+}
+
+/** `GET /v1/rooms/{id}/hub`: the membership log of a shared room. */
+export interface RoomHub {
+  global_room_id: string;
+  local_room_id?: string;
+  home_network_id: string;
+  is_home?: boolean;
+  membership_epoch?: number;
+  history?: string;
+  members?: RoomHubMember[];
+  events?: RoomHubEvent[];
 }
 
 export interface MessagePage {

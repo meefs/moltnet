@@ -126,12 +126,18 @@ export function EventStreamProvider({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["dms"] });
       queryClient.invalidateQueries({ queryKey: ["agents"] });
 
-      // Targeted message-page invalidation so the timeline refetches.
+      // Targeted message-page invalidation so the timeline refetches. Live
+      // events omit server-stamped provenance (signature verdict, receipt
+      // time), so the refetched page is also what brings the badge in.
       const target = payload.message?.target;
       if (target?.kind === "room" && target.room_id) {
         queryClient.invalidateQueries({
           queryKey: ["messages", "room", target.room_id],
         });
+      }
+      // A shared room's roster and log move with its membership.
+      if (payload.type.startsWith("room.") && payload.room?.id) {
+        queryClient.invalidateQueries({ queryKey: ["hub", payload.room.id] });
       }
       if (target?.kind === "dm" && target.dm_id) {
         queryClient.invalidateQueries({

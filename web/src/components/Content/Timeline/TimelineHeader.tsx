@@ -1,15 +1,18 @@
 import { useDMs } from "../../../hooks/useDMs";
 import { useRooms } from "../../../hooks/useRooms";
 import { roomPolicyLabel } from "../../../lib/rooms";
-import type { MessageTargetSelection } from "../../../lib/types";
+import { sharedRoomChip } from "../../../lib/trust";
+import type { MessageTargetSelection, RoomHub } from "../../../lib/types";
 
 interface TimelineHeaderProps {
   selection: MessageTargetSelection;
   loaded: number;
   hasOlder: boolean;
+  /** The room's shared-room log; null or absent for an ordinary room. */
+  hub?: RoomHub | null;
 }
 
-export function TimelineHeader({ selection, loaded, hasOlder }: TimelineHeaderProps) {
+export function TimelineHeader({ selection, loaded, hasOlder, hub }: TimelineHeaderProps) {
   const { data: rooms = [] } = useRooms();
   const { data: dms = [] } = useDMs();
   const room = selection.kind === "room" ? rooms.find((item) => item.id === selection.id) : undefined;
@@ -22,6 +25,7 @@ export function TimelineHeader({ selection, loaded, hasOlder }: TimelineHeaderPr
     else if (room.access?.can_read) chips.push("you can read");
   }
 
+  const shared = selection.kind === "room" && hub ? sharedRoomChip(hub) : null;
   const count = `${loaded}${hasOlder ? "+" : ""} messages`;
   const members = room?.members?.length;
 
@@ -36,6 +40,11 @@ export function TimelineHeader({ selection, loaded, hasOlder }: TimelineHeaderPr
           (dm?.participant_ids ?? []).join(" ↔ ") || selection.id
         )}
       </h1>
+      {shared ? (
+        <span className="shrink-0 rounded-md border border-green/30 px-2 py-0.5 font-mono text-[11px] text-green" title={shared.title}>
+          {shared.label}
+        </span>
+      ) : null}
       {chips.map((chip) => (
         <span key={chip} className="shrink-0 rounded-md border border-line px-2 py-0.5 font-mono text-[11px] text-mute">
           {chip}

@@ -1,6 +1,8 @@
 import { avatarColor, initials, senderOf, shortName } from "../../../lib/sender";
 import { dayKey } from "../../../lib/format";
+import { receivedLag, signatureBadge } from "../../../lib/trust";
 import type { Message } from "../../../lib/types";
+import { TrustBadge } from "../../TrustBadge";
 import { MessageParts } from "./MessageParts";
 
 interface TimelineMessageProps {
@@ -35,7 +37,9 @@ export function TimelineMessage({ message, continued = false }: TimelineMessageP
   const time = valid
     ? created.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : message.created_at;
-  const fullTime = valid ? created.toLocaleString() : message.created_at;
+  const received = receivedLag(message.created_at, message.received_at);
+  const fullTime = (valid ? created.toLocaleString() : message.created_at) +
+    (received ? ` · received ${received.toLocaleString()}` : "");
   const viaTitle = sender.viaKind === "follow"
     ? `arrived through the follow "${sender.via}"`
     : `arrived through the pairing "${sender.via}"`;
@@ -85,12 +89,18 @@ export function TimelineMessage({ message, continued = false }: TimelineMessageP
                 via {sender.via}
               </span>
             ) : null}
+            <TrustBadge spec={signatureBadge(message.origin)} />
             {sender.role !== "agent" ? (
               <span className="font-mono text-[11px] text-faint">{sender.role}</span>
             ) : null}
             <time className="font-mono text-[11px] text-faint" dateTime={message.created_at} title={fullTime}>
               {time}
             </time>
+            {received ? (
+              <span className="font-mono text-[10px] text-faint opacity-0 group-hover:opacity-100" title={fullTime}>
+                received {received.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            ) : null}
           </div>
         )}
         <MessageParts parts={message.parts} rowKey={rowKeyOf(message)} />

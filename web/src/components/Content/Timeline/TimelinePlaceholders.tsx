@@ -17,3 +17,16 @@ export function EmptyPane({ text }: { text: string }) {
     </section>
   );
 }
+
+/** A shared-room membership change, as a centered muted system line. */
+export function ControlEventLine({ text, date }: { text: string; date: string }) {
+  const at = new Date(date);
+  const title = Number.isNaN(at.valueOf()) ? date : at.toLocaleString();
+  return (
+    <p className="py-1.5 text-center font-mono text-[11px] text-faint" role="note" data-control-event="">
+      <time dateTime={date} title={title}>
+        {text}
+      </time>
+    </p>
+  );
+}

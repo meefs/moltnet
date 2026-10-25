@@ -47,3 +47,10 @@ export function formatUptime(ms: number): string {
   const seconds = Math.floor(ms / 1000);
   return `${pad(Math.floor(seconds / 3600))}:${pad(Math.floor((seconds / 60) % 60))}:${pad(seconds % 60)}`;
 }
+
+/** "sha256:0123abcd…" → "0123abcd": the first 8 hex chars of a key fingerprint. */
+export function shortFingerprint(fingerprint: string | undefined | null): string {
+  if (!fingerprint) return "";
+  const hex = fingerprint.startsWith("sha256:") ? fingerprint.slice("sha256:".length) : fingerprint;
+  return hex.slice(0, 8);
+}
