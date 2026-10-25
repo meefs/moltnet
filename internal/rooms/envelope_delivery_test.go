@@ -208,21 +208,45 @@ func TestSignedDMDeliveryVerified(t *testing.T) {
 	}
 }
 
-func TestUnrepresentablePartDataRelaysUnsigned(t *testing.T) {
-	peer := newSignedPeer(t, netkeys.NewMemoryPinStore())
-	_, originServer := newSignedOrigin(t, newTestIdentity(t), peer.pairURL)
-	status, body := deliveryPost(t, originServer.URL, "", protocol.SendMessageRequest{
-		Target: protocol.Target{Kind: protocol.TargetKindRoom, RoomID: "research"},
-		From:   protocol.Actor{Type: "agent", ID: "writer"},
-		Parts:  []protocol.Part{{Kind: "data", Data: map[string]any{"big": 9007199254740993.0 * 4}}},
-	})
-	if status != http.StatusAccepted {
-		t.Fatalf("send: %d %s", status, body)
+func TestUnsignablePartDataIsRefusedNotDroppedSilently(t *testing.T) {
+	values := map[string]any{
+		"snowflake": float64(1849012345678901234),
+		"unix_nano": float64(1761400000123456789),
+		"1e21":      1e21,
+		"2^53+2":    9007199254740993.0 * 4,
 	}
-	waitDelivery(t, func() bool { return deliveryStatus(t, originServer.URL).Pending == 0 })
-	messages := wireRoomMessages(t, peer.readURL)
-	if len(messages) != 1 || messages[0].Origin.Signature != protocol.SignatureStateUnsigned {
-		t.Fatalf("unrepresentable message should arrive unsigned and unaltered: %#v", messages)
+	for name, value := range values {
+		t.Run(name, func(t *testing.T) {
+			originKey := newTestIdentity(t)
+			peer := newSignedPeer(t, netkeys.NewMemoryPinStore())
+			pinAsInvite(t, peer.pins, "origin", originKey)
+			_, originServer := newSignedOrigin(t, originKey, peer.pairURL)
+			status, body := deliveryPost(t, originServer.URL, "", protocol.SendMessageRequest{
+				Target: protocol.Target{Kind: protocol.TargetKindRoom, RoomID: "research"},
+				From:   protocol.Actor{Type: "agent", ID: "writer"},
+				Parts:  []protocol.Part{{Kind: "text", Text: "see id"}, {Kind: "data", Data: map[string]any{"id": value}}},
+			})
+			// The author learns now; nothing is queued to be dropped later.
+			if status != http.StatusUnprocessableEntity || !strings.Contains(body, "strings") {
+				t.Fatalf("unsignable message: %d %s", status, body)
+			}
+			if state := deliveryStatus(t, originServer.URL); state.Pending != 0 || state.Rejected != 0 {
+				t.Fatalf("unsignable message reached the outbox: %#v", state)
+			}
+			// The same id as a string signs and arrives.
+			status, body = deliveryPost(t, originServer.URL, "", protocol.SendMessageRequest{
+				Target: protocol.Target{Kind: protocol.TargetKindRoom, RoomID: "research"},
+				From:   protocol.Actor{Type: "agent", ID: "writer"},
+				Parts:  []protocol.Part{{Kind: "data", Data: map[string]any{"id": "1849012345678901234"}}},
+			})
+			if status != http.StatusAccepted {
+				t.Fatalf("string id: %d %s", status, body)
+			}
+			waitDelivery(t, func() bool { return deliveryStatus(t, originServer.URL).Pending == 0 })
+			if messages := wireRoomMessages(t, peer.readURL); len(messages) != 1 || messages[0].Origin.Signature != protocol.SignatureStateVerified {
+				t.Fatalf("string id delivery: %#v", messages)
+			}
+		})
 	}
 }
 

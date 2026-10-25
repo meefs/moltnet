@@ -159,7 +159,11 @@ func (s *Service) appendAndPublishMessage(
 			age, size := deliveryBounds(pairing)
 			limits[pairing.ID] = store.PairingDeliveryLimits{MaxAge: age, MaxPending: size, RemoteNetworkID: pairing.RemoteNetworkID}
 		}
-		appendCtx := store.WithPairingDeliveryLimits(s.withOutboundEnvelope(ctx, message), limits)
+		signedCtx, signErr := s.withOutboundEnvelope(ctx, message)
+		if signErr != nil {
+			return store.AppendLifecycle{}, signErr
+		}
+		appendCtx := store.WithPairingDeliveryLimits(signedCtx, limits)
 		lifecycle, err = s.pairingDeliveries.AppendMessageWithPairingDeliveriesContext(appendCtx, message, durableEvent, pairingIDs)
 	case len(pairingIDs) > 0:
 		err = errors.New("message store does not support durable pairing delivery")

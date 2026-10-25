@@ -38,29 +38,31 @@ func trustStoreUnavailableError(err error) error {
 // committed in the same transaction as the message and its outbox rows; the
 // sender only ever replays these stored bytes.
 //
-// A message canonical-json.v1 cannot represent (for example an unsafe
-// integer in part data) is relayed unsigned and the reason is logged. It is
-// never altered to make it signable. Peers that pinned this network's key
-// reject unsigned messages, so such a message fails visibly there.
-func (s *Service) withOutboundEnvelope(ctx context.Context, message protocol.Message) context.Context {
+// A message canonical-json.v1 cannot represent (for example an integer
+// beyond 2^53 in part data) is refused with 422 rather than relayed
+// unsigned: peers that pinned this network's key refuse unsigned messages,
+// so relaying it would accept it locally and drop it silently everywhere
+// else. It is never altered to make it signable.
+func (s *Service) withOutboundEnvelope(ctx context.Context, message protocol.Message) (context.Context, error) {
 	if s.identity == nil {
-		return ctx
+		return ctx, nil
 	}
 	request, ok := s.relayRequest(protocol.Pairing{}, message)
 	if !ok {
-		return ctx
+		return ctx, nil
 	}
 	envelope := protocol.EnvelopeFromRequest(request, s.identity.Fingerprint(), message.CreatedAt.UTC().Format(time.RFC3339Nano))
 	signed, digest, err := protocol.SignEnvelope(envelope, s.identity.PublicKey(), s.identity.Sign)
 	if err != nil {
 		observability.Logger(ctx, "rooms.signing", "message_id", message.ID).
-			Warn("message will be relayed unsigned", "reason", err.Error())
-		return ctx
+			Warn("refusing a paired message that cannot be signed", "reason", err.Error())
+		return ctx, invalidMessageRequestError("message cannot be signed for paired delivery (" + err.Error() +
+			"); send large integers and other non-portable numbers as strings")
 	}
 	return store.WithMessageEnvelope(ctx, store.MessageEnvelopeRecord{
 		OriginNetworkID: s.networkID, OriginMessageID: envelope.OriginMessageID, Digest: digest,
 		State: protocol.SignatureStateVerified, Fingerprint: envelope.OriginFingerprint, Envelope: signed,
-	})
+	}), nil
 }
 
 // storedOutboundEnvelope returns the envelope committed with a queued
