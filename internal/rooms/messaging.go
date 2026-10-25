@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/noopolis/moltnet/internal/observability"
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
@@ -23,6 +24,13 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 	}
 	if err := s.validateSenderIdentity(ctx, request.From, request.Origin); err != nil {
 		return protocol.MessageAccepted{}, err
+	}
+	inboundEnvelope, err := s.verifyInboundEnvelope(ctx, request)
+	if err != nil {
+		return protocol.MessageAccepted{}, err
+	}
+	if inboundEnvelope != nil {
+		ctx = store.WithMessageEnvelope(ctx, *inboundEnvelope)
 	}
 
 	now, err := s.now()
@@ -101,6 +109,11 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 				Accepted:  true,
 			}, nil
 		}
+		if errors.Is(err, store.ErrEnvelopeConflict) {
+			observability.Logger(ctx, "rooms.signing", "origin_network_id", message.Origin.NetworkID, "origin_message_id", message.Origin.MessageID).
+				Warn("rejecting origin message whose envelope conflicts with the stored one", "error", err)
+			return protocol.MessageAccepted{}, envelopeConflictError(err)
+		}
 		if errors.Is(err, store.ErrMessageIDConflict) {
 			return protocol.MessageAccepted{}, &Error{status: http.StatusConflict, msg: err.Error(), cause: err}
 		}
@@ -145,7 +158,7 @@ func (s *Service) appendAndPublishMessage(
 			age, size := deliveryBounds(pairing)
 			limits[pairing.ID] = store.PairingDeliveryLimits{MaxAge: age, MaxPending: size, RemoteNetworkID: pairing.RemoteNetworkID}
 		}
-		appendCtx := store.WithPairingDeliveryLimits(ctx, limits)
+		appendCtx := store.WithPairingDeliveryLimits(s.withOutboundEnvelope(ctx, message), limits)
 		lifecycle, err = s.pairingDeliveries.AppendMessageWithPairingDeliveriesContext(appendCtx, message, durableEvent, pairingIDs)
 	case len(pairingIDs) > 0:
 		err = errors.New("message store does not support durable pairing delivery")

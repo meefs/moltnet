@@ -63,6 +63,9 @@ func (s *Service) sendQueuedMessage(ctx context.Context, pairing protocol.Pairin
 	if !ok {
 		return fmt.Errorf("%w: invalid target", errDeliveryRejected)
 	}
+	if request.Envelope, err = s.storedOutboundEnvelope(ctx, message.ID); err != nil {
+		return err
+	}
 	accepted, err := s.pairingClient.RelayMessage(ctx, pairing, request)
 	if err != nil {
 		return deliveryMessageError{err}

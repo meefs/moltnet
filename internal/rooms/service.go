@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/noopolis/moltnet/internal/follow"
+	"github.com/noopolis/moltnet/internal/netkeys"
 	"github.com/noopolis/moltnet/internal/observability"
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -51,6 +52,12 @@ type ServiceConfig struct {
 	// TranscriptWriter is optional. When set, accepted room/DM messages are
 	// exported beside causal.jsonl as research data for the memetics programme.
 	TranscriptWriter *observability.TranscriptWriter
+	// Identity signs locally originated messages relayed over pairings.
+	// Nil leaves outbound relays unsigned, exactly as before keys existed.
+	Identity *netkeys.Identity
+	// KeyPins is the durable trust store for peer network keys. Nil means
+	// an in-memory store (tests and keyless servers).
+	KeyPins *netkeys.PinStore
 }
 
 type Service struct {
@@ -77,6 +84,9 @@ type Service struct {
 	causalWriter              *observability.CausalWriter
 	transcriptWriter          *observability.TranscriptWriter
 	pairingDeliveries         store.PairingDeliveryStore
+	envelopes                 store.MessageEnvelopeStore
+	identity                  *netkeys.Identity
+	keyPins                   *netkeys.PinStore
 	deliveryRetryMin          time.Duration
 	deliveryRetryMax          time.Duration
 	deliveryPollInterval      time.Duration
@@ -178,6 +188,11 @@ func NewService(config ServiceConfig) *Service {
 		now:                       now,
 	}
 	service.pairingDeliveries, _ = config.Messages.(store.PairingDeliveryStore)
+	service.envelopes, _ = config.Messages.(store.MessageEnvelopeStore)
+	service.identity, service.keyPins = config.Identity, config.KeyPins
+	if service.keyPins == nil {
+		service.keyPins = netkeys.NewMemoryPinStore()
+	}
 	service.configureDelivery(config)
 	service.follows = follow.New(service)
 	return service
@@ -200,10 +215,15 @@ func (s *Service) Network() protocol.Network {
 	warnings := s.networkWarningsLocked()
 	s.pairingsMu.RUnlock()
 
+	var identity *protocol.NetworkIdentity
+	if public, ok := s.LocalIdentity(); ok {
+		identity = &public
+	}
 	return protocol.Network{
-		ID:      s.networkID,
-		Name:    s.networkName,
-		Version: s.version,
+		Identity: identity,
+		ID:       s.networkID,
+		Name:     s.networkName,
+		Version:  s.version,
 		Protocols: protocol.NetworkProtocols{
 			HTTP:   []string{protocol.HTTPProtocolV1},
 			Attach: []string{protocol.AttachmentProtocolV1},
