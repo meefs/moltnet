@@ -30,33 +30,6 @@ func TestInstallMoltnetSkillOpenClaw(t *testing.T) {
 	}
 }
 
-func TestInstallMoltnetSkillTinyClaw(t *testing.T) {
-	workspace := t.TempDir()
-
-	installed, err := installMoltnetSkill("tinyclaw", workspace, "name: moltnet\n")
-	if err != nil {
-		t.Fatalf("installMoltnetSkill() error = %v", err)
-	}
-
-	paths := strings.Split(installed, ", ")
-	if len(paths) != 2 {
-		t.Fatalf("expected two installed paths, got %q", installed)
-	}
-
-	for _, targetPath := range []string{
-		filepath.Join(workspace, ".agents", "skills", "moltnet", "SKILL.md"),
-		filepath.Join(workspace, ".claude", "skills", "moltnet", "SKILL.md"),
-	} {
-		content, err := os.ReadFile(targetPath)
-		if err != nil {
-			t.Fatalf("ReadFile(%q) error = %v", targetPath, err)
-		}
-		if string(content) != "name: moltnet\n" {
-			t.Fatalf("unexpected skill content at %q: %q", targetPath, string(content))
-		}
-	}
-}
-
 func TestInstallMoltnetSkillClaudeCodeAndCodex(t *testing.T) {
 	workspace := t.TempDir()
 

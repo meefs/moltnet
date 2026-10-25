@@ -17,7 +17,6 @@ const (
 	AuthModeBearer = "bearer"
 	AuthModeOpen   = "open"
 
-	RuntimeTinyClaw   = "tinyclaw"
 	RuntimeOpenClaw   = "openclaw"
 	RuntimePicoClaw   = "picoclaw"
 	RuntimePi         = "pi"
@@ -70,9 +69,6 @@ type RuntimeConfig struct {
 	ConfigPath       string                `json:"config_path,omitempty" yaml:"config_path,omitempty"`
 	HomePath         string                `json:"home_path,omitempty" yaml:"home_path,omitempty"`
 	GatewayURL       string                `json:"gateway_url,omitempty" yaml:"gateway_url,omitempty"`
-	InboundURL       string                `json:"inbound_url,omitempty" yaml:"inbound_url,omitempty"`
-	OutboundURL      string                `json:"outbound_url,omitempty" yaml:"outbound_url,omitempty"`
-	AckURL           string                `json:"ack_url,omitempty" yaml:"ack_url,omitempty"`
 	EventsURL        string                `json:"events_url,omitempty" yaml:"events_url,omitempty"`
 	ControlURL       string                `json:"control_url,omitempty" yaml:"control_url,omitempty"`
 	WorkspacePath    string                `json:"workspace_path,omitempty" yaml:"workspace_path,omitempty"`
@@ -172,7 +168,7 @@ func (c Config) Validate() error {
 	}
 
 	switch c.Runtime.Kind {
-	case RuntimeTinyClaw, RuntimeOpenClaw, RuntimePicoClaw, RuntimePi, RuntimeDaimon, RuntimeClaudeCode, RuntimeCodex:
+	case RuntimeOpenClaw, RuntimePicoClaw, RuntimePi, RuntimeDaimon, RuntimeClaudeCode, RuntimeCodex:
 	default:
 		return fmt.Errorf("bridge config runtime.kind %q is unsupported", c.Runtime.Kind)
 	}
@@ -219,8 +215,8 @@ func validateRuntimeFieldCompatibility(runtime RuntimeConfig) error {
 		if runtime.Kind == RuntimeOpenClaw {
 			return fmt.Errorf("bridge config runtime.control_url is unsupported for openclaw; use runtime.gateway_url")
 		}
-		if runtime.Kind != RuntimePicoClaw && runtime.Kind != RuntimeTinyClaw && runtime.Kind != RuntimePi && runtime.Kind != RuntimeDaimon {
-			return fmt.Errorf("bridge config runtime.control_url is only supported for picoclaw, tinyclaw, pi, or daimon")
+		if runtime.Kind != RuntimePicoClaw && runtime.Kind != RuntimePi && runtime.Kind != RuntimeDaimon {
+			return fmt.Errorf("bridge config runtime.control_url is only supported for picoclaw, pi, or daimon")
 		}
 		if err := validateURL("bridge config runtime.control_url", runtime.ControlURL); err != nil {
 			return err
@@ -245,30 +241,6 @@ func validateRuntimeFieldCompatibility(runtime RuntimeConfig) error {
 		}
 	}
 
-	if strings.TrimSpace(runtime.InboundURL) != "" && runtime.Kind != RuntimeTinyClaw {
-		return fmt.Errorf("bridge config runtime.inbound_url is only supported for tinyclaw")
-	}
-	if strings.TrimSpace(runtime.InboundURL) != "" {
-		if err := validateURL("bridge config runtime.inbound_url", runtime.InboundURL); err != nil {
-			return err
-		}
-	}
-	if strings.TrimSpace(runtime.OutboundURL) != "" && runtime.Kind != RuntimeTinyClaw {
-		return fmt.Errorf("bridge config runtime.outbound_url is only supported for tinyclaw")
-	}
-	if strings.TrimSpace(runtime.OutboundURL) != "" {
-		if err := validateURL("bridge config runtime.outbound_url", runtime.OutboundURL); err != nil {
-			return err
-		}
-	}
-	if strings.TrimSpace(runtime.AckURL) != "" && runtime.Kind != RuntimeTinyClaw {
-		return fmt.Errorf("bridge config runtime.ack_url is only supported for tinyclaw")
-	}
-	if strings.TrimSpace(runtime.AckURL) != "" {
-		if err := validateURL("bridge config runtime.ack_url", runtime.AckURL); err != nil {
-			return err
-		}
-	}
 	if strings.TrimSpace(runtime.ConfigPath) != "" && runtime.Kind != RuntimePicoClaw {
 		return fmt.Errorf("bridge config runtime.config_path is only supported for picoclaw")
 	}
@@ -310,23 +282,6 @@ func validateRuntimeSeam(runtime RuntimeConfig) error {
 		if strings.TrimSpace(runtime.WorkspacePath) == "" {
 			return fmt.Errorf("bridge config runtime.workspace_path is required for %s", runtime.Kind)
 		}
-		return nil
-	case RuntimeTinyClaw:
-		if strings.TrimSpace(runtime.ControlURL) != "" {
-			return nil
-		}
-		if strings.TrimSpace(runtime.InboundURL) == "" {
-			return fmt.Errorf("bridge config runtime.inbound_url is required for tinyclaw")
-		}
-
-		if strings.TrimSpace(runtime.OutboundURL) == "" {
-			return fmt.Errorf("bridge config runtime.outbound_url is required for tinyclaw")
-		}
-
-		if strings.TrimSpace(runtime.AckURL) == "" {
-			return fmt.Errorf("bridge config runtime.ack_url is required for tinyclaw")
-		}
-
 		return nil
 	case RuntimeOpenClaw:
 		if strings.TrimSpace(runtime.GatewayURL) == "" {

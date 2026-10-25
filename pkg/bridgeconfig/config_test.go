@@ -9,34 +9,11 @@ import (
 func TestConfigValidate(t *testing.T) {
 	t.Parallel()
 
-	validTinyClaw := Config{
-		Version: VersionV1,
-		Agent:   AgentConfig{ID: "researcher"},
-		Moltnet: MoltnetConfig{BaseURL: "http://127.0.0.1:8787", NetworkID: "local"},
-		Runtime: RuntimeConfig{
-			Kind:        RuntimeTinyClaw,
-			InboundURL:  "http://127.0.0.1:3777/api/message",
-			OutboundURL: "http://127.0.0.1:3777/api/responses/pending?channel=moltnet",
-			AckURL:      "http://127.0.0.1:3777/api/responses",
-		},
-	}
-
 	tests := []struct {
 		name   string
 		config Config
 		ok     bool
 	}{
-		{name: "valid tinyclaw", config: validTinyClaw, ok: true},
-		{
-			name: "tinyclaw accepts default local api urls",
-			config: Config{
-				Version: VersionV1,
-				Agent:   AgentConfig{ID: "researcher"},
-				Moltnet: MoltnetConfig{BaseURL: "http://127.0.0.1:8787", NetworkID: "local"},
-				Runtime: RuntimeConfig{Kind: RuntimeTinyClaw},
-			},
-			ok: true,
-		},
 		{name: "missing version", config: Config{}, ok: false},
 		{
 			name: "unsupported runtime",
@@ -45,6 +22,15 @@ func TestConfigValidate(t *testing.T) {
 				Agent:   AgentConfig{ID: "researcher"},
 				Moltnet: MoltnetConfig{BaseURL: "http://127.0.0.1:8787", NetworkID: "local"},
 				Runtime: RuntimeConfig{Kind: "unknown"},
+			},
+		},
+		{
+			name: "tinyclaw is no longer a supported runtime",
+			config: Config{
+				Version: VersionV1,
+				Agent:   AgentConfig{ID: "researcher"},
+				Moltnet: MoltnetConfig{BaseURL: "http://127.0.0.1:8787", NetworkID: "local"},
+				Runtime: RuntimeConfig{Kind: "tinyclaw"},
 			},
 		},
 		{
@@ -214,20 +200,6 @@ func TestConfigValidate(t *testing.T) {
 			},
 		},
 		{
-			name: "tinyclaw rejects invalid ack url",
-			config: Config{
-				Version: VersionV1,
-				Agent:   AgentConfig{ID: "researcher"},
-				Moltnet: MoltnetConfig{BaseURL: "http://127.0.0.1:8787", NetworkID: "local"},
-				Runtime: RuntimeConfig{
-					Kind:        RuntimeTinyClaw,
-					InboundURL:  "http://127.0.0.1:3777/api/message",
-					OutboundURL: "http://127.0.0.1:3777/api/responses/pending?channel=moltnet",
-					AckURL:      "unix:///tmp/tinyclaw.sock",
-				},
-			},
-		},
-		{
 			name: "invalid wake config",
 			config: Config{
 				Version: VersionV1,
@@ -284,7 +256,7 @@ func TestLoadFile(t *testing.T) {
   "agent":{"id":"researcher"},
   "moltnet":{"base_url":"http://127.0.0.1:8787","network_id":"local"},
   "runtime":{
-    "kind":"tinyclaw"
+    "kind":"openclaw"
   }
 }`), 0o600); err != nil {
 		t.Fatal(err)
@@ -298,9 +270,7 @@ func TestLoadFile(t *testing.T) {
 	if config.Agent.ID != "researcher" {
 		t.Fatalf("unexpected agent id %q", config.Agent.ID)
 	}
-	if config.Runtime.InboundURL != "http://127.0.0.1:3777/api/message" ||
-		config.Runtime.OutboundURL != "http://127.0.0.1:3777/api/responses/pending?channel=moltnet" ||
-		config.Runtime.AckURL != "http://127.0.0.1:3777/api/responses" {
+	if config.Runtime.GatewayURL != DefaultOpenClawGatewayURL {
 		t.Fatalf("runtime defaults were not applied: %#v", config.Runtime)
 	}
 

@@ -89,7 +89,7 @@ type ControlPublicationObserver interface {
 }
 
 // legacyControlCodec preserves the generic control-URL seam still used by
-// TinyClaw and PicoClaw. Pi supplies its own byte-compatible codec instead.
+// PicoClaw. Pi supplies its own byte-compatible codec instead.
 type legacyControlCodec struct {
 	publish bool
 }

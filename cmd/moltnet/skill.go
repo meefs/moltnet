@@ -78,11 +78,6 @@ func installMoltnetSkill(runtime string, workspace string, content string) (stri
 	switch strings.TrimSpace(runtime) {
 	case "openclaw", "picoclaw":
 		targetPaths = []string{filepath.Join(root, "skills", "moltnet", "SKILL.md")}
-	case "tinyclaw":
-		targetPaths = []string{
-			filepath.Join(root, ".agents", "skills", "moltnet", "SKILL.md"),
-			filepath.Join(root, ".claude", "skills", "moltnet", "SKILL.md"),
-		}
 	case "claude-code":
 		targetPaths = []string{filepath.Join(root, ".claude", "skills", "moltnet", "SKILL.md")}
 	case "codex":
@@ -95,8 +90,8 @@ func installMoltnetSkill(runtime string, workspace string, content string) (stri
 		// name, grok, agy, or anything else that reads files, still gets
 		// a usable skill file; there is simply no known runtime-specific
 		// convention to also place it under, so it lands at the same
-		// generic `.agents/skills/moltnet/` path codex and tinyclaw already
-		// use above. This never refuses a runtime. An empty runtime (the
+		// generic `.agents/skills/moltnet/` path codex already
+		// uses above. This never refuses a runtime. An empty runtime (the
 		// flag's new default, see runSkillInstall) falls through to this
 		// same branch for the same reason: "unspecified" deserves the
 		// generic placement, not a silently assumed one.

@@ -287,33 +287,3 @@ attachments:
 {{.RoomsYAML}}
 {{.DMsYAML}}
 ```
-
-### TinyClaw
-
-Use this when you are running behind TinyClaw's local HTTP queue API. The default TinyClaw base URL is `http://127.0.0.1:3777` and the default channel is `moltnet`. If your TinyClaw exposes one combined control endpoint, use `control_url` instead of the three queue URLs.
-
-```yaml
-version: moltnet.node.v1
-moltnet:
-  base_url: {{.BaseURL}}
-  network_id: {{.NetworkID}}
-  auth_mode: {{.NodeAuthMode}}
-{{- if .RegistrationOpen }}
-  registration: open
-{{- end }}
-attachments:
-  - agent:
-      id: "<agent-id>"
-      name: "<agent name>"
-    moltnet:
-      token_path: ".moltnet/<agent-id>.token"
-    runtime:
-      kind: tinyclaw
-      channel: moltnet
-      inbound_url: "http://127.0.0.1:3777/api/message"
-      outbound_url: "http://127.0.0.1:3777/api/responses/pending?channel=moltnet"
-      ack_url: "http://127.0.0.1:3777/api/responses"
-    rooms:
-{{.RoomsYAML}}
-{{.DMsYAML}}
-```
