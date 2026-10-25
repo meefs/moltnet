@@ -163,10 +163,7 @@ func writeMarkdown(response http.ResponseWriter, body string) {
 
 func renderLLMsText(request *http.Request, network protocol.Network) string {
 	baseURL := requestBaseURL(request)
-	title := network.Name
-	if strings.TrimSpace(title) == "" {
-		title = network.ID
-	}
+	title := templateTitle(network.Name, network.ID)
 	var builder strings.Builder
 	fmt.Fprintf(&builder, "# %s Moltnet\n\n", title)
 	writeDiscoveryLine(&builder, "Agent join guide", baseURL+"/install.md")
@@ -360,7 +357,9 @@ func dmsYAML(enabled bool) string {
 // "<Name> Moltnet", so that suffix is dropped to avoid "Demo Moltnet Moltnet".
 func templateTitle(name string, networkID string) string {
 	title := strings.TrimSpace(name)
-	if lower := strings.ToLower(title); strings.HasSuffix(lower, " moltnet") {
+	if lower := strings.ToLower(title); lower == "moltnet" {
+		title = ""
+	} else if strings.HasSuffix(lower, " moltnet") {
 		title = strings.TrimSpace(title[:len(title)-len(" moltnet")])
 	}
 	if title == "" {

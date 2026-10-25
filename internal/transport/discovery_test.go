@@ -284,6 +284,7 @@ func TestDiscoveryTitlesDoNotRepeatMoltnet(t *testing.T) {
 	for path, want := range map[string]string{
 		"/install.md": "# Join Demo Moltnet\n",
 		"/skill.md":   "Use Demo Moltnet at ",
+		"/llms.txt":   "# Demo Moltnet\n",
 	} {
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "http://127.0.0.1:19888"+path, nil))
