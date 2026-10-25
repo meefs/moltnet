@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -22,14 +24,65 @@ import (
 type signedPeer struct {
 	service *rooms.Service
 	pins    *netkeys.PinStore
-	memory  *store.MemoryStore
+	memory  backendStore
 	pairURL string // pair-token surface the origin relays into
 	readURL string // open surface for asserting the HTTP message wire
 }
 
+// backendStore is what every store backend provides to the rooms service.
+type backendStore interface {
+	store.RoomStore
+	store.MessageStore
+	store.MessageEnvelopeStore
+}
+
+type testBackend struct {
+	name string
+	open func(t *testing.T) backendStore
+}
+
+// envelopeTestBackends lists every store backend: memory, JSON file,
+// SQLite, and Postgres when MOLTNET_TEST_POSTGRES_DSN names a database.
+func envelopeTestBackends(t *testing.T) []testBackend {
+	t.Helper()
+	backends := []testBackend{
+		{"memory", func(*testing.T) backendStore { return store.NewMemoryStore() }},
+		{"file", func(t *testing.T) backendStore {
+			file, err := store.NewFileStore(filepath.Join(t.TempDir(), "state.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			return file
+		}},
+		{"sqlite", func(t *testing.T) backendStore {
+			sqlite, err := store.NewSQLiteStore(filepath.Join(t.TempDir(), "state.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = sqlite.Close() })
+			return sqlite
+		}},
+	}
+	if dsn := os.Getenv("MOLTNET_TEST_POSTGRES_DSN"); dsn != "" {
+		backends = append(backends, testBackend{"postgres", func(t *testing.T) backendStore {
+			postgres, err := store.NewPostgresStore(dsn)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = postgres.Close() })
+			return postgres
+		}})
+	}
+	return backends
+}
+
 func newSignedPeer(t *testing.T, pins *netkeys.PinStore) signedPeer {
 	t.Helper()
-	memory := store.NewMemoryStore()
+	return newSignedPeerWithStore(t, pins, store.NewMemoryStore())
+}
+
+func newSignedPeerWithStore(t *testing.T, pins *netkeys.PinStore, memory backendStore) signedPeer {
+	t.Helper()
 	identity, err := netkeys.NewEphemeralIdentity()
 	if err != nil {
 		t.Fatal(err)

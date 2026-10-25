@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -208,5 +209,34 @@ func TestUnrepresentablePartDataRelaysUnsigned(t *testing.T) {
 	messages := wireRoomMessages(t, peer.readURL)
 	if len(messages) != 1 || messages[0].Origin.Signature != protocol.SignatureStateUnsigned {
 		t.Fatalf("unrepresentable message should arrive unsigned and unaltered: %#v", messages)
+	}
+}
+
+func TestOriginIDWhitespaceVariantsCannotReplayASignedMessage(t *testing.T) {
+	for _, backend := range envelopeTestBackends(t) {
+		t.Run(backend.name, func(t *testing.T) {
+			originKey := newTestIdentity(t)
+			peer := newSignedPeerWithStore(t, netkeys.NewMemoryPinStore(), backend.open(t))
+			pinAsInvite(t, peer.pins, "origin", originKey)
+			first := signedRequest(t, originKey, "msg-1", "only once")
+			if status, body := deliveryPost(t, peer.pairURL, "pair-secret", first); status != http.StatusAccepted {
+				t.Fatalf("first: %d %s", status, body)
+			}
+			for index, variant := range []string{" msg-1", "msg-1 ", "\tmsg-1"} {
+				replay := first
+				replay.ID = fmt.Sprintf("replay-%d", index)
+				replay.Origin.MessageID = variant
+				if status, body := deliveryPost(t, peer.pairURL, "pair-secret", replay); status != http.StatusUnprocessableEntity {
+					t.Fatalf("whitespace variant %q: %d %s", variant, status, body)
+				}
+				network := first
+				network.ID = fmt.Sprintf("replay-net-%d", index)
+				network.Origin.NetworkID = "origin "
+				if status, body := deliveryPost(t, peer.pairURL, "pair-secret", network); status < 400 {
+					t.Fatalf("whitespace network variant accepted: %d %s", status, body)
+				}
+			}
+			assertDeliveryTexts(t, peer.service, "only once")
+		})
 	}
 }

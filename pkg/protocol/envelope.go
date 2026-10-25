@@ -94,9 +94,9 @@ func EnvelopeFromRequest(request SendMessageRequest, originFingerprint, createdA
 			ParentMessageID: request.Target.ParentMessageID, DMID: request.Target.DMID,
 			ParticipantIDs: append([]string(nil), request.Target.ParticipantIDs...),
 		},
-		OriginNetworkID:   strings.TrimSpace(request.Origin.NetworkID),
+		OriginNetworkID:   request.Origin.NetworkID,
 		OriginFingerprint: originFingerprint,
-		OriginMessageID:   strings.TrimSpace(request.Origin.MessageID),
+		OriginMessageID:   request.Origin.MessageID,
 		Author:            EnvelopeActor{Type: request.From.Type, ID: request.From.ID, Name: request.From.Name},
 		CreatedAt:         createdAt,
 		Parts:             append([]Part(nil), request.Parts...),
@@ -242,6 +242,10 @@ func validateEnvelopeFields(envelope MessageEnvelope) error {
 		return missing("author")
 	case envelope.CreatedAt == "":
 		return missing("created_at")
+	}
+	if envelope.OriginNetworkID != strings.TrimSpace(envelope.OriginNetworkID) ||
+		envelope.OriginMessageID != strings.TrimSpace(envelope.OriginMessageID) {
+		return fmt.Errorf("%w: origin ids must not have surrounding whitespace", ErrEnvelopeMalformed)
 	}
 	if normalized, err := NormalizeFingerprint(envelope.OriginFingerprint); err != nil || normalized != envelope.OriginFingerprint {
 		return fmt.Errorf("%w: origin_fingerprint", ErrEnvelopeMalformed)
