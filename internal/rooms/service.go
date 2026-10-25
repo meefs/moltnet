@@ -58,6 +58,9 @@ type ServiceConfig struct {
 	// KeyPins is the durable trust store for peer network keys. Nil means
 	// an in-memory store (tests and keyless servers).
 	KeyPins *netkeys.PinStore
+	// HubSyncInterval is how often member hub rooms catch up from their
+	// home without a gap or reconnect prompting it (default 30s).
+	HubSyncInterval time.Duration
 }
 
 type Service struct {
@@ -90,6 +93,8 @@ type Service struct {
 	// one home assigns each room seq exactly once.
 	hubMu                sync.Mutex
 	hubRosters           hubRosterCache
+	hubSyncWake          chan struct{}
+	hubSyncInterval      time.Duration
 	identity             *netkeys.Identity
 	keyPins              *netkeys.PinStore
 	deliveryRetryMin     time.Duration
@@ -200,6 +205,7 @@ func NewService(config ServiceConfig) *Service {
 		service.keyPins = netkeys.NewMemoryPinStore()
 	}
 	service.configureDelivery(config)
+	service.configureHubSync(config)
 	service.follows = follow.New(service)
 	return service
 }

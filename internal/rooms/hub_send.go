@@ -80,7 +80,25 @@ func (s *Service) sendQueuedHubMessage(ctx context.Context, pairing protocol.Pai
 	if !accepted.Accepted {
 		return errors.New("peer did not acknowledge message acceptance")
 	}
+	if !hub.IsHome() && accepted.Receipt != nil {
+		// Delivered either way; a receipt that does not verify is logged and
+		// left for sync to settle, never a reason to resend.
+		if err := s.attachOwnReceipt(ctx, hub, message.ID, *accepted.Receipt); err != nil {
+			logHub(ctx, hub.GlobalRoomID).Warn("home acknowledged a message with a receipt this member cannot attach", "message_id", message.ID, "error", err)
+		} else if placed, ok, err := s.ownReceipt(ctx, message.ID); err == nil && ok {
+			s.notePlacement(ctx, hub, placed)
+		}
+	}
 	return nil
+}
+
+func (s *Service) ownReceipt(ctx context.Context, messageID string) (store.HubReceiptRecord, bool, error) {
+	receipts, err := s.hubs.HubReceiptsForMessagesContext(ctx, []string{messageID})
+	if err != nil {
+		return store.HubReceiptRecord{}, false, err
+	}
+	placed, ok := receipts[messageID]
+	return placed, ok, nil
 }
 
 func staleEpochResponse(err error) bool {

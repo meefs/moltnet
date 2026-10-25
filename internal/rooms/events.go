@@ -245,6 +245,10 @@ func (s *Service) setPairingRuntime(pairingID string, next pairingStatus, replac
 	}
 	next.updatedAt = updatedAt
 	s.pairingStatuses[pairingID] = next
+	if !pairingStatusUp(previous.value) && pairingStatusUp(next.value) {
+		// A link coming (back) up is when a member catches up on its rooms.
+		s.requestHubSync()
+	}
 
 	var eventPairing *protocol.Pairing
 	for _, pairing := range s.pairings {

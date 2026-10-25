@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -15,8 +16,10 @@ type hubService interface {
 	CreateHubRoomContext(ctx context.Context, roomID, history string) (rooms.HubRoomView, error)
 	AppendHubControlContext(ctx context.Context, request rooms.HubControlRequest) (rooms.HubRoomView, error)
 	JoinHubRoomContext(ctx context.Context, request rooms.HubJoinRequest) (rooms.HubRoomView, error)
+	SyncHubRoomContext(ctx context.Context, globalRoomID string) (rooms.HubRoomView, error)
 	HubRoomsContext(ctx context.Context) ([]rooms.HubRoomView, error)
 	HubControlPageContext(ctx context.Context, globalRoomID string, afterSeq int64) (protocol.RoomControlPage, error)
+	HubSyncPageContext(ctx context.Context, globalRoomID string, afterSeq, controlAfter int64) (protocol.RoomSyncPage, error)
 }
 
 var hubControlScopes = []authn.Scope{authn.ScopeObserve, authn.ScopeAdmin, authn.ScopePair}
@@ -36,6 +39,17 @@ func registerHubRoutes(mux *http.ServeMux, policy *authn.Policy, service Service
 			return
 		}
 		page, err := hubs.HubControlPageContext(request.Context(), request.URL.Query().Get("room"), after)
+		respondHub(response, page, err, http.StatusOK)
+	}))
+	mux.HandleFunc("GET /v1/hub/sync", authorizedAnyWithVerifier(policy, service, hubControlScopes, func(response http.ResponseWriter, request *http.Request) {
+		query := request.URL.Query()
+		after, errAfter := strconv.ParseInt(defaultString(query.Get("after"), "0"), 10, 64)
+		controlAfter, errControl := strconv.ParseInt(defaultString(query.Get("control_after"), "0"), 10, 64)
+		if errAfter != nil || errControl != nil || after < 0 || controlAfter < 0 {
+			writeError(response, http.StatusUnprocessableEntity, errors.New("after and control_after must be non-negative integers"))
+			return
+		}
+		page, err := hubs.HubSyncPageContext(request.Context(), query.Get("room"), after, controlAfter)
 		respondHub(response, page, err, http.StatusOK)
 	}))
 	mux.HandleFunc("GET /v1/hub/rooms", authorizedWithVerifier(policy, service, authn.ScopeAdmin, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -61,6 +75,17 @@ func registerHubRoutes(mux *http.ServeMux, policy *authn.Policy, service Service
 			return
 		}
 		view, err := hubs.AppendHubControlContext(request.Context(), payload)
+		respondHub(response, view, err, http.StatusOK)
+	})))
+	mux.HandleFunc("POST /v1/hub/rooms/sync", authorizedWithVerifier(policy, service, authn.ScopeAdmin, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		var payload struct {
+			GlobalRoomID string `json:"global_room_id"`
+		}
+		if err := decodeJSON(response, request, &payload); err != nil {
+			writeError(response, http.StatusBadRequest, err)
+			return
+		}
+		view, err := hubs.SyncHubRoomContext(request.Context(), payload.GlobalRoomID)
 		respondHub(response, view, err, http.StatusOK)
 	})))
 	mux.HandleFunc("POST /v1/hub/rooms/join", authorizedWithVerifier(policy, service, authn.ScopeAdmin, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {

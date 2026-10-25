@@ -127,7 +127,7 @@ func (s *Service) placeHubMessage(ctx context.Context, hub store.HubRoom, signed
 	if existing, ok, err := s.hubs.HubReceiptForEventContext(ctx, hub.GlobalRoomID, envelope.Digest); err != nil {
 		return protocol.MessageAccepted{}, err
 	} else if ok {
-		return protocol.MessageAccepted{MessageID: existing.MessageID, EventID: eventIDForMessage(existing.MessageID), Accepted: true}, nil
+		return protocol.MessageAccepted{MessageID: existing.MessageID, EventID: eventIDForMessage(existing.MessageID), Accepted: true, Receipt: &existing.Receipt}, nil
 	}
 	roster, _, err := s.hubRoster(ctx, hub, 0)
 	if err != nil {
@@ -140,7 +140,12 @@ func (s *Service) placeHubMessage(ctx context.Context, hub store.HubRoom, signed
 	if err != nil {
 		return protocol.MessageAccepted{}, err
 	}
-	return s.appendHubMessage(ctx, request, message, envelope, &placed, s.hubFanoutPairings(ctx, roster, envelope.OriginNetworkID))
+	accepted, err := s.appendHubMessage(ctx, request, message, envelope, &placed, s.hubFanoutPairings(ctx, roster, envelope.OriginNetworkID))
+	if err == nil {
+		// The submitting member's own copy learns its room seq from the ack.
+		accepted.Receipt = &placed.Receipt
+	}
+	return accepted, err
 }
 
 // nextHubReceipt signs the receipt for the next room seq. Callers hold hubMu.

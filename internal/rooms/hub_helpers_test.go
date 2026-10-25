@@ -104,6 +104,11 @@ func link(t *testing.T, home, member *hubNet) {
 
 func newHubTopology(t *testing.T, open func(t *testing.T) backendStore) hubTopology {
 	t.Helper()
+	return newHubTopologyWith(t, open, "")
+}
+
+func newHubTopologyWith(t *testing.T, open func(t *testing.T) backendStore, history string) hubTopology {
+	t.Helper()
 	topology := hubTopology{home: newHubNet(t, "home", open(t)), alpha: newHubNet(t, "alpha", open(t)), beta: newHubNet(t, "beta", open(t))}
 	link(t, topology.home, topology.alpha)
 	link(t, topology.home, topology.beta)
@@ -113,7 +118,7 @@ func newHubTopology(t *testing.T, open func(t *testing.T) backendStore) hubTopol
 	if _, err := topology.home.service.CreateRoom(protocol.CreateRoomRequest{ID: "research", Members: []string{"lead"}}); err != nil {
 		t.Fatal(err)
 	}
-	view, err := topology.home.service.CreateHubRoomContext(context.Background(), "research", "")
+	view, err := topology.home.service.CreateHubRoomContext(context.Background(), "research", history)
 	if err != nil {
 		t.Fatal(err)
 	}

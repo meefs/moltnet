@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -55,9 +56,8 @@ func controlRecords(globalRoomID string, start int64, events []protocol.SignedRo
 
 // JoinHubRoomContext pulls a hub room's control log from its home over the
 // pairing, verifies it (the genesis key must be the key pinned for the home
-// over that pairing, and this network must be a member), then provisions
-// the local room and stores the log. Local agents write under this
-// network's role; the room's write policy is registered agents.
+// over that pairing, and this network must be a member), stores the log,
+// provisions the local room, and catches up. It is idempotent per pairing.
 func (s *Service) JoinHubRoomContext(ctx context.Context, request HubJoinRequest) (HubRoomView, error) {
 	if err := requireHubOperator(ctx); err != nil {
 		return HubRoomView{}, err
@@ -106,36 +106,90 @@ func (s *Service) JoinHubRoomContext(ctx context.Context, request HubJoinRequest
 	if localRoomID == "" {
 		localRoomID = roomID
 	}
-	if _, err := s.CreateRoomContext(ctx, protocol.CreateRoomRequest{
-		ID: localRoomID, Name: roomID, Visibility: protocol.RoomVisibilityPrivate,
-		WritePolicy: protocol.RoomWritePolicyRegisteredAgents, Federation: protocol.DefaultRoomFederation(),
-	}); err != nil {
-		return HubRoomView{}, err
-	}
 	hub := store.HubRoom{GlobalRoomID: request.GlobalRoomID, LocalRoomID: localRoomID, HomeNetworkID: home, HomePairingID: pairing.ID, CreatedAt: time.Now().UTC()}
-	if err := s.hubs.CreateHubRoomContext(ctx, hub, records[0]); err != nil {
-		if errors.Is(err, store.ErrHubRoomExists) {
-			return HubRoomView{}, hubConflictError(err)
-		}
+	if existing, ok, err := s.hubRoomByGlobal(ctx, request.GlobalRoomID); err != nil {
 		return HubRoomView{}, err
+	} else if ok {
+		// A repeated join (an operator retry, or a pending join replayed
+		// after a crash) finishes the first one instead of failing.
+		if existing.HomePairingID != pairing.ID {
+			return HubRoomView{}, hubConflictError(fmt.Errorf("%w: %s is already joined over pairing %q", store.ErrHubRoomExists, request.GlobalRoomID, existing.HomePairingID))
+		}
+		hub = existing
+	} else {
+		if _, taken, err := s.getRoom(ctx, localRoomID); err != nil {
+			return HubRoomView{}, err
+		} else if taken {
+			return HubRoomView{}, hubConflictError(fmt.Errorf("%w: local room %s already exists; pass another local room id", store.ErrHubRoomExists, localRoomID))
+		}
+		// The hub record (with the verified log) is written first and the
+		// local room second, so a crash in between leaves a hub room whose
+		// local room recovery recreates, never an orphaned local room.
+		if err := s.hubs.CreateHubRoomContext(ctx, hub, records[0]); err != nil {
+			if errors.Is(err, store.ErrHubRoomExists) {
+				return HubRoomView{}, hubConflictError(err)
+			}
+			return HubRoomView{}, err
+		}
 	}
 	if err := s.hubs.AppendHubControlContext(ctx, records[1:]); err != nil {
 		return HubRoomView{}, err
 	}
-	logHub(ctx, hub.GlobalRoomID).Info("joined hub room", "local_room_id", localRoomID, "home_network_id", home, "epoch", roster.Epoch)
+	if err := s.ensureHubLocalRoom(ctx, hub); err != nil {
+		return HubRoomView{}, err
+	}
+	logHub(ctx, hub.GlobalRoomID).Info("joined hub room", "local_room_id", hub.LocalRoomID, "home_network_id", home, "epoch", roster.Epoch)
+	if err := s.syncHubRoom(ctx, hub); err != nil {
+		logHub(ctx, hub.GlobalRoomID).Warn("first catch-up after joining failed; it will retry", "error", err)
+	}
 	return s.hubRoomView(ctx, hub)
 }
 
-// syncHubControl pulls control events after the stored head from the home,
-// verifies the extended log, stores it, and logs who joined or left: the
-// notice a stale sender sees before its message reaches a new member.
-func (s *Service) syncHubControl(ctx context.Context, hub store.HubRoom) (hubRoster, error) {
-	before, records, err := s.hubRoster(ctx, hub, 0)
-	if err != nil {
-		return hubRoster{}, err
+// ensureHubLocalRoom provisions the local room a joined hub room maps to,
+// if it is missing. Local agents write under this network's role; the
+// room's write policy is registered agents.
+func (s *Service) ensureHubLocalRoom(ctx context.Context, hub store.HubRoom) error {
+	if _, ok, err := s.getRoom(ctx, hub.LocalRoomID); err != nil || ok {
+		return err
 	}
-	if hub.IsHome() {
-		return before, nil
+	_, canonical, err := protocol.ParseGlobalRoomID(hub.GlobalRoomID)
+	if err != nil {
+		return err
+	}
+	_, err = s.CreateRoomContext(ctx, protocol.CreateRoomRequest{
+		ID: hub.LocalRoomID, Name: canonical, Visibility: protocol.RoomVisibilityPrivate,
+		WritePolicy: protocol.RoomWritePolicyRegisteredAgents, Federation: protocol.DefaultRoomFederation(),
+	})
+	var exists *Error
+	if errors.As(err, &exists) && exists.status == http.StatusConflict {
+		return nil
+	}
+	return err
+}
+
+// recoverHubJoins finishes joins a crash interrupted: every joined hub
+// room gets its local room back.
+func (s *Service) recoverHubJoins(ctx context.Context) {
+	rooms, err := s.hubRooms(ctx)
+	if err != nil {
+		return
+	}
+	for _, hub := range rooms {
+		if hub.IsHome() {
+			continue
+		}
+		if err := s.ensureHubLocalRoom(ctx, hub); err != nil {
+			logHub(ctx, hub.GlobalRoomID).Warn("could not recover a joined hub room's local room", "error", err)
+		}
+	}
+}
+
+// syncHubControl pulls control events after the stored head from the home
+// and applies them (applyPulledControl).
+func (s *Service) syncHubControl(ctx context.Context, hub store.HubRoom) (hubRoster, error) {
+	before, _, err := s.hubRoster(ctx, hub, 0)
+	if err != nil || hub.IsHome() {
+		return before, err
 	}
 	pairing, err := s.findPairingByID(hub.HomePairingID)
 	if err != nil {
@@ -145,17 +199,28 @@ func (s *Service) syncHubControl(ctx context.Context, hub store.HubRoom) (hubRos
 	if err != nil {
 		return hubRoster{}, err
 	}
+	return s.applyPulledControl(ctx, hub, events)
+}
+
+// applyPulledControl verifies control events the home sent after the
+// stored head, stores the extended log, and logs who joined or left: the
+// notice a stale sender sees before its message reaches a new member.
+func (s *Service) applyPulledControl(ctx context.Context, hub store.HubRoom, events []protocol.SignedRoomControl) (hubRoster, error) {
+	before, records, err := s.hubRoster(ctx, hub, 0)
+	if err != nil {
+		return hubRoster{}, err
+	}
 	pulled, err := controlRecords(hub.GlobalRoomID, before.Epoch+1, events)
 	if err != nil {
 		return hubRoster{}, hubInvalidError(err.Error())
+	}
+	if len(pulled) == 0 {
+		return before, nil
 	}
 	after, err := replayHubRoster(append(records, pulled...), 0)
 	if err != nil {
 		logHub(ctx, hub.GlobalRoomID).Error("refusing a control log from the home that does not verify", "error", err)
 		return hubRoster{}, hubInvalidError(err.Error())
-	}
-	if len(pulled) == 0 {
-		return after, nil
 	}
 	if err := s.hubs.AppendHubControlContext(ctx, pulled); err != nil {
 		return hubRoster{}, err
@@ -176,8 +241,9 @@ func (s *Service) syncHubControl(ctx context.Context, hub store.HubRoom) (hubRos
 	return after, nil
 }
 
-// SyncHubRoomContext pulls a member's copy of a hub room's control log up
-// to the home's head (operators; senders also sync on a stale epoch).
+// SyncHubRoomContext catches a member's copy of a hub room up to the home's
+// head: control log and messages (operators; the sync loop does the same
+// on a timer, on gaps and on reconnect).
 func (s *Service) SyncHubRoomContext(ctx context.Context, globalRoomID string) (HubRoomView, error) {
 	if err := requireHubOperator(ctx); err != nil {
 		return HubRoomView{}, err
@@ -190,6 +256,9 @@ func (s *Service) SyncHubRoomContext(ctx context.Context, globalRoomID string) (
 		return HubRoomView{}, hubNotFoundError(globalRoomID)
 	}
 	if _, err := s.syncHubControl(ctx, hub); err != nil {
+		return HubRoomView{}, err
+	}
+	if err := s.syncHubRoom(ctx, hub); err != nil {
 		return HubRoomView{}, err
 	}
 	return s.hubRoomView(ctx, hub)

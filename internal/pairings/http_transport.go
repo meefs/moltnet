@@ -114,6 +114,19 @@ func (c *httpTransport) FetchRoomControl(ctx context.Context, pairing protocol.P
 	return page, nil
 }
 
+func (c *httpTransport) FetchRoomSync(ctx context.Context, pairing protocol.Pairing, globalRoomID string, afterSeq, controlAfter int64) (protocol.RoomSyncPage, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint(pairing, RoomSyncPath(globalRoomID, afterSeq, controlAfter)), nil)
+	if err != nil {
+		return protocol.RoomSyncPage{}, fmt.Errorf("build room sync request: %w", err)
+	}
+	authorizeRequest(request, pairing)
+	var page protocol.RoomSyncPage
+	if err := c.doJSON(request, &page); err != nil {
+		return protocol.RoomSyncPage{}, err
+	}
+	return page, nil
+}
+
 func (c *httpTransport) doJSON(request *http.Request, target any) error {
 	response, err := c.http.Do(request)
 	if err != nil {

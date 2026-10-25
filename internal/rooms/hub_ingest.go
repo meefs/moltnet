@@ -46,12 +46,21 @@ func (s *Service) receiveHubMessage(ctx context.Context, request protocol.SendMe
 	if ingress.hub.IsHome() {
 		return s.acceptHubSubmission(ctx, ingress)
 	}
-	return s.acceptHubForward(ctx, ingress)
+	return s.acceptHubForward(ctx, ingress, true)
 }
 
 func (s *Service) checkHubIngress(ctx context.Context, request protocol.SendMessageRequest) (hubIngress, error) {
 	pairing, ok := s.pairingForPairScopedContext(ctx)
-	if !ok || s.hubs == nil || request.Envelope == nil {
+	if !ok {
+		return hubIngress{}, hubForbiddenError("hub room messages arrive only signed, over a pairing")
+	}
+	return s.checkHubIngressFrom(ctx, pairing, request)
+}
+
+// checkHubIngressFrom is checkHubIngress for a request known to come over
+// pairing: live over its credential, or pulled from the home by sync.
+func (s *Service) checkHubIngressFrom(ctx context.Context, pairing protocol.Pairing, request protocol.SendMessageRequest) (hubIngress, error) {
+	if s.hubs == nil || request.Envelope == nil {
 		return hubIngress{}, hubForbiddenError("hub room messages arrive only signed, over a pairing")
 	}
 	envelope, digest, err := protocol.VerifySignedEnvelope(*request.Envelope)
@@ -107,7 +116,7 @@ func (s *Service) acceptHubSubmission(ctx context.Context, in hubIngress) (proto
 	if existing, placed, err := s.hubs.HubReceiptForEventContext(ctx, in.hub.GlobalRoomID, in.digest); err != nil {
 		return protocol.MessageAccepted{}, err
 	} else if placed {
-		return protocol.MessageAccepted{MessageID: existing.MessageID, EventID: eventIDForMessage(existing.MessageID), Accepted: true}, nil
+		return protocol.MessageAccepted{MessageID: existing.MessageID, EventID: eventIDForMessage(existing.MessageID), Accepted: true, Receipt: &existing.Receipt}, nil
 	}
 	roster, _, err := s.hubRoster(ctx, in.hub, 0)
 	if err != nil {
@@ -146,8 +155,10 @@ func (s *Service) acceptHubSubmission(ctx context.Context, in hubIngress) (proto
 // messages: only over the room's home link, with a receipt the home key
 // signed for this event, from an origin that may write at the signed epoch
 // in this member's own copy of the control log, signed by the key that log
-// names, and never contradicting a key this network pinned itself.
-func (s *Service) acceptHubForward(ctx context.Context, in hubIngress) (protocol.MessageAccepted, error) {
+// names, and never contradicting a key this network pinned itself. A live
+// forward also extends (or, past a gap, schedules catch-up of) the verified
+// receipt chain; sync does that itself for the entries it pulls.
+func (s *Service) acceptHubForward(ctx context.Context, in hubIngress, live bool) (protocol.MessageAccepted, error) {
 	logger := logHub(ctx, in.hub.GlobalRoomID).With("origin_network_id", in.envelope.OriginNetworkID, "pairing_id", in.pairing.ID)
 	if in.pairing.ID != in.hub.HomePairingID {
 		logger.Warn("refusing hub message that did not come from the room's home")
@@ -179,7 +190,14 @@ func (s *Service) acceptHubForward(ctx context.Context, in hubIngress) (protocol
 		return protocol.MessageAccepted{}, signatureRejectedError("room receipt does not place this message")
 	}
 	// Epoch order along room seqs (no rollback, in any delivery order) is
-	// enforced by the store inside the atomic receipt append.
+	// enforced by the store inside the atomic receipt append; the receipt
+	// right after the verified cursor must chain to it.
+	if live {
+		if err := s.checkCursorSuccessor(ctx, in.hub, receipt); err != nil {
+			logger.Warn("refusing hub message whose receipt does not chain to the verified sync cursor", "error", err)
+			return protocol.MessageAccepted{}, err
+		}
+	}
 	at, _, err := s.hubRoster(ctx, in.hub, epoch)
 	if err != nil {
 		return protocol.MessageAccepted{}, err
@@ -209,7 +227,11 @@ func (s *Service) acceptHubForward(ctx context.Context, in hubIngress) (protocol
 			introduce = &pin
 		}
 	}
-	return s.storeHubForward(ctx, in, message, envelope, placed, introduce)
+	accepted, err := s.storeHubForward(ctx, in, message, envelope, placed, introduce)
+	if live && err == nil {
+		s.notePlacement(ctx, in.hub, placed)
+	}
+	return accepted, err
 }
 
 // hubOriginState labels an origin's signature by this network's own pin
