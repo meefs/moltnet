@@ -102,6 +102,11 @@ type MessageSignature struct {
 	Signed *protocol.MessageEnvelope
 	// IntroducedBy names the room home that vouched for an introduced key.
 	IntroducedBy string
+	// RoomSeq and MembershipEpoch place a shared-room message: its order in
+	// the room (display sorts by it, not by arrival) and the membership
+	// epoch it was placed under. Zero when it is not placed (yet).
+	RoomSeq         int64
+	MembershipEpoch int64
 }
 
 // MessageSignatures reports origin signature state for messages received
@@ -125,6 +130,24 @@ func (s *Service) MessageSignatures(ctx context.Context, messages []protocol.Mes
 			return nil, err
 		}
 	}
+	placements := map[string]store.HubReceiptRecord{}
+	if s.hubs != nil {
+		ids := make([]string, 0, len(messages))
+		for _, message := range messages {
+			ids = append(ids, message.ID)
+		}
+		var err error
+		if placements, err = s.hubs.HubReceiptsForMessagesContext(ctx, ids); err != nil {
+			return nil, err
+		}
+	}
+	defer func() {
+		for id, placed := range placements {
+			signature := result[id]
+			signature.RoomSeq, signature.MembershipEpoch = placed.RoomSeq, placed.MembershipEpoch
+			result[id] = signature
+		}
+	}()
 	for _, message := range messages {
 		if record, ok := records[message.ID]; ok {
 			signature := MessageSignature{State: record.State, Fingerprint: record.Fingerprint}

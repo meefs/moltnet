@@ -160,6 +160,36 @@ describe("control events", () => {
     expect(describeRows(buildTimelineRows(loaded, hubFixture(), true))).toEqual(["a", "#2", "b", "#3", "c", "#4"]);
   });
 
+  it("orders a shared room by room_seq, not arrival, and places notices by epoch", () => {
+    // Catch-up filled seq 2 after seq 3 arrived; timestamps disagree with
+    // placement (the late copy carries a later receive time).
+    const arrived = [
+      msg("one", "2026-10-25T10:00:00Z", { room_seq: 1, membership_epoch: 1 }),
+      msg("three", "2026-10-25T10:05:00Z", { room_seq: 3, membership_epoch: 2 }),
+      msg("pending", "2026-10-25T10:06:00Z"),
+      msg("two", "2026-10-25T10:09:00Z", { room_seq: 2, membership_epoch: 1 }),
+    ];
+    const hub = hubFixture({
+      events: [
+        { seq: 1, epoch: 1, kind: "genesis", network_id: "newsroom", created_at: "2026-10-25T09:00:00Z" },
+        // Its timestamp says after "three"; its epoch says before it.
+        { seq: 2, epoch: 2, kind: "add", network_id: "lab", role: "writer", created_at: "2026-10-25T10:07:00Z" },
+      ],
+    });
+    expect(describeRows(buildTimelineRows(arrived, hub, false))).toEqual(["#1", "one", "two", "#2", "three", "pending"]);
+  });
+
+  it("holds back a notice before the first loaded message by epoch while older pages remain", () => {
+    const page = [msg("five", "2026-10-25T08:00:00Z", { room_seq: 5, membership_epoch: 2 })];
+    const hub = hubFixture({
+      events: [
+        { seq: 2, epoch: 2, kind: "add", network_id: "lab", role: "writer", created_at: "2026-10-25T10:07:00Z" },
+        { seq: 3, epoch: 3, kind: "remove", network_id: "lab", created_at: "2026-10-25T07:00:00Z" },
+      ],
+    });
+    expect(describeRows(buildTimelineRows(page, hub, true))).toEqual(["five", "#3"]);
+  });
+
   it("breaks a sender run around a system line", () => {
     const rows = buildTimelineRows(loaded.map((m, i) => ({ ...m, created_at: `2026-10-25T10:0${i}:00Z` })), hubFixture({
       events: [{ seq: 9, kind: "add", network_id: "lab", role: "writer", created_at: "2026-10-25T10:01:30Z" }],

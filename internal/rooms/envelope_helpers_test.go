@@ -170,7 +170,9 @@ type wireMessage struct {
 		Fingerprint  string `json:"fingerprint"`
 		IntroducedBy string `json:"introduced_by"`
 	} `json:"origin"`
-	Parts []protocol.Part `json:"parts"`
+	Parts           []protocol.Part `json:"parts"`
+	RoomSeq         int64           `json:"room_seq"`
+	MembershipEpoch int64           `json:"membership_epoch"`
 }
 
 func wireRoomMessages(t *testing.T, baseURL string) []wireMessage {

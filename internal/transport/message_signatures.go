@@ -36,6 +36,12 @@ type signedMessageView struct {
 	Origin        signedOriginView `json:"origin,omitempty"`
 	ReceivedAt    *time.Time       `json:"received_at,omitempty"`
 	LocalMentions []string         `json:"local_mentions,omitempty"`
+	// RoomSeq orders a shared-room message (the home's placement); clients
+	// sort shared-room history by it rather than by arrival or created_at.
+	RoomSeq *int64 `json:"room_seq,omitempty"`
+	// MembershipEpoch is the roster epoch it was placed under, so membership
+	// notices go between the right messages.
+	MembershipEpoch *int64 `json:"membership_epoch,omitempty"`
 }
 
 type signedMessagePage struct {
@@ -76,6 +82,10 @@ func signedView(message protocol.Message, signature rooms.MessageSignature) sign
 		message.Parts = append([]protocol.Part(nil), envelope.Parts...)
 		message.Mentions = append([]string(nil), envelope.Mentions...)
 		view.ReceivedAt, view.LocalMentions = &receivedAt, localMentions
+	}
+	if signature.RoomSeq > 0 {
+		seq, epoch := signature.RoomSeq, signature.MembershipEpoch
+		view.RoomSeq, view.MembershipEpoch = &seq, &epoch
 	}
 	view.Message = message
 	return view

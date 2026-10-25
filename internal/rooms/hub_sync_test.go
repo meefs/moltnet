@@ -156,9 +156,21 @@ func TestHubLiveForwardPastAGapTriggersCatchUp(t *testing.T) {
 	// can bring this message to beta now.
 	waitFor(t, func() bool { return h.home.delivery(t, "link-beta").Rejected == 1 })
 	h.home.post(t, "arrives past the gap")
-	// Local history lists by arrival: the gap fill lands after the live one.
+	// Storage lists by arrival (the gap fill lands after the live copy); the
+	// HTTP view carries each message's room seq and epoch, and room order
+	// (what the console shows) is by room seq.
 	h.beta.waitTexts(t, "arrives past the gap", "lost to beta")
 	waitFor(t, func() bool { return h.beta.cursor(t, h.global).Seq == 2 })
+	bySeq := map[int64]string{}
+	for _, message := range h.beta.wire(t) {
+		if message.MembershipEpoch != 3 {
+			t.Fatalf("%q placed under epoch %d on the wire", message.Parts[0].Text, message.MembershipEpoch)
+		}
+		bySeq[message.RoomSeq] = message.Parts[0].Text
+	}
+	if bySeq[1] != "lost to beta" || bySeq[2] != "arrives past the gap" {
+		t.Fatalf("room order on the wire = %q", bySeq)
+	}
 }
 
 func pairGetStatus(t *testing.T, url, secret string) int {

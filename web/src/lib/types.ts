@@ -187,6 +187,10 @@ export interface Message {
   created_at: string;
   /** When this network received the message. */
   received_at?: string;
+  /** Shared rooms: the home's placement order; display sorts by it. */
+  room_seq?: number;
+  /** Shared rooms: the membership epoch the message was placed under. */
+  membership_epoch?: number;
 }
 
 /** Trust this network holds in a shared-room member's key. */

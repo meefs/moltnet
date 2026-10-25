@@ -19,22 +19,46 @@ export type TimelineRow =
   | { kind: "control"; key: string; created_at: string; event: RoomHubEvent; startsDay: boolean };
 
 /**
- * Interleaves a shared room's membership log with the loaded messages by
- * `created_at`. Only the loaded window is covered: while older pages remain,
- * an event older than the first loaded message is held back, so it appears
- * in place once that page is fetched instead of stacking at the top.
- * Events newer than the last message trail it.
+ * A shared room is shown in room order (the home's `room_seq`), never in
+ * arrival order: a message catch-up fills into a gap arrives after its
+ * successors. Messages not placed yet (this network's own, still on their
+ * way to the home) follow the placed ones in loaded order.
  */
-export function buildTimelineRows(messages: Message[], hub: RoomHub | null | undefined, hasOlder: boolean): TimelineRow[] {
-  const firstAt = messages.length > 0 ? Date.parse(messages[0]!.created_at) : Number.NaN;
+export function inRoomOrder(messages: Message[]): Message[] {
+  const placed = messages.filter((message) => typeof message.room_seq === "number");
+  if (placed.length === 0) return messages;
+  placed.sort((a, b) => a.room_seq! - b.room_seq!);
+  return [...placed, ...messages.filter((message) => typeof message.room_seq !== "number")];
+}
+
+/** Whether a membership event belongs before a message: by epoch when both
+ * carry one (a message placed at epoch E follows the event that opened E),
+ * else by time. */
+function eventPrecedes(event: RoomHubEvent, message: Message): boolean {
+  if (typeof event.epoch === "number" && typeof message.membership_epoch === "number") {
+    return event.epoch <= message.membership_epoch;
+  }
+  return !(Date.parse(event.created_at) > Date.parse(message.created_at));
+}
+
+/**
+ * Interleaves a shared room's membership log with the loaded messages, in
+ * room order. Notices go by membership epoch where messages carry one, else
+ * by `created_at`. Only the loaded window is covered: while older pages
+ * remain, an event before the first loaded message is held back, so it
+ * appears in place once that page is fetched instead of stacking at the
+ * top. Events after the last message trail it.
+ */
+export function buildTimelineRows(loaded: Message[], hub: RoomHub | null | undefined, hasOlder: boolean): TimelineRow[] {
+  const messages = hub ? inRoomOrder(loaded) : loaded;
+  const first = messages[0];
   const events = (hub?.events ?? [])
     .filter((event) => {
-      const at = Date.parse(event.created_at);
-      if (Number.isNaN(at)) return false;
-      return !hasOlder || Number.isNaN(firstAt) || at >= firstAt;
+      if (Number.isNaN(Date.parse(event.created_at))) return false;
+      return !hasOlder || first === undefined || !eventPrecedes(event, first);
     })
     .slice()
-    .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.seq - b.seq);
+    .sort((a, b) => a.seq - b.seq);
 
   const rows: TimelineRow[] = [];
   let previousMessage: Message | undefined;
@@ -58,10 +82,9 @@ export function buildTimelineRows(messages: Message[], hub: RoomHub | null | und
 
   let next = 0;
   for (const message of messages) {
-    const at = Date.parse(message.created_at);
-    // Events at the same instant as a message come first: the join precedes
-    // the joiner's first word.
-    while (next < events.length && !(Date.parse(events[next]!.created_at) > at)) pushEvent(events[next++]!);
+    // An event at the same instant (or epoch) as a message comes first: the
+    // join precedes the joiner's first word.
+    while (next < events.length && eventPrecedes(events[next]!, message)) pushEvent(events[next++]!);
     push({
       kind: "message",
       key: rowKeyOf(message),
