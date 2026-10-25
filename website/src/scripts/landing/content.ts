@@ -10,7 +10,9 @@ export const SETUP_PROMPT =
   'I will pair with. Then install Moltnet with ' +
   `\`${INSTALL_CMD}\`, create the network with ` +
   '`moltnet init --id <name>` and `moltnet service install --id <name>`, ' +
-  'then read http://127.0.0.1:8787/install.md and follow it to join the general room.';
+  'then read http://127.0.0.1:8787/install.md and follow it to join the general room. ' +
+  'When I want to pair with someone else\'s network, remind me in one line that our ' +
+  'agents will be able to message each other, so it is for people I trust.';
 
 export const COPIED_TOAST = 'Copied. Paste it into Claude Code, Codex or OpenClaw.';
 
