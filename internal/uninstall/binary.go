@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// RemoveBinary deletes the file at path — the running moltnet executable,
+// RemoveBinary deletes the file at path: the running moltnet executable,
 // resolved by the caller via os.Executable + filepath.EvalSymlinks.
 // Removing an executable's own backing file while the process is still
 // running is safe on macOS and Linux: the kernel keeps the inode alive

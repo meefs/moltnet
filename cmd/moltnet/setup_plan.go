@@ -6,7 +6,7 @@ import (
 )
 
 // setupPlanInvocations turns a fully answered setupAnswers into the exact
-// ordered child commands runSetup drives through runChild — or, under
+// ordered child commands runSetup drives through runChild; or, under
 // --print-commands, only prints. adopted is true when an existing network
 // was found and passed both adoption gates (setup_adopt.go): SETUP.md's
 // adoption table requires skipping `init` entirely in that case ("Skip
@@ -16,7 +16,7 @@ import (
 // Order matters and is fixed, matching SETUP.md's "Execution order ≠
 // question order": every config mutation completes before the service step,
 // which is always last. Q7's two pairing branches (setup_pair.go) sit
-// between `init` and `service install` for exactly that reason — `relay
+// between `init` and `service install` for exactly that reason; `relay
 // deploy` and `pair invite`/`pair join` both mutate config (or config-
 // adjacent .moltnet/ state), and `pair invite` in particular tells the
 // operator to restart when it is not itself allowed to (pair.go), so
@@ -34,10 +34,10 @@ func setupPlanInvocations(answers setupAnswers, adopted bool) []childInvocation 
 }
 
 // buildSetupInitInvocation renders the `moltnet init` argv for answers.
-// Never --bearer (the wizard only ever authors the open posture — see
+// Never --bearer (the wizard only ever authors the open posture; see
 // SETUP.md's Q3 section) and never --name (init already derives a display
 // name from --id when one is not given, exactly the single-typed-answer
-// model Q2 uses — see askSetupNetworkID's own doc comment).
+// model Q2 uses; see askSetupNetworkID's own doc comment).
 func buildSetupInitInvocation(answers setupAnswers) childInvocation {
 	args := []string{"init"}
 	if answers.scope == setupScopeProject {
@@ -67,7 +67,7 @@ func buildSetupServiceInstallInvocation(answers setupAnswers) childInvocation {
 // stepLabel names one planned invocation for the wizard's own one-line-per-
 // step transcript (SETUP.md: "The wizard renders its own one-line-per-step
 // output," since a piped child's own "✓ ready"/"next:" lines are suppressed
-// outright — runner.go's doc comment). Falls back to the raw argv, joined,
+// outright; runner.go's doc comment). Falls back to the raw argv, joined,
 // for any shape this does not specifically recognize, so a future third
 // invocation type never prints as a blank line.
 func stepLabel(invocation childInvocation) string {
@@ -95,12 +95,12 @@ func stepLabel(invocation childInvocation) string {
 // "moltnet <args...>", each argument shell-quoted only when it actually
 // needs it (so the common case reads as plainly as typing it by hand), with
 // any Env entries rendered as a leading "KEY=<value from $KEY>" placeholder
-// rather than the literal secret — SETUP.md's explicit rule: a literal
+// rather than the literal secret; SETUP.md's explicit rule: a literal
 // value would leak into a transcript or a copied script; a caller-supplied
 // env-var name lets the reader (and the equivalence test) know exactly what
 // to substitute. Q7 = "open it up" is the one invocation that actually
-// carries Env today — buildRelayDeployInvocation's CLOUDFLARE_API_TOKEN
-// (setup_pair.go) — so this path is exercised by both setup_plan_test.go's
+// carries Env today, buildRelayDeployInvocation's CLOUDFLARE_API_TOKEN
+// (setup_pair.go), so this path is exercised by both setup_plan_test.go's
 // generic unit test and setup_pair_open_test.go's --print-commands
 // end-to-end coverage.
 func renderChildInvocation(invocation childInvocation) string {

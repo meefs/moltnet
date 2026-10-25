@@ -31,7 +31,7 @@ const (
 // for a pasted token (via promptHidden, prompt_hidden.go) instead of
 // erroring immediately. It returns "" with a nil error both when the
 // terminal is not interactive (the caller's existing missing-token
-// guidance-and-error path then runs exactly as before — never a prompt,
+// guidance-and-error path then runs exactly as before, never a prompt,
 // never in CI or a piped run) and when the pasted input was empty or only
 // whitespace, which the caller treats identically to no token at all. The
 // pasted token itself is never printed by this function.
@@ -43,11 +43,11 @@ const (
 // prompt line) must never have those keystrokes echoed while the guidance
 // is still being written. promptHidden's own disableTerminalEcho call
 // below is a no-op once echo is already suppressed (see
-// prompt_hidden.go) — it does not double-toggle the terminal or register a
-// second signal handler — so nesting the two calls this way is safe.
+// prompt_hidden.go), it does not double-toggle the terminal or register a
+// second signal handler, so nesting the two calls this way is safe.
 //
-// If echo cannot be reliably disabled at all — disableTerminalEcho returns
-// ok=false, the P0 fail-open-echo fix — this refuses to print the
+// If echo cannot be reliably disabled at all, disableTerminalEcho returns
+// ok=false, the P0 fail-open-echo fix, this refuses to print the
 // interactive prompt or read anything: printing a warning and returning
 // errTerminalEchoUnavailable instead, so the caller (runRelayDeploy) falls
 // back to the non-interactive token-guidance-and-error path rather than
@@ -69,7 +69,7 @@ func maybePromptForCloudflareToken(sections *sectionPrinter) (string, error) {
 	sections.start()
 	fmt.Fprint(stdout, cloudflareTokenCreationGuidance())
 	// P3: a blank line separates the guidance block from the prompt itself,
-	// matching the guide transcript — without it, the deep link and the
+	// matching the guide transcript, without it, the deep link and the
 	// "(opens pre-filled...)" hint read as if they were part of the same
 	// line group as the prompt rather than the guidance ahead of it.
 	fmt.Fprintln(stdout)
@@ -96,7 +96,7 @@ func resolveCloudflareAPIToken(envToken, storedToken string, storedTokenOK bool)
 // successful deploy that used the CLOUDFLARE_API_TOKEN env token (never
 // called for an already-stored token, which needs no re-saving). With
 // --save-token it saves unconditionally. Otherwise, only when both stdin
-// and stdout are a real terminal (P2 env-path gating fix — matching the
+// and stdout are a real terminal (P2 env-path gating fix, matching the
 // pasted path's own isInteractive() && isOutputTerminal() gate, rather than
 // stdin alone: with stdout piped, the offer text is invisible while still
 // blocking on stdin) and only when nothing is stored yet, it offers the
@@ -107,7 +107,7 @@ func maybeSaveCloudflareToken(sections *sectionPrinter, tokenPath, apiToken stri
 	prompted := false
 	switch {
 	case saveToken:
-		// fall through to save below — no prompt, so the confirmation below
+		// fall through to save below, no prompt, so the confirmation below
 		// is the only place the destination path appears and must name it.
 	case !storedTokenOK && isInteractive() && isOutputTerminal():
 		// The deploy this save offer follows can take several seconds
@@ -149,9 +149,9 @@ func maybeSaveCloudflareToken(sections *sectionPrinter, tokenPath, apiToken stri
 	return nil
 }
 
-// maybeSavePastedCloudflareToken persists apiToken — a token the operator
+// maybeSavePastedCloudflareToken persists apiToken, a token the operator
 // just hand-pasted into the interactive promptHidden prompt
-// (maybePromptForCloudflareToken above) — to tokenPath after a successful
+// (maybePromptForCloudflareToken above), to tokenPath after a successful
 // deploy. Unlike maybeSaveCloudflareToken's env-token save offer (default
 // no: that token already lives somewhere, the environment), this defaults
 // to yes: saving is the entire point of having prompted for a paste in the
@@ -202,13 +202,13 @@ func maybeSavePastedCloudflareToken(sections *sectionPrinter, tokenPath, apiToke
 // promptYesNoDefaultYes is promptYesNo's (uninstall.go) default-yes
 // counterpart: an empty answer from an actual newline (a bare Enter)
 // counts as yes, and ONLY an explicit "y"/"yes" (case insensitive,
-// surrounding whitespace trimmed) otherwise counts as yes too — this is a
+// surrounding whitespace trimmed) otherwise counts as yes too, this is a
 // whitelist, not a "not an explicit no" blocklist (the P0 consent-parser
 // fix: the previous `answer != "n" && answer != "no"` shape treated
 // anything at all that wasn't literally "n"/"no" as an affirmative,
 // including garbage, a typo like "nope", or a stray escape sequence, which
 // meant most ways of *not* actually answering yes still saved the token).
-// Every other answer — garbage, a typo, an escape sequence, anything —
+// Every other answer, garbage, a typo, an escape sequence, anything,
 // is no. It backs the post-deploy pasted-token save prompt above, where
 // the default should be yes (see maybeSavePastedCloudflareToken's
 // comment); promptYesNo's default-no shape stays exactly as-is for the
@@ -237,7 +237,7 @@ func promptYesNoDefaultYes(question string) (bool, error) {
 // runRelayDeployForgetToken implements `relay deploy --forget-token`: delete
 // the stored per-network Cloudflare API token and exit without deploying,
 // mirroring --print-manual's early-return shape. Missing-file is reported,
-// not treated as an error — there is simply nothing to forget.
+// not treated as an error, there is simply nothing to forget.
 func runRelayDeployForgetToken(tokenPath string) error {
 	removed, err := relaydeploy.DeleteCloudflareToken(tokenPath)
 	if err != nil {
@@ -249,7 +249,7 @@ func runRelayDeployForgetToken(tokenPath string) error {
 		// ✓-line path treatment), not baked into the "what" string.
 		printInitConfigCheckLine("removed stored Cloudflare API token", path)
 	} else {
-		// P3: a note:, not a bare line — this still reports a fact the
+		// P3: a note:, not a bare line; this still reports a fact the
 		// operator should register (there was nothing to remove), matching
 		// the note:/warning: convention every other non-checkmark line here
 		// uses.

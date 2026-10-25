@@ -39,7 +39,7 @@ func TestRunUninstallCommandWarnsAboutDanglingSymlink(t *testing.T) {
 		t.Fatalf("output = %q, want the symlink-to-self not reported as a live other copy", output)
 	}
 	wantWarning := "warning: dangling moltnet symlinks remain on PATH:"
-	wantLine := "dangling symlink: " + link + " — remove it with rm " + link
+	wantLine := "dangling symlink: " + link + "; remove it with rm " + link
 	if !strings.Contains(output, wantWarning) || !strings.Contains(output, wantLine) {
 		t.Fatalf("output = %q, want it to contain %q and %q", output, wantWarning, wantLine)
 	}

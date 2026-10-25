@@ -223,7 +223,7 @@ func TestOpenRegistrationAndSendHTTPFlow(t *testing.T) {
 
 	// P2-2: an agent token now carries `observe` (write+attach alone made
 	// this 403 before). Route access is granted, but canReadDirectConversation
-	// still filters to conversations luna participates in — none here, so
+	// still filters to conversations luna participates in: none here, so
 	// this must come back empty, not a leak of every DM.
 	dmsResponse := httptest.NewRecorder()
 	dmsRequest := httptest.NewRequest(http.MethodGet, "/v1/dms", nil)

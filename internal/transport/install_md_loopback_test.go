@@ -27,19 +27,19 @@ func loopbackRequest(target string) *http.Request {
 // TestInstallMarkdownAnonymousLoopbackNeverLeaksPrivateRooms is the P1-1
 // regression test: a real bug (live-proven) had the loopback carve-out
 // register installMarkdownHandler directly, bypassing requestWithAuthMode,
-// so authn.ModeFromContext defaulted to ModeNone for the whole render —
+// so authn.ModeFromContext defaulted to ModeNone for the whole render,
 // including the room-listing call the real rooms.Service makes, which
 // computes each room's Access from context (canReadRoom,
 // internal/rooms/access_policy.go). mode == ModeNone makes every room
 // readable unconditionally (canReadRoom's fast path), so the renderer
 // treated an anonymous loopback caller as being on a fully unauthenticated
 // network: a private room ("secret-ops") showed up in the anonymous
-// install.md output on a bearer-protected, public-read network — the exact
+// install.md output on a bearer-protected, public-read network, the exact
 // same room set GET /v1/rooms (correctly auth-mode-aware) would only ever
 // show a *bearer-authenticated* caller.
 //
 // This uses the real rooms.Service (not fakeService), because fakeService's
-// ListRoomsContext ignores context entirely and never reproduces the bug —
+// ListRoomsContext ignores context entirely and never reproduces the bug;
 // the leak lives in production room-access computation, not in the
 // transport package's install.md rendering logic alone. It also drives a
 // genuine httptest.NewServer connection rather than a synthetic RemoteAddr,
@@ -87,7 +87,7 @@ func TestInstallMarkdownAnonymousLoopbackNeverLeaksPrivateRooms(t *testing.T) {
 	}
 
 	// public_read: true lets an anonymous caller read /v1/rooms too, but
-	// only the public room — this is the posture install.md must match.
+	// only the public room; this is the posture install.md must match.
 	anonymousRoomsBody := getBody(t, server.URL+"/v1/rooms", "")
 	if strings.Contains(anonymousRoomsBody, "secret-ops") {
 		t.Fatalf("anonymous GET /v1/rooms leaked the private room \"secret-ops\":\n%s", anonymousRoomsBody)
@@ -146,7 +146,7 @@ func getBody(t *testing.T, url string, authorization string) string {
 }
 
 // TestInstallMarkdownAnonymousOnDirectLoopbackRequest covers PLAN.md phase
-// 6a review, item 3/P1-2: GET /install.md — the join guide, no secrets — is
+// 6a review, item 3/P1-2: GET /install.md (the join guide, no secrets) is
 // readable without auth when the request itself looks like a direct,
 // unproxied local call, even on a bearer-protected network that would
 // otherwise 401 it.
@@ -177,7 +177,7 @@ func TestInstallMarkdownAnonymousOnDirectLoopbackRequest(t *testing.T) {
 		t.Fatalf("unexpected install markdown body:\n%s", response.Body.String())
 	}
 
-	// The rest of the bearer-protected surface is unaffected — only
+	// The rest of the bearer-protected surface is unaffected; only
 	// /install.md gets this carve-out.
 	response = httptest.NewRecorder()
 	handler.ServeHTTP(response, loopbackRequest("/skill.md"))
@@ -216,7 +216,7 @@ func TestInstallMarkdownGatedForNonLoopbackRequest(t *testing.T) {
 
 // TestInstallMarkdownGatedWhenLoopbackRequestCarriesForwardedFor covers
 // P1-2's proxy-indication check: a loopback RemoteAddr alone is not enough
-// once the request itself shows signs of having been forwarded — that is
+// once the request itself shows signs of having been forwarded; that is
 // exactly the "loopback bind behind a reverse proxy" topology this repo's
 // own guides recommend (guides/public-open-networks.md,
 // guides/securing-remote-agents.md), under which every request the app
@@ -327,7 +327,7 @@ func TestInstallMarkdownContentBearerShowsTokenFlags(t *testing.T) {
 // TestInstallMarkdownContentOpenRegistrationLeadsWithSelfRegister pins that
 // an open-registration network's join guide leads with self-registration
 // (--registration open) rather than a command that requires a pre-existing
-// token — the other half of item 3.
+// token, the other half of item 3.
 func TestInstallMarkdownContentOpenRegistrationLeadsWithSelfRegister(t *testing.T) {
 	t.Parallel()
 

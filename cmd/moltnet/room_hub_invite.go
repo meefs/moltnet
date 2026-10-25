@@ -102,7 +102,7 @@ func runRoomInvite(ctx context.Context, args []string) error {
 		return err
 	}
 	fmt.Fprintf(stdout, "%s room invite for %s (role %s, expires %s)\n", green("✓"), values[0], *role, invite.Exp.Format(time.RFC3339))
-	fmt.Fprintf(stdout, "  home fingerprint %s — the joiner should confirm it with you out of band\n", protocol.DisplayFingerprint(public.Fingerprint))
+	fmt.Fprintf(stdout, "  home fingerprint %s: the joiner should confirm it with you out of band\n", protocol.DisplayFingerprint(public.Fingerprint))
 	outcome := printPairStatusBlock(ctx, resolved.config, resolved.path, id, *restart, false)
 	fmt.Fprintf(stdout, "  send this code to the joining network; it runs: moltnet room join <code>\n%s\n", code)
 	return outcome.err

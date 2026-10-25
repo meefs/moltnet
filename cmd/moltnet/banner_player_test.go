@@ -248,7 +248,7 @@ func setPTYWidth(t *testing.T, master *os.File, cols int) {
 }
 
 // preparePTYBannerTest allocates a fresh pty (requireTestPTY,
-// openpty_test.go — never this test binary's own controlling terminal, per
+// openpty_test.go, never this test binary's own controlling terminal, per
 // the HARD RULE), sets its width, swaps stdout to the slave side, forces
 // the styling gates playBanner needs, and drains the master in background.
 func preparePTYBannerTest(t *testing.T, cols int) *syncBuffer {
@@ -292,8 +292,8 @@ func staticBannerOutput(t *testing.T) string {
 }
 
 // assertSettledOutputMatchesStaticBanner extracts the tail of a pty output
-// stream after its LAST cursor-up escape — what a viewer sees once the
-// writes stop moving — and checks it is byte-identical, modulo ANSI, to
+// stream after its LAST cursor-up escape, what a viewer sees once the
+// writes stop moving, and checks it is byte-identical, modulo ANSI, to
 // printBanner's own static output (the P2 position-offset regression guard).
 func assertSettledOutputMatchesStaticBanner(t *testing.T, output, cursorUp string) {
 	t.Helper()
@@ -363,7 +363,7 @@ func TestPlayBannerStaticFallbackWhenTerminalNarrow(t *testing.T) {
 // TestPlayBannerDeadlineJumpsToFinalFrame is the P2 fake-cap fix's own
 // test: nowFunc is faked so the first elapsed-time check already reports
 // the hard cap exceeded, so playBanner must jump straight from frame 0 to
-// the final frame — one cursor-up, not one per remaining transition —
+// the final frame, one cursor-up, not one per remaining transition,
 // settling on the same content the full animation does. No real sleep is
 // ever reached, so this stays fast and deterministic.
 func TestPlayBannerDeadlineJumpsToFinalFrame(t *testing.T) {

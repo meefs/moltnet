@@ -157,15 +157,15 @@ func resolveInitListenAddr(flagValue string) (string, error) {
 // for auth.mode: none or agent_registration: open, neither of which a
 // bearer config carries (bearerMoltnetConfig, templates.go) -- so a bearer
 // network's own non-loopback exposure is a different, already-documented
-// story (plain HTTP, a static token now crossing the network — see
-// PLAN.md's setup-wizard "Q4 — the warning is computed, never static") that
+// story (plain HTTP, a static token now crossing the network, see
+// PLAN.md's setup-wizard "Q4, the warning is computed, never static") that
 // this specific reused check was never built to describe, on either the
 // authoring or the server-start path. Nothing about that changes here.
 //
 // For the plain (non-bearer) path, this builds the exact app.Config plain
 // init is about to author -- auth.mode: open forces agent_registration:
 // open and public_read: true (config_load.go's mergeFileConfig; replicated
-// by hand here since this runs before any config is ever loaded) — and
+// by hand here since this runs before any config is ever loaded); and
 // reuses app.NonLoopbackAnonymousWriteWarning rather than writing new
 // wording, per PLAN.md's explicit instruction. That function's own closing
 // sentence ("Set auth.agent_registration to \"token\" or \"disabled\"") is

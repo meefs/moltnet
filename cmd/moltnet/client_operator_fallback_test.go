@@ -24,7 +24,7 @@ type operatorFallbackToken struct {
 }
 
 // writeOperatorFallbackServerConfig writes a Moltnet server config at path
-// with server.listen_addr = host, auth.mode: bearer, and the given tokens —
+// with server.listen_addr = host, auth.mode: bearer, and the given tokens,
 // the same shape writeAdminFallbackServerConfig
 // (admin_config_fallback_test.go) uses, reused here for the
 // send/read/conversations/participants operator fallback
@@ -246,7 +246,7 @@ func TestOperatorOverrideBaseURLSkipsFallback(t *testing.T) {
 	t.Chdir(directory)
 	t.Setenv("HOME", t.TempDir())
 	// A server config sits right here in cwd too, at a non-loopback host
-	// that would otherwise be refused outright — proving --base-url never
+	// that would otherwise be refused outright, proving --base-url never
 	// even looks at it.
 	writeOperatorFallbackServerConfig(t, directory+"/Moltnet", "192.168.1.50:8787", nil)
 
@@ -289,7 +289,7 @@ func TestOperatorFallbackConversationsShowsAllVisibleRooms(t *testing.T) {
 	})
 
 	// Unlike the agent-config path (TestRunConversationsFiltersToAttachedRooms),
-	// there is no client-side rooms allowlist here — both rooms the token
+	// there is no client-side rooms allowlist here, both rooms the token
 	// can see should show, not be silently filtered to zero.
 	if !strings.Contains(output, `"general"`) || !strings.Contains(output, `"random"`) {
 		t.Fatalf("expected both rooms in fallback mode, got %q", output)
@@ -312,7 +312,7 @@ func TestSendPositionalArgumentForms(t *testing.T) {
 		{"bare positional target and text", []string{"room:chat", "hola"}},
 		{"flagged target, positional text", []string{"--target", "room:chat", "hola"}},
 		// Go's flag package stops parsing at the first non-flag argument, so
-		// a flag can never follow a positional one — this is the flags-first
+		// a flag can never follow a positional one, this is the flags-first
 		// analogue of the "flagged target, positional text" case above, and
 		// also the exact form the field session that motivated this fix
 		// tried (`moltnet send -text hola room:chat`).

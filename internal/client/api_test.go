@@ -267,7 +267,7 @@ func TestRegisterAgentUsesOpenToken(t *testing.T) {
 // "never leaves the machine" claim: the operator fallback (moltnetclient.
 // NewLoopbackOnly, used by cmd/moltnet's resolveOperatorClient) dials only a
 // loopback address it derived itself, but the standard library's default
-// redirect policy still follows a same-process 307/308 to any other host —
+// redirect policy still follows a same-process 307/308 to any other host;
 // Go strips the Authorization header cross-host, but the request body (a
 // message's text, for a send) still goes wherever the redirect points. This
 // proves NewLoopbackOnly's client refuses that hop instead of silently

@@ -17,7 +17,7 @@ import (
 
 // writeAdminFallbackServerConfig writes a Moltnet server config whose
 // server.listen_addr matches host (an httptest server's host:port) and
-// whose auth.tokens[] carries one admin-scoped, inline-plaintext token —
+// whose auth.tokens[] carries one admin-scoped, inline-plaintext token,
 // exactly what resolveAdminFromServerConfig derives --base-url/--token
 // from.
 func writeAdminFallbackServerConfig(t *testing.T, path string, host string, token string) {

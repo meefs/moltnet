@@ -11,7 +11,7 @@ import (
 // the most common, path: captureStdout's os.Pipe is never a real terminal
 // (stdoutIsRealTTY checks the literal fd, not the mockable isOutputTerminal
 // seam other tests force true), so startSpinner must return nil and write
-// nothing at all — the "no spinner frames in piped output" requirement.
+// nothing at all, the "no spinner frames in piped output" requirement.
 func TestStartSpinnerDisabledOverNonTTYStdout(t *testing.T) {
 	output := captureStdout(t, func() {
 		sp := startSpinner("deploying relay…")
@@ -44,9 +44,9 @@ func TestStartSpinnerDisabledUnderNoColorOverRealPTY(t *testing.T) {
 
 // TestSpinnerRendersAndClearsOverRealPTY drives a real spinner over a
 // genuine pty (requireTestPTY, openpty_test.go): points the package's stdout
-// var directly at the pty's slave file — the same swap captureStdout does
+// var directly at the pty's slave file, the same swap captureStdout does
 // with an os.Pipe, just with a real terminal-backed fd this time, so
-// stdoutIsRealTTY's isatty check is genuinely true — and proves frames
+// stdoutIsRealTTY's isatty check is genuinely true, and proves frames
 // actually render, then that Stop() clears the line before the caller's own
 // next write lands.
 func TestSpinnerRendersAndClearsOverRealPTY(t *testing.T) {
@@ -90,7 +90,7 @@ func TestSpinnerRendersAndClearsOverRealPTY(t *testing.T) {
 		t.Fatalf("expected at least one spinner frame character, got %q", got)
 	}
 	// Stop's own clear ("\r\x1b[2K") must be the last thing written before
-	// the caller's "done\n" — proof the line was actually cleared, not left
+	// the caller's "done\n", proof the line was actually cleared, not left
 	// with a stray frame sitting in front of the next write.
 	if !strings.Contains(got, "\x1b[2Kdone") {
 		t.Fatalf("expected the clear-line escape immediately before the next write, got %q", got)

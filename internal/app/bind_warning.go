@@ -16,13 +16,13 @@ import (
 // (PLAN.md phase 6a, item 2, broadened by the phase 6a review's P2-3): that
 // covers both agent self-registration being open ("any reachable host may
 // register an agent") and auth.mode being "none" (every write and admin
-// route is anonymous outright, with no registration step needed at all —
+// route is anonymous outright, with no registration step needed at all,
 // the pre-phase-6a default, and strictly worse than open registration). It
 // returns "" when the bind is loopback-only.
 //
 // The original version of this check keyed only on agent_registration, so a
-// non-loopback bind with the old `auth.mode: none` default — every write
-// and admin route anonymous — warned about nothing, while a safer bearer
+// non-loopback bind with the old `auth.mode: none` default, every write
+// and admin route anonymous, warned about nothing, while a safer bearer
 // network with open registration correctly warned. That inversion is the
 // bug this broadened check fixes: mode: none is checked first, and on its
 // own, before agent_registration is even considered.
@@ -80,15 +80,15 @@ func NonLoopbackAnonymousWriteWarning(config Config) string {
 	}
 	// TODO(setup-p2): this advice is inert whenever it actually fires.
 	// mergeFileConfig (config_load.go) forcibly resets
-	// auth.agent_registration to "open" any time auth.mode is "open" — the
+	// auth.agent_registration to "open" any time auth.mode is "open", the
 	// only mode this branch ever warns about (the AgentRegistration != Open
-	// check above returns "" otherwise) — so an operator who follows this
+	// check above returns "" otherwise), so an operator who follows this
 	// sentence exactly and sets agent_registration to "token" or "disabled"
 	// sees no change at all at next load. The real remedies are bind to
 	// loopback, or move off auth.mode: open entirely (which requires
 	// configuring credentials and room membership together, since the open
 	// starter room's write_policy: registered_agents shape depends on the
-	// open posture too — see cmd/moltnet's init --listen authoring-time
+	// open posture too; see cmd/moltnet's init --listen authoring-time
 	// warning, which says this correctly and does not repeat the sentence
 	// below verbatim). Fixing the sentence itself is out of scope here: it
 	// is also what `moltnet validate` and server-start print today, and
@@ -191,7 +191,7 @@ func firstPubliclyReadableRoomID(rooms []RoomConfig) string {
 // e.g. "127.0.0.1:8787", ":8787", "0.0.0.0:8787", "[::1]:8787") only ever
 // accepts direct TCP connections originating on this machine. An address
 // with no host component (":8787") or an unparseable host is treated as
-// non-loopback — the same "binds every interface" behavior Go's net/http
+// non-loopback, the same "binds every interface" behavior Go's net/http
 // gives an empty host, and the conservative default when this can't be
 // determined for certain: this function's only job is deciding whether to
 // warn, so an ambiguous case should warn rather than stay silent.
@@ -200,7 +200,7 @@ func firstPubliclyReadableRoomID(rooms []RoomConfig) string {
 // machine": a loopback bind with a reverse proxy running on the same box
 // (the topology guides/public-open-networks.md and
 // guides/securing-remote-agents.md both recommend) is fully internet
-// reachable through that proxy — every request the app process sees still
+// reachable through that proxy; every request the app process sees still
 // carries a loopback RemoteAddr, on the proxy's behalf. This function has no
 // request to inspect at server-start / `moltnet validate` time, so it can
 // only ever reason about the bind; a live per-request decision (see
@@ -215,7 +215,7 @@ func IsLoopbackListenAddr(addr string) bool {
 
 	host, _, err := net.SplitHostPort(trimmed)
 	if err != nil {
-		// No port, or otherwise unparseable as host:port — try the whole
+		// No port, or otherwise unparseable as host:port, try the whole
 		// value as a bare host (defensive; server.listen_addr is normally
 		// always host:port).
 		host = trimmed

@@ -94,7 +94,7 @@ func loadFileConfig(path string) (rawConfigFile, error) {
 	// Binary-content guard: a discovered candidate is already filtered by
 	// discoverCwdConfigPath/resolveHomeNetworkConfig before it ever reaches
 	// here, so this only fires for an explicitly named --config/MOLTNET_CONFIG
-	// path — turning what would otherwise be a cryptic
+	// path, turning what would otherwise be a cryptic
 	// "yaml: invalid trailing UTF-8 octet" decode error into a clear one that
 	// names the binary-file suspicion.
 	if !textSniffContents(contents) {

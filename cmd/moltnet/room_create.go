@@ -19,19 +19,19 @@ import (
 //
 //  1. Preflight GET /v1/rooms/{id} against the running service, before
 //     touching config at all, and refuse outright if it already answers
-//     (refuseIfRoomAlreadyLive) — P2-1: a room created via POST /v1/rooms,
+//     (refuseIfRoomAlreadyLive), P2-1: a room created via POST /v1/rooms,
 //     the console, or a separate `moltnet apply` has no entry in *this*
 //     config's own rooms[], so WriteRoom's duplicate check
 //     (config_writeback_room.go, ErrRoomConfigExists) never sees it. Left
 //     unchecked, step 3's /v1/apply delta reaches ReconcileRoomContext
 //     (internal/rooms/reconcile.go), which replaces that room's member list
-//     wholesale — silently wiping a live room's membership while this
+//     wholesale, silently wiping a live room's membership while this
 //     command still prints success. Refusing before any write leaves
 //     nothing to roll back if the service already has the room.
 //  2. Write the room into rooms[] in the resolved Moltnet server config,
 //     using the same atomic, 0600, symlink-refusing, reload-verified
 //     mechanism `pair invite` uses for pairings (writeRoomWithRollback below,
-//     app.WriteRoom) — never upsertSharedRoom, which only knows the
+//     app.WriteRoom), never upsertSharedRoom, which only knows the
 //     {id, federation} shape a pairing needs.
 //  3. Default federation to "none" unless --federation says otherwise
 //     (parseRoomFederationFlag): PLAN.md's 7A federation rule requires every
@@ -43,9 +43,9 @@ import (
 //     typo'd pairing id is a clear error instead of a silently accepted
 //     federation stance that names nothing (P2-3).
 //  4. POST a single-room delta to /v1/apply (admin-scoped) so the running
-//     service reconciles the room — and its credential, which only ever
+//     service reconciles the room, and its credential, which only ever
 //     lands in memory through CreateRoomContext/ReconcileRoomContext's
-//     setRoomCredential call — without a restart. This is deliberately never
+//     setRoomCredential call, without a restart. This is deliberately never
 //     a full-config apply: ReconcileRoomContext replaces a named room's
 //     member list wholesale, so re-applying every configured room while
 //     creating this one would silently wipe membership `admin room members
@@ -116,7 +116,7 @@ func runRoomCreate(ctx context.Context, args []string) error {
 	// Loaded once, before any write: WriteRoom only ever appends to rooms[]
 	// (config_writeback_room.go), so this pre-write config's own
 	// server.listen_addr/auth.tokens/pairings[] are exactly what the
-	// post-write reload inside writeRoomWithRollback would also report —
+	// post-write reload inside writeRoomWithRollback would also report,
 	// reusing it here for the live-room preflight and the federation
 	// pairing check needs no second reload, and lets both refuse before a
 	// single byte of config changes.
@@ -189,14 +189,14 @@ func runRoomCreate(ctx context.Context, args []string) error {
 // against the already-confirmed-reachable service and refuses outright if
 // it answers, since `room create` never updates an existing room (see
 // runRoomCreate's doc comment, step 1). A GetRoom error here is not treated
-// as "room absent" — it is almost always the service's real 404 for an id
+// as "room absent", it is almost always the service's real 404 for an id
 // that does not exist yet (internal/rooms/errors.go, store.ErrRoomNotFound),
 // but this function does not need to disambiguate that from a different
 // live error: either way, "the service did not affirmatively confirm the
 // room exists" is exactly runRoomCreate's original behavior before this
 // guard existed, and any other real problem (an admin token the service
 // rejects, for instance) surfaces again, identically, at the /v1/apply call
-// runRoomCreate makes right after — this guard only ever adds a new refusal
+// runRoomCreate makes right after, this guard only ever adds a new refusal
 // path, never removes an existing error surface.
 func refuseIfRoomAlreadyLive(ctx context.Context, attachment clientconfig.AttachmentConfig, roomID string) error {
 	client, err := moltnetclient.New(attachment)
@@ -205,7 +205,7 @@ func refuseIfRoomAlreadyLive(ctx context.Context, attachment clientconfig.Attach
 	}
 	if _, err := client.GetRoom(ctx, roomID); err == nil {
 		return fmt.Errorf(
-			"room %q already exists on the running service; \"moltnet room create\" never updates an existing room, since doing so over /v1/apply would replace its member list wholesale (ReconcileRoomContext) — use \"moltnet admin room members add\" to change membership, or pick a different room id",
+			"room %q already exists on the running service; \"moltnet room create\" never updates an existing room, since doing so over /v1/apply would replace its member list wholesale (ReconcileRoomContext); use \"moltnet admin room members add\" to change membership, or pick a different room id",
 			roomID,
 		)
 	}
@@ -213,7 +213,7 @@ func refuseIfRoomAlreadyLive(ctx context.Context, attachment clientconfig.Attach
 }
 
 // writeRoomWithRollback writes room into the Moltnet config file at path
-// (app.WriteRoom — the atomic, reload-verified mechanism WritePairing uses
+// (app.WriteRoom, the atomic, reload-verified mechanism WritePairing uses
 // for pairings), then reloads the full config as a post-write check,
 // restoring the file to its prior contents if the reload fails. It returns
 // the reloaded config on success so the caller has the room now actually
@@ -247,10 +247,10 @@ func writeRoomWithRollback(path string, room app.RoomWriteback) (app.Config, err
 // (operatorOverrideOptions' own semantics, client_operator_fallback.go),
 // otherwise it is derived from the same local config `room create` resolved
 // (the pre-write load runRoomCreate already did for the P2-1 live-room
-// preflight — WriteRoom never touches server.listen_addr/auth.tokens, so a
+// preflight, WriteRoom never touches server.listen_addr/auth.tokens, so a
 // pre- or post-write config reports the same attachment either way), exactly
 // like admin's zero-flag fallback (resolveAdminFromServerConfig,
-// admin_config_fallback.go) — an operator creating a room on the network
+// admin_config_fallback.go), an operator creating a room on the network
 // they are standing next to never has to pass --base-url/--token-env at all.
 func resolveRoomApplyAttachment(config app.Config, baseURLFlag, tokenEnvFlag string) clientconfig.AttachmentConfig {
 	if strings.TrimSpace(baseURLFlag) != "" {
@@ -268,7 +268,7 @@ func resolveRoomApplyAttachment(config app.Config, baseURLFlag, tokenEnvFlag str
 // service that is not answering (PLAN.md 7A.1's "fall back to the existing
 // restart offer only when the daemon is not answering"). The room is
 // already durably written to config either way, so this is a reminder, not
-// an error — unlike a failed /v1/apply call, where the running service
+// an error, unlike a failed /v1/apply call, where the running service
 // answered but rejected the delta, which is a real problem the operator
 // needs to see. There is no --restart flag here to act on directly (unlike
 // `pair invite`): the first time this fires, the service has often never
@@ -287,7 +287,7 @@ func resolveRoomApplyAttachment(config app.Config, baseURLFlag, tokenEnvFlag str
 // applyRequestFromConfig (internal/app/app.go) down into
 // ReconcileRoomContext (internal/rooms/reconcile.go), which replaces that
 // room's member list wholesale from exactly the config entry this command
-// just wrote — dropping any member the store already had that is not listed
+// just wrote, dropping any member the store already had that is not listed
 // here. This is a warning, not a refusal: the real fix is Phase 7B's `admin
 // room members add` config writeback, and refusing outright here would
 // block the common case (a genuinely new room id) on nothing more than "the
@@ -301,14 +301,14 @@ func printRoomCreateRestartReminder(networkID, roomID string) {
 // parseRoomFederationFlag parses --federation into a *protocol.RoomFederation:
 // "none" or "all" map to their scalar stances, anything else is treated as a
 // comma-separated list of pairing ids (protocol.RoomFederationList), and an
-// empty value defaults to protocol.DefaultRoomFederation() ("none") — never
+// empty value defaults to protocol.DefaultRoomFederation() ("none"), never
 // nil, per PLAN.md's 7A federation rule (see runRoomCreate's doc comment).
 //
 // The "none"/"all" comparison is case-folded (P2-3): protocol.RoomFederation
 // stores and compares its Mode as an exact-case constant everywhere else
 // (protocol.RoomFederationAllows's switch, MarshalJSON), so an operator
 // typing "All" or "NONE" must land on the canonical lowercase mode here,
-// not silently fall through to the comma-separated-list branch below —
+// not silently fall through to the comma-separated-list branch below,
 // which is exactly what used to happen: "All" or "NONE" parsed as a
 // one-pairing federation list naming a pairing literally spelled "All" or
 // "NONE", accepted with err=<nil>. This function only proves the *shape* of
@@ -343,7 +343,7 @@ func parseRoomFederationFlag(value string) (*protocol.RoomFederation, error) {
 
 // validateRoomFederationPairings is P2-3's other half: ValidateRoomFederation
 // (pkg/protocol/federation.go) only checks that each --federation list entry
-// has the *shape* of an id (protocol.ValidateMessageID) — it has no config to
+// has the *shape* of an id (protocol.ValidateMessageID), it has no config to
 // check membership against, since protocol stays transport- and
 // config-neutral. A plain typo like "nonw" (not close enough to "none"/"all"
 // for parseRoomFederationFlag's case-fold to catch) shape-validates cleanly

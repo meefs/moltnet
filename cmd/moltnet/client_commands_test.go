@@ -318,7 +318,7 @@ func TestRunReadThreadRefusedForUnattachedRoom(t *testing.T) {
 
 // TestRunSendThreadMessage is the PLAN 7C.3 happy-path integration test for
 // `send --target thread:<id>`: the wire SendMessageRequest.Target must carry
-// Kind=thread, the thread id, and the room id resolved via GetThread —
+// Kind=thread, the thread id, and the room id resolved via GetThread,
 // protocol.ValidateTarget requires room_id for a thread target server-side.
 func TestRunSendThreadMessage(t *testing.T) {
 	workspace := t.TempDir()

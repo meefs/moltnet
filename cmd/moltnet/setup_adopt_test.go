@@ -162,7 +162,7 @@ func TestSetupNonInteractiveRefusalRespectsProjectFlag(t *testing.T) {
 	withTestDefaultPort(t)
 	// Outside any git checkout: this test is about the printed one-liner's
 	// shape, not the git-checkout gate (checkSetupProjectGitCheckoutGate,
-	// setup.go) — without this, the whole suite already runs with a cwd
+	// setup.go); without this, the whole suite already runs with a cwd
 	// under cmd/moltnet/, itself inside this very repo's own git checkout,
 	// which the gate would otherwise (correctly) refuse first.
 	t.Chdir(t.TempDir())
@@ -215,7 +215,7 @@ func TestSetupPrintCommandsDoesNotExecute(t *testing.T) {
 }
 
 // Q7's two connect branches ("open it up", "I have an invite code") are
-// implemented and tested in setup_pair_open_test.go / setup_pair_code_test.go —
+// implemented and tested in setup_pair_open_test.go / setup_pair_code_test.go,
 // this file used to pin them as "not yet implemented" refusals; that premise
 // no longer holds.
 
@@ -246,7 +246,7 @@ func TestSetupRejectsPositionalArgs(t *testing.T) {
 
 // writeSetupBearerTestConfig writes a minimal, valid Moltnet config for
 // networkID in auth.mode bearer at path, mirroring
-// writeConsoleBearerTestConfig's (console_url_test.go) fixture shape —
+// writeConsoleBearerTestConfig's (console_url_test.go) fixture shape,
 // P2-4's adoption-posture gate needs a real, loadable non-open config to
 // refuse against, not just a bare "mode: bearer" line.
 func writeSetupBearerTestConfig(t *testing.T, path, networkID, listenAddr string) {
@@ -287,7 +287,7 @@ pairings: []
 
 // TestSetupAdoptionGateBlocksNonOpenPostureBeforeQ4 is P2-4's mutation-proven
 // gap closed: checkSetupAdoptionPosture (setup_adopt.go) must actually run
-// and refuse the moment an existing bearer-mode config is found — before
+// and refuse the moment an existing bearer-mode config is found; before
 // Q4, Q5, Q6, or Q7 are ever asked, let alone any mutation. Deleting the
 // `if existing.found { checkSetupAdoptionPosture... }` call at setup.go
 // used to leave this fully untested; this drives the real Q1/Q2 answers

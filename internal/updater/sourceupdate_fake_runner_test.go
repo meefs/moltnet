@@ -111,7 +111,7 @@ func (f *fakeSourceRunner) runMake(args []string) ([]byte, error) {
 	var script string
 	if f.make.reportedVersion == "" {
 		// A build that "succeeds" (make exits 0) but produced a binary that
-		// itself fails to run — the version-verify failure scenario.
+		// itself fails to run: the version-verify failure scenario.
 		script = "#!/bin/sh\nexit 1\n"
 	} else {
 		script = fmt.Sprintf("#!/bin/sh\nif [ \"$1\" = \"version\" ]; then echo %s; exit 0; fi\n", f.make.reportedVersion)

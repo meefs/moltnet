@@ -12,13 +12,13 @@ import (
 )
 
 // runSetup implements `moltnet setup` (SETUP.md, Unit 2 of the wizard: the
-// command, the question flow, and the runner seam — the animated header is
+// command, the question flow, and the runner seam, the animated header is
 // Unit 3, so every prompt below prints its checkmark line immediately and
 // statically, exactly the way every other command in this CLI already
 // does, rather than collapsing into a live-updating region).
 //
 // Flags are deliberately few: --print-commands (emit the resolved argv
-// instead of running it — setup_plan.go) and the mutually exclusive
+// instead of running it, setup_plan.go) and the mutually exclusive
 // --global/--project, which preselect Q1 so a caller can express "on this
 // machine" vs "in this folder" without a prompt (SETUP.md: kept specifically
 // so the non-TTY refusal below can name a concrete one-liner for either
@@ -90,7 +90,7 @@ func runSetupInteractive(ctx context.Context, preset *setupScope, printCommandsO
 	// flow and execution below, settling at the completion screen once this
 	// function returns. startSetupHeader itself enforces "no header, no
 	// ticker, no goroutine" for --print-commands and a genuinely non-
-	// terminal stdout, returning nil in both cases — Stop is a safe no-op
+	// terminal stdout, returning nil in both cases, Stop is a safe no-op
 	// on that nil value, so this defer is unconditional.
 	header := startSetupHeader(printCommandsOnly)
 	defer header.Stop()
@@ -154,9 +154,9 @@ func runSetupInteractive(ctx context.Context, preset *setupScope, printCommandsO
 	if err != nil {
 		return err
 	}
-	// existing.path is resolveSetupConfigPath(scope, id) — the exact path a
+	// existing.path is resolveSetupConfigPath(scope, id), the exact path a
 	// fresh `init` for this scope/id would write to, computed unconditionally
-	// by loadExistingSetupNetwork above regardless of found/not-found — so
+	// by loadExistingSetupNetwork above regardless of found/not-found, so
 	// this needs no second resolution call. planSetupPairing needs it before
 	// init has necessarily run yet: the Cloudflare-token and relay-credential
 	// files it may read/prompt for live in a .moltnet/ directory alongside
@@ -265,13 +265,13 @@ func refuseSetupNonInteractive(preset *setupScope) error {
 // buildSetupRefusalInvocations computes the exact childInvocation plan the
 // non-TTY refusal names: the Enter-through-everything answers for scope,
 // derived from the very same defaults the interactive question tree itself
-// uses (setupWideBindFromIndex, setupDefaultRooms, setupServiceFromIndex —
+// uses (setupWideBindFromIndex, setupDefaultRooms, setupServiceFromIndex,
 // all setup_questions.go) rather than a second, hand-maintained copy of
-// them (P2-5: mutation-proven — flipping wideBind here to true, with the
+// them (P2-5: mutation-proven, flipping wideBind here to true, with the
 // preflight host still hardcoded to "127.0.0.1" regardless, left the suite
 // green, since nothing compared this against the interactive path's own
 // defaults, and wideBind's stored value has no effect on the printed
-// argv unless the preflight host is actually derived from it too — exactly
+// argv unless the preflight host is actually derived from it too, exactly
 // the same host-selection runSetupInteractive itself does below). It still
 // runs the real port preflight (this requires no terminal at all) so the
 // printed --listen value is accurate for right now, rather than a
@@ -324,20 +324,20 @@ func buildSetupRefusalInvocations(preset *setupScope) ([]childInvocation, error)
 // prefixedGitignoreCredentialEntries (init_checkout.go) computes
 // filepath.Rel(gitRoot, root) with gitRoot always absolutized
 // (gitCheckoutRoot's own filepath.Abs call) but root passed through exactly
-// as this wizard's own `init --dir .` invocation gives it — the literal
+// as this wizard's own `init --dir .` invocation gives it, the literal
 // string ".", still relative. filepath.Rel errors on that abs-vs-relative
 // mismatch every time, so the prefix silently stays empty. That happens to
 // be harmless when cwd already is the checkout root (an empty prefix is
 // also the *correct* answer there), but when cwd is a subdirectory of an
 // ancestor checkout, the gitignore entries setup's own init step would
 // write land unprefixed at the checkout's top-level .gitignore instead of
-// anchored at this subdirectory — not a credential leak (a bare "Moltnet"
+// anchored at this subdirectory, not a credential leak (a bare "Moltnet"
 // entry with no interior slash still matches this subdirectory's file too,
 // since such patterns match at any depth), but broader than SETUP.md's
 // "correctly-prefixed" requirement and prefixedGitignoreCredentialEntries'
 // own doc comment call for ("this rule can never accidentally ignore an
-// unrelated file elsewhere in the tree"). Refusing here — only for this one
-// affected combination — rather than shipping the degraded result.
+// unrelated file elsewhere in the tree"). Refusing here, only for this one
+// affected combination, rather than shipping the degraded result.
 var errSetupProjectNestedGitCheckout = errors.New("setup: \"in this folder\" is not yet supported from inside a subdirectory of an existing git checkout")
 
 // checkSetupProjectGitCheckoutGate implements the refusal above. It must
@@ -358,7 +358,7 @@ func checkSetupProjectGitCheckoutGate() error {
 		return nil
 	}
 	return fmt.Errorf(
-		"%q is inside the git checkout rooted at %q; `moltnet init --dir .`'s .gitignore entries cannot yet be correctly anchored to this subdirectory — run setup from %q instead, or choose \"on this machine\": %w",
+		"%q is inside the git checkout rooted at %q; `moltnet init --dir .`'s .gitignore entries cannot yet be correctly anchored to this subdirectory; run setup from %q instead, or choose \"on this machine\": %w",
 		absCwd, gitRoot, gitRoot, errSetupProjectNestedGitCheckout,
 	)
 }

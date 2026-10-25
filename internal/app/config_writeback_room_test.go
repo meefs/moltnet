@@ -62,7 +62,7 @@ func TestWriteRoomDefaultsToExplicitNoneFederation(t *testing.T) {
 	}
 
 	// The golden test: a config containing this room must still reload
-	// cleanly once a pairing is added — the failure
+	// cleanly once a pairing is added: the failure
 	// validateRoomFederationStances exists to catch is a *nil* stance, which
 	// this room must never have.
 	pairing, authToken := newFriendPairing()
@@ -75,8 +75,8 @@ func TestWriteRoomDefaultsToExplicitNoneFederation(t *testing.T) {
 }
 
 // TestWriteRoomPersistsFullShape asserts WriteRoom writes every field
-// `room create` needs — name, visibility, write_policy, members, and a
-// plaintext credential — not just {id, federation}, which is why
+// `room create` needs: name, visibility, write_policy, members, and a
+// plaintext credential, not just {id, federation}, which is why
 // upsertSharedRoom (config_writeback.go) is the wrong helper to reuse
 // (PLAN.md 7A.1).
 func TestWriteRoomPersistsFullShape(t *testing.T) {
@@ -130,7 +130,7 @@ func TestWriteRoomPersistsFullShape(t *testing.T) {
 }
 
 // TestWriteRoomRefusesDuplicateID asserts a second WriteRoom call for an
-// id already present in rooms[] fails outright — `room create` has no
+// id already present in rooms[] fails outright; `room create` has no
 // in-place-update story (config_writeback_room.go's own doc comment), so a
 // repeat is always surfaced as a mistake, never a silent overwrite.
 func TestWriteRoomRefusesDuplicateID(t *testing.T) {

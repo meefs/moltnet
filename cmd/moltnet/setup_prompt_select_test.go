@@ -138,7 +138,7 @@ func TestPromptSelectPlainReportsRowsUnmeasured(t *testing.T) {
 
 // TestSelectBlockRowsCountsWrappedOptionLines is P1-1's own test: this is
 // the wizard's actual Q1 option set (setup_questions.go's askSetupScope)
-// reproduced literally here (not imported — this file must stay correct
+// reproduced literally here (not imported, this file must stay correct
 // even if that question's wording changes later), at the reviewer's own
 // real-pty width (50 columns) where the first option's label+hint visibly
 // wraps onto a second terminal row. The "1 + numOptions" formula P1-1

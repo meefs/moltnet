@@ -33,7 +33,7 @@ func TestValidateWorkersDevSubdomainNameRejects(t *testing.T) {
 		{"underscore", "acme_friends"},
 		{"dot", "acme.friends"},
 		{"space", "acme friends"},
-		// Uppercase is no longer accepted directly by Validate — a caller
+		// Uppercase is no longer accepted directly by Validate: a caller
 		// must normalize first (see TestNormalizeWorkersDevSubdomainName
 		// below); Validate itself now enforces wrangler's lowercase-only
 		// de-facto rule.
@@ -50,8 +50,8 @@ func TestValidateWorkersDevSubdomainNameRejects(t *testing.T) {
 }
 
 // TestNormalizeWorkersDevSubdomainName pins the P2 lowercase-normalization
-// fix: a user-typed uppercase (or mixed-case) name is not rejected outright
-// — it is lowercased first, matching wrangler's own behavior, and the
+// fix: a user-typed uppercase (or mixed-case) name is not rejected outright;
+// it is lowercased first, matching wrangler's own behavior, and the
 // lowercased result is what actually gets validated and sent to
 // Client.ClaimWorkersDevSubdomain (cmd/moltnet's interactive claim prompt
 // does both, in that order).

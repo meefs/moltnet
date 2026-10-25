@@ -47,7 +47,7 @@ func writeRoomJoinClientConfig(t *testing.T, path, baseURL, networkID, memberID,
 
 // registerRoomJoinTestAgent registers agentID against the real server at
 // baseURL under open registration (roomCreateTestConfigBody sets
-// auth.agent_registration: open) and returns the minted agent token —
+// auth.agent_registration: open) and returns the minted agent token,
 // exactly the "agent-token:"-prefixed credential join.go's
 // joinActorAuthorized requires, which a plain auth.tokens[] config entry can
 // never produce (NewStaticClaims never sets that prefix).
@@ -69,7 +69,7 @@ func registerRoomJoinTestAgent(t *testing.T, baseURL, agentID string) string {
 
 // TestRoomJoinSurvivesRestart is PLAN.md's required restart-survival test:
 // create a room with a credential, restart the server (rebuilding a fresh
-// internal/app.App from the same config file — the exact failure mode an
+// internal/app.App from the same config file, the exact failure mode an
 // in-memory-only credential map produces), and confirm join still succeeds.
 // The credential's sole durable source is rooms[].credential
 // (internal/rooms/reconcile.go via app.New's startup ApplyConfigContext
@@ -100,8 +100,8 @@ func TestRoomJoinSurvivesRestart(t *testing.T) {
 	// internal/app.App from the same config file on disk, exactly like
 	// console_e2e_test.go's restartingServiceRunner does for a real
 	// launchd/systemd restart. Agent registration is a separate, in-memory
-	// concern that this test does not exercise across the restart — it
-	// happens fresh against the restarted server below — so the only thing
+	// concern that this test does not exercise across the restart, it
+	// happens fresh against the restarted server below, so the only thing
 	// this test asserts survived the restart is the room and its
 	// credential, both of which are only ever durable via rooms[] in the
 	// config file (internal/rooms/reconcile.go, applied again by app.New's
@@ -130,8 +130,8 @@ func TestRoomJoinSurvivesRestart(t *testing.T) {
 	}
 }
 
-// TestRoomJoinRefusedForPairScopedToken confirms a pair-scoped token — the
-// credential a peer network holds, never agent-restricted — cannot join a
+// TestRoomJoinRefusedForPairScopedToken confirms a pair-scoped token, the
+// credential a peer network holds, never agent-restricted, cannot join a
 // room even when handed to `room join` explicitly via --base-url, covering
 // both PLAN.md 7A.3's "refused for a pair-scoped token" requirement and the
 // advertised-scope fix from the CLI's own vantage point (internal/transport

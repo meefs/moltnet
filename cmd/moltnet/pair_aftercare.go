@@ -39,12 +39,12 @@ func pairRemoteAdminNote() string {
 
 // printPairInviteAftercare prints the aftercare `moltnet pair invite` ends
 // with: a single "pairing ready" checkmark, the (--verbose-only) status
-// detail block (printPairStatusBlock), the invite as ONE copyable command —
+// detail block (printPairStatusBlock), the invite as ONE copyable command,
 // the full `moltnet pair '<code>'` a friend can paste and run, single-quoted
-// so it is paste-safe, bolded as one unmissable paragraph — and, when this
+// so it is paste-safe, bolded as one unmissable paragraph, and, when this
 // pairing declared shared rooms, a single "next:" line naming the membership
 // command to run once the friend has paired (one line per declared room,
-// when there is more than one — see printNextStepList's doc comment for why
+// when there is more than one, see printNextStepList's doc comment for why
 // that is not a menu of alternatives).
 //
 // remoteNetworkID/remoteNetworkName in opts are unused here: `pair invite`
@@ -54,7 +54,7 @@ func pairRemoteAdminNote() string {
 // the real, filled-in command.
 //
 // The invite command prints unconditionally, on every path where the
-// pairing was actually written — restart status is gathered first
+// pairing was actually written, restart status is gathered first
 // (printPairStatusBlock never itself errors, see its doc comment) but any
 // real restart failure it carries in the returned restartOutcome is only
 // returned as this function's error at the very end, after the command and
@@ -67,7 +67,7 @@ func printPairInviteAftercare(ctx context.Context, config app.Config, path, code
 
 	days := int(protocol.DefaultInviteTTL.Hours() / 24)
 	fmt.Fprintln(stdout)
-	fmt.Fprintf(stdout, "  share this with your friend — expires in %d days\n\n", days)
+	fmt.Fprintf(stdout, "  share this with your friend; expires in %d days\n\n", days)
 	fmt.Fprintf(stdout, "    %s\n", bold(fmt.Sprintf("moltnet pair '%s'", code)))
 
 	rooms := protocol.UniqueTrimmedStrings(opts.roomIDs)
@@ -96,14 +96,14 @@ func printPairInviteAftercare(ctx context.Context, config app.Config, path, code
 // (printPairStatusBlock), and, only when the invite declared shared rooms,
 // a single "next:" line per room naming the fully filled-in
 // `moltnet admin room members add` command (the sender's agent id is still
-// a placeholder, `<their-agent-id>` — the same placeholder vocabulary
-// printPairInviteAftercare uses on the other side — since it is not carried
+// a placeholder, `<their-agent-id>`, the same placeholder vocabulary
+// printPairInviteAftercare uses on the other side, since it is not carried
 // by the invite, only their network id is).
 //
 // Like printPairInviteAftercare, any real restart failure carried in the
 // status block's returned restartOutcome is only returned as this
 // function's error at the very end, after the rest of aftercare has
-// printed — the same P0 ordering fix, applied on the joiner side too.
+// printed, the same P0 ordering fix, applied on the joiner side too.
 func printPairJoinAftercare(ctx context.Context, config app.Config, path, pairingID string, opts pairAftercareOptions) error {
 	remote := strings.TrimSpace(opts.remoteNetworkID)
 	printInitConfigCheckLine(fmt.Sprintf("paired with %s", remote), "")

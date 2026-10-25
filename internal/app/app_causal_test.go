@@ -25,7 +25,7 @@ func TestNewInstallsCausalWriter(t *testing.T) {
 	causalPath := filepath.Join(t.TempDir(), "causal.jsonl")
 
 	// NOOPOLIS_RUN_ID is read at stamp time (internal/rooms/causal.go's
-	// causalRunIDEnv) directly from the environment, never from Config —
+	// causalRunIDEnv) directly from the environment, never from Config;
 	// this mirrors how spawnfile's container wiring sets it alongside
 	// MOLTNET_CAUSAL_EVENTS_PATH (src/runtime/common.ts).
 	t.Setenv("NOOPOLIS_RUN_ID", "run-causal-precondition")

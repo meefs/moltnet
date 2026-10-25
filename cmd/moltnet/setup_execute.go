@@ -13,7 +13,7 @@ import (
 // setupHealthProbeTimeout bounds probeSetupNetworkHealth's total retry
 // window. A freshly installed service needs a moment to bind and start
 // answering, so this is generous relative to consoleHealthTimeout's single-
-// probe 1.5s (console.go) — this is polling for readiness after a step this
+// probe 1.5s (console.go); this is polling for readiness after a step this
 // same command just triggered, not just checking on a network that should
 // already be up.
 //
@@ -21,7 +21,7 @@ import (
 // fake-service-manager tests never actually bind a listener (the same
 // fakeServiceRunner service_test.go uses for `service install` tests never
 // spawns a real process), so a health probe against them is guaranteed to
-// exhaust the full window every time — shrinking both here keeps those
+// exhaust the full window every time; shrinking both here keeps those
 // tests fast without changing production behavior.
 var setupHealthProbeTimeout = 5 * time.Second
 
@@ -29,8 +29,8 @@ var setupHealthProbeTimeout = 5 * time.Second
 // above.
 var setupHealthProbeInterval = 200 * time.Millisecond
 
-// executeSetupPlan runs invocations in order through runChild, then —
-// only for scope global with a service requested — health-probes the
+// executeSetupPlan runs invocations in order through runChild, then,
+// only for scope global with a service requested; health-probes the
 // result before handing off to printSetupSummary. Config mutations
 // (the init step, and Q7's pairing steps when present) always precede the
 // service step, since setupPlanInvocations already fixed that order; this
@@ -73,7 +73,7 @@ func executeSetupPlan(ctx context.Context, answers setupAnswers, invocations []c
 }
 
 // runSetupStep runs one invocation through runChild, returning its captured
-// stdout (only ever non-empty when invocation.CaptureOutput is set — see
+// stdout (only ever non-empty when invocation.CaptureOutput is set; see
 // childInvocation's own doc comment, runner.go; the caller,
 // executeSetupPlan, is what decides whether to print a generic checkmark
 // line or treat the output specially, so this never prints anything itself
@@ -152,11 +152,11 @@ func probeSetupNetworkOnce(ctx context.Context, base, wantID string) bool {
 
 // printSetupSummary prints the wizard's closing screen: "running" only for
 // a healthy, service-managed global network; "configured" (plus the exact
-// foreground command) otherwise — project scope, a declined service, or a
-// service that did not come up healthy — matching SETUP.md's "Configured"
+// foreground command) otherwise, project scope, a declined service, or a
+// service that did not come up healthy, matching SETUP.md's "Configured"
 // vs "running"" section. It always points at the network's own
 // /install.md, and prints a second, LAN-addressed URL under a widened bind
-// (a wildcard listen address is not itself dialable — consoleBaseURL
+// (a wildcard listen address is not itself dialable; consoleBaseURL
 // already substitutes loopback for it, so a second line is the only way to
 // also hand out something reachable from another machine).
 func printSetupSummary(answers setupAnswers, configPath string, running bool) {
@@ -182,7 +182,7 @@ func printSetupSummary(answers setupAnswers, configPath string, running bool) {
 	}
 
 	fmt.Fprintln(stdout)
-	fmt.Fprintln(stdout, dim("  on-demand agents (Claude Code, Codex, ...) need no MoltnetNode; persistent/wake runtimes do — see /install.md"))
+	fmt.Fprintln(stdout, dim("  on-demand agents (Claude Code, Codex, ...) need no MoltnetNode; persistent/wake runtimes do; see /install.md"))
 
 	if running {
 		printNextStep(nextStep{command: fmt.Sprintf("moltnet console --id %s", answers.id), description: "watch it live"})
@@ -207,7 +207,7 @@ func setupForegroundCommand(answers setupAnswers) string {
 // listenAddr's port and the first non-loopback IPv4 address this machine
 // has configured, for printSetupSummary's second URL line under a widened
 // bind. ok is false when no such address can be found (offline, IPv6-only,
-// ...) — SETUP.md's two-URL requirement is best-effort by nature: there is
+// ...); SETUP.md's two-URL requirement is best-effort by nature: there is
 // no single canonical "your LAN address" on a multi-homed machine, and
 // printing nothing is safer than guessing wrong.
 func setupLANInstallURL(listenAddr string) (string, bool) {
@@ -233,7 +233,7 @@ func setupLANInstallURL(listenAddr string) (string, bool) {
 	return "", false
 }
 
-// pluralSuffix returns "" for exactly one, "s" otherwise — just enough
+// pluralSuffix returns "" for exactly one, "s" otherwise; just enough
 // pluralization for "room"/"rooms" in the summary line above.
 func pluralSuffix(count int) string {
 	if count == 1 {

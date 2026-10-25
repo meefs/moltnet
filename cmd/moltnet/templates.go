@@ -22,29 +22,29 @@ const starterRoomID = "general"
 // scalar syntax) so an operator-supplied --name containing YAML-special
 // characters (":", "#", quotes, ...) can never corrupt the document.
 // operatorToken is a freshly generated secret (the caller uses the same
-// app.GenerateRandomToken(256) --bearer does) — this function only ever
+// app.GenerateRandomToken(256) --bearer does), this function only ever
 // renders it, it never generates one itself, matching bearerMoltnetConfig's
 // own division of labor below.
 //
 // PLAN.md phase 6a: new networks bind loopback-only by default
 // (listen_addr: 127.0.0.1:8787, not the old ":8787" which binds every
 // interface) and open agent self-registration (auth.mode: open, which
-// forces auth.agent_registration: open and auth.public_read: true —
+// forces auth.agent_registration: open and auth.public_read: true,
 // internal/app/config_load.go's mergeFileConfig always re-derives
 // agent_registration from an "open" mode, so the explicit line below is
 // documentation, not load-bearing). A local agent can then self-register
 // via POST /v1/agents/register or the IDENTIFY frame and receive its own
 // scoped magt_v1_ token (observe+write+attach, that agent only) instead of ever
-// touching an operator credential — see PLAN.md's phase 6a field report.
+// touching an operator credential, see PLAN.md's phase 6a field report.
 // Widening listen_addr beyond loopback while agent_registration stays open
 // is a deliberate, warned-about operator choice (see
 // internal/app/bind_warning.go and `moltnet validate`), not something this
 // default does on its own.
 //
-// PLAN.md phase 7.0: plain `init` also mints exactly one operator token —
+// PLAN.md phase 7.0: plain `init` also mints exactly one operator token,
 // scoped [observe, write, admin], deliberately without "pair" (a
 // network-unbound pair-scoped credential collides with the pairing gates in
-// internal/rooms/federation_access.go; nothing CLI-side needs it) — so the
+// internal/rooms/federation_access.go; nothing CLI-side needs it), so the
 // network's own owner has a key to administer it. auth.mode stays "open":
 // open mode is already a supported, tested policy with tokens present
 // (internal/auth/open_test.go), and the token rides alongside it rather
@@ -53,11 +53,11 @@ const starterRoomID = "general"
 //
 // PLAN.md phase 7A.2: plain `init` also writes one starter room, "general",
 // write_policy: registered_agents (so a self-registering agent can speak
-// immediately, no membership grant needed — access_policy.go's
+// immediately, no membership grant needed, access_policy.go's
 // registeredAgentActorCanWrite), federation: none, and no credential. The
 // explicit "none" federation is not decorative: validateRoomFederationStances
 // (internal/app/config_file.go) errors on a nil stance once pairings[] is
-// non-empty, and that validation runs on every config load — including the
+// non-empty, and that validation runs on every config load, including the
 // reload writePairingWithRollback (pair.go) performs after `pair invite`,
 // which rolls the pairing back when the reload fails. A starter room
 // written without a stance would work fine right up until the operator's
@@ -76,8 +76,8 @@ const starterRoomID = "general"
 // write_policy); a self-registered agent token is agent-restricted
 // (auth.HasAgentRestriction, since NewAgentTokenClaims always scopes it to
 // exactly the one agent id that registered), so canReadRoom's
-// agent-restricted branch requires either visibility: public or membership
-// — write_policy: registered_agents grants none of that. Left at the
+// agent-restricted branch requires either visibility: public or membership,
+// write_policy: registered_agents grants none of that. Left at the
 // unset ("private") default, GET /install.md's own room listing
 // (internal/transport/discovery.go, which lists only canReadRoom-readable
 // rooms) would never mention "general" to the anonymous visitor it exists
@@ -170,7 +170,7 @@ func renderStarterRooms(roomIDs []string) string {
 // generated operator tokens out of that ambiguity altogether; F1 found that
 // minting operator tokens *with* pair locked every --bearer operator out of
 // their own network's writes and room listing) -- plus a "console" entry
-// scoped to exactly [observe] — the read-only credential
+// scoped to exactly [observe], the read-only credential
 // `moltnet console` requires before it will ever put a token in the
 // browser's URL bar (consoleObserveToken, console.go). Minting both up
 // front means the canonical `init --bearer` -> `console` flow never lands
@@ -181,14 +181,14 @@ func renderStarterRooms(roomIDs []string) string {
 // "disabled", internal/app/config_load.go's defaultConfig), exactly
 // matching pre-phase-6a `--bearer` behavior. An earlier draft of phase 6a
 // set it to "open" here too, reasoning that the operator token should never
-// have to leave the operator — but that made `--bearer` the one strictly
+// have to leave the operator, but that made `--bearer` the one strictly
 // *looser* change against HEAD in the whole phase 6a review (anonymous
 // POST /v1/agents/register went 401 -> 201-with-write-token on a network an
 // operator explicitly locked down with tokens): --bearer is the
 // token-controlled opt-in, and it stays token-controlled. Plain `init`
 // (defaultMoltnetConfig, below) is the one path with open self-registration
 // by design, and it is strictly tighter than the old `auth.mode: none`
-// default, not looser — see its own doc comment.
+// default, not looser, see its own doc comment.
 //
 // listenAddr threads `moltnet init --listen` (init_listen.go) into the
 // bearer path too -- there is no `--bearer --room` equivalent restriction

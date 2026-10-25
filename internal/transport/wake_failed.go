@@ -26,7 +26,7 @@ func registerWakeFailedRoute(mux *http.ServeMux, policy *authn.Policy, service S
 // control-delivery retry loop (internal/bridge/loop) reporting a genuinely
 // permanent or retry-budget-exhausted wake failure for an event it already
 // ACKed on its attachment socket. This is the terminal-failure counterpart
-// to a normal control reply — it never tears down the attachment, it just
+// to a normal control reply; it never tears down the attachment, it just
 // records that this wake could not be delivered so the failure is
 // ledger-visible instead of a silent skip.
 //

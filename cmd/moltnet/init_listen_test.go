@@ -71,7 +71,7 @@ func TestRunInitListenRejectsMalformedAddress(t *testing.T) {
 	}
 }
 
-// TestRunInitListenWarnsAtAuthoringTime covers PLAN.md's "Q4 — the warning
+// TestRunInitListenWarnsAtAuthoringTime covers PLAN.md's "Q4: the warning
 // is computed, never static" and its authoring-time amendment: before this,
 // a non-loopback bind was only ever flagged at server start or `moltnet
 // validate`, neither of which a scripter driving --listen non-interactively

@@ -20,7 +20,7 @@ import (
 // The prompt read happens in its own goroutine so it can be raced against
 // ctx.Done() (item 3): bufio.Reader.ReadString blocks synchronously on
 // os.Stdin with no ctx-aware variant, so there is no way to interrupt the
-// read itself — a SIGINT during the prompt instead makes this function
+// read itself; a SIGINT during the prompt instead makes this function
 // return ctx.Err() immediately, leaving the read goroutine to exit on its
 // own once stdin closes or the process does. That goroutine leak is
 // bounded: runCLI is about to exit on the same cancelled ctx either way.
@@ -41,7 +41,7 @@ func resolveInitNetworkID(ctx context.Context, idFlag string) (string, error) {
 	// rather than inside it: os.Stdin is a mutable package var, and this
 	// function is about to return (on the ctx.Done() branch below) without
 	// waiting for the goroutine to actually run, so a caller reassigning
-	// os.Stdin concurrently (only ever a test — production never does)
+	// os.Stdin concurrently (only ever a test; production never does)
 	// would otherwise be a real data race on the var itself, not just on
 	// what it points to.
 	stdin := os.Stdin

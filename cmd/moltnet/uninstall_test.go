@@ -13,8 +13,8 @@ import (
 	"github.com/noopolis/moltnet/internal/uninstall"
 )
 
-// withPromptAnswers scripts promptYesNo's answers for the test's duration —
-// one line per confirmation prompt, in order — and forces isInteractive()
+// withPromptAnswers scripts promptYesNo's answers for the test's duration,
+// one line per confirmation prompt, in order, and forces isInteractive()
 // to true so `moltnet uninstall`'s confirmation gates are actually reached
 // without a real terminal attached to stdin. Each line is wired up as its
 // own io.Reader via io.MultiReader rather than one shared multi-line
@@ -39,7 +39,7 @@ func withPromptAnswers(t *testing.T, lines ...string) {
 
 // withScratchExecutable copies content into a throwaway file in a fresh
 // temp dir, points currentExecutable at it for the test's duration, and
-// returns its path — so `moltnet uninstall` tests exercise real self-
+// returns its path, so `moltnet uninstall` tests exercise real self-
 // deletion without ever touching the actual go test binary.
 func withScratchExecutable(t *testing.T) string {
 	t.Helper()
@@ -64,7 +64,7 @@ func TestRunUninstallCommandYesRemovesServicesAndBinary(t *testing.T) {
 	binaryPath := withScratchExecutable(t)
 
 	// "acme" has an installed service; "beta" only a network directory
-	// (service never installed) — uninstall must catch both, but P1 means
+	// (service never installed), uninstall must catch both, but P1 means
 	// only "acme" gets a truthful ✓; see
 	// TestRunUninstallCommandNoServiceNetworkGetsNoFalseCheck for the
 	// dedicated no-service-at-all regression.
@@ -101,7 +101,7 @@ func TestRunUninstallCommandYesRemovesServicesAndBinary(t *testing.T) {
 		}
 	}
 	// P1: "beta" never had a service installed, so it must get neither a
-	// plan bullet nor a completion ✓ — manager.Uninstall is a truthful
+	// plan bullet nor a completion ✓, manager.Uninstall is a truthful
 	// no-op for it, and the output must agree.
 	for _, notWant := range []string{
 		`stop and remove the service for network "beta"`,
@@ -132,7 +132,7 @@ func TestRunUninstallCommandYesRemovesServicesAndBinary(t *testing.T) {
 // regression test for the common `moltnet init` (without `service install`)
 // path: a network with only a ~/.moltnet/<id>/ directory and no installed
 // unit/plist must get neither a "stop and remove the service" plan bullet
-// nor a "stopped and removed" ✓ line — both would be untruthful, since
+// nor a "stopped and removed" ✓ line, both would be untruthful, since
 // manager.Uninstall is a no-op for it. The plan must instead fall back to
 // the same "no installed services found" note the fully-empty case prints,
 // because zero of the networks it lists have an actual service to stop.
@@ -143,7 +143,7 @@ func TestRunUninstallCommandNoServiceNetworkGetsNoFalseCheck(t *testing.T) {
 	t.Setenv("PATH", "")
 	binaryPath := withScratchExecutable(t)
 
-	// "beta" has a network directory but its service was never installed —
+	// "beta" has a network directory but its service was never installed,
 	// e.g. `moltnet init` ran without a follow-up `moltnet service install`.
 	betaDir := filepath.Join(home, ".moltnet", "beta")
 	if err := os.MkdirAll(betaDir, 0o700); err != nil {
@@ -336,8 +336,8 @@ func TestRunUninstallCommandRejectsPositionalArgs(t *testing.T) {
 }
 
 // uninstallSummaryInvariantCase renders the full `moltnet uninstall
-// --purge` aftercare sequence — plan, service checkmark, purge warning
-// block, purge result, and binary checkmark — against fixed fake data via
+// --purge` aftercare sequence, plan, service checkmark, purge warning
+// block, purge result, and binary checkmark, against fixed fake data via
 // the same pure print/build helpers production code calls, so the case is
 // identical on every invocation regardless of isOutputTerminal. It mirrors
 // style_test.go's alignmentInvariantCase, adapted to the uninstall summary
@@ -363,7 +363,7 @@ func uninstallSummaryInvariantCase(t *testing.T) string {
 // isOutputTerminal seam to true (NO_COLOR unset, TERM color-capable),
 // captures the uninstall summary's styled output, strips every ANSI escape
 // code, and asserts the result is byte-identical to the same calls' plain
-// (non-TTY) output — i.e. the new Plan:/✓/warning: structure adds only
+// (non-TTY) output, i.e. the new Plan:/✓/warning: structure adds only
 // color on a terminal, never a text-content change.
 func TestUninstallSummaryIsPlainWidthInvariant(t *testing.T) {
 	previousNoColor, hadNoColor := os.LookupEnv("NO_COLOR")

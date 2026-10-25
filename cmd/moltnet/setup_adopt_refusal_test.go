@@ -13,7 +13,7 @@ import (
 // TestSetupNonInteractiveRefusalMatchesInteractiveEnterThrough is P2-5's
 // mutation-proven gap closed: refuseSetupNonInteractive's plan must match
 // exactly what pressing Enter through every real question produces, for
-// both scopes — not a hand-maintained parallel copy of their defaults that
+// both scopes; not a hand-maintained parallel copy of their defaults that
 // can silently drift (flipping the refusal's wideBind to true previously
 // left the whole suite green).
 func TestSetupNonInteractiveRefusalMatchesInteractiveEnterThrough(t *testing.T) {
@@ -41,9 +41,9 @@ func TestSetupNonInteractiveRefusalMatchesInteractiveEnterThrough(t *testing.T) 
 				}
 			})
 
-			// TODO(setup-p2): this preflights the listen port twice — once
+			// TODO(setup-p2): this preflights the listen port twice, once
 			// inside the interactive run above, once here via
-			// buildSetupRefusalInvocations — so anything else grabbing the
+			// buildSetupRefusalInvocations, so anything else grabbing the
 			// default port between the two calls makes the rendered
 			// --listen value diverge and this comparison flake. Low
 			// probability, no action.
@@ -59,7 +59,7 @@ func TestSetupNonInteractiveRefusalMatchesInteractiveEnterThrough(t *testing.T) 
 			// one-directional Contains check or an order-free multiset
 			// comparison: parsing the exact "commands (not run):" block
 			// catches a wanted invocation being dropped, a bogus extra line
-			// being added, and the two paths disagreeing on order — a bare
+			// being added, and the two paths disagreeing on order; a bare
 			// strings.Contains per wanted line could miss the first two (an
 			// interactive line that gained trailing arguments still
 			// Contains-matches its own prefix, and a spurious extra
@@ -70,7 +70,7 @@ func TestSetupNonInteractiveRefusalMatchesInteractiveEnterThrough(t *testing.T) 
 			// same setupPlanInvocations, so the two paths can never
 			// legitimately order their steps differently, and the printed
 			// block is a copy-paste script whose order matters (`init` before
-			// `service install`) — reversing printSetupCommands' own loop
+			// `service install`); reversing printSetupCommands' own loop
 			// order must fail this test, not just an order-free one.
 			wantLines := make([]string, len(wantInvocations))
 			for i, invocation := range wantInvocations {
@@ -86,7 +86,7 @@ func TestSetupNonInteractiveRefusalMatchesInteractiveEnterThrough(t *testing.T) 
 
 // parseSetupPrintedCommandLines extracts each rendered "moltnet ..." command
 // line (Env placeholders included) from printSetupCommands' own
-// "commands (not run):" block in output, in the order they were printed —
+// "commands (not run):" block in output, in the order they were printed,
 // the parsed counterpart to renderChildInvocation, for exact sequence
 // comparisons against a wanted []childInvocation rather than a substring
 // search over the raw output.

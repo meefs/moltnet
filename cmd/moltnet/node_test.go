@@ -10,7 +10,7 @@ import (
 
 // TestRunNodeFlagsAfterPositionalErrClearly covers item 5: the flag package
 // stops parsing at the first non-flag argument, so `moltnet node start
-// <path> --id x` never reaches --id as a flag at all — it lands as three
+// <path> --id x` never reaches --id as a flag at all, it lands as three
 // unparsed positional args (path, --id, x), *id stays at its zero value,
 // and the pre-existing "flags.NArg() > 1" guard used to reject it with the
 // same bare os.ErrInvalid a genuinely bogus arg list gets, giving no hint
@@ -35,7 +35,7 @@ func TestRunNodeFlagsAfterPositionalErrClearly(t *testing.T) {
 
 // TestRunNodeTooManyPlainArgsKeepsGenericError is the companion case: extra
 // positional args that don't look like a flag at all (no leading "-") still
-// get the original, generic os.ErrInvalid — there's no specific "put this
+// get the original, generic os.ErrInvalid, there's no specific "put this
 // first" advice to give when nothing after the path looks like a flag.
 func TestRunNodeTooManyPlainArgsKeepsGenericError(t *testing.T) {
 	err := runNode(context.Background(), []string{"/some/path", "extra"})
@@ -46,6 +46,6 @@ func TestRunNodeTooManyPlainArgsKeepsGenericError(t *testing.T) {
 
 // The already-documented, already-working order (buildNodeUsage: "moltnet
 // node start [--id <network-id>] [path]") is covered by
-// TestRunNodeResolvesNetworkByID (start_node_id_test.go) — this fix only
+// TestRunNodeResolvesNetworkByID (start_node_id_test.go), this fix only
 // adds a clearer error for the reversed order and must not regress that
 // one, which the existing test already pins.

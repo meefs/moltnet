@@ -13,7 +13,7 @@ import (
 // tag (Client.ScriptMigrationTag). Cloudflare's Script Upload API applies
 // the upload metadata's "migrations" key as a one-shot replay: its old_tag
 // (defaulting to "" when the key is omitted, exactly how
-// embeddedMetadataJSON — relay.WorkerMetadataJSON — is authored) must match
+// embeddedMetadataJSON, relay.WorkerMetadataJSON, is authored) must match
 // the script's actual current migration tag, or the upload is rejected
 // with error 10079 ("Actor migration tag precondition failed"). That is the
 // field-observed 412 this function exists to avoid: every deploy used to
@@ -24,11 +24,11 @@ import (
 //
 //   - No script named scriptName exists yet, or it exists with an
 //     empty/unset migration tag: embeddedMetadataJSON is returned
-//     unchanged — the fresh-create path, where Cloudflare applies the
+//     unchanged: the fresh-create path, where Cloudflare applies the
 //     embedded migration exactly as authored.
 //   - The script's current tag already equals the embedded migration's
 //     new_tag: that migration was already applied by an earlier deploy, so
-//     the "migrations" key is stripped out entirely — Cloudflare's Script
+//     the "migrations" key is stripped out entirely; Cloudflare's Script
 //     Upload API accepts an upload with no migrations key at all, leaving
 //     the script's Durable Object bindings untouched.
 //   - The script's current tag is anything else non-empty: moltnet relay
@@ -37,7 +37,7 @@ import (
 //     both tags, rather than guessing (unlike wrangler's own equivalent
 //     check, which sends old_tag as the script's actual unrecognized tag
 //     plus every configured migration step as-is, not a from-scratch
-//     replay — not a safe default here, since moltnet relay has no
+//     replay, not a safe default here, since moltnet relay has no
 //     multi-step migration history to fall back to).
 func prepareUploadMetadata(ctx context.Context, client *Client, accountID, scriptName string, embeddedMetadataJSON []byte) ([]byte, error) {
 	embeddedTag, err := embeddedMigrationNewTag(embeddedMetadataJSON)
@@ -82,7 +82,7 @@ func embeddedMigrationNewTag(metadataJSON []byte) (string, error) {
 // stripMigrationsKey returns metadataJSON with its top-level "migrations"
 // key removed, preserving every other key. Used when the target script's
 // migration tag already matches the embedded migration: the redeploy must
-// carry no migrations key at all, not merely an empty one — an empty
+// carry no migrations key at all, not merely an empty one: an empty
 // {"migrations":{}} object is not a valid Cloudflare migration step.
 func stripMigrationsKey(metadataJSON []byte) ([]byte, error) {
 	var parsed map[string]json.RawMessage

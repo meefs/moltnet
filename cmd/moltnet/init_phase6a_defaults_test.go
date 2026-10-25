@@ -9,7 +9,7 @@ import (
 )
 
 // TestRunInitWritesPhase6aDefaults covers PLAN.md phase 6a, item 1: a fresh
-// network — with or without --bearer — is written loopback-only and open to
+// network, with or without --bearer, is written loopback-only and open to
 // self-registration, never the old wildcard bind with no registration path.
 func TestRunInitWritesPhase6aDefaults(t *testing.T) {
 	t.Run("without --bearer", func(t *testing.T) {
@@ -41,7 +41,7 @@ func TestRunInitWritesPhase6aDefaults(t *testing.T) {
 	})
 
 	// PLAN.md phase 6a review, P2-1: --bearer must keep agent registration
-	// exactly as it was at HEAD (disabled) — an earlier draft of phase 6a
+	// exactly as it was at HEAD (disabled), an earlier draft of phase 6a
 	// set agent_registration: open here too, which made --bearer the one
 	// strictly *looser* change in the whole review (anonymous
 	// POST /v1/agents/register went 401 -> 201-with-write-token on a
@@ -77,7 +77,7 @@ func TestRunInitWritesPhase6aDefaults(t *testing.T) {
 
 // TestRunInitNeverRewritesExistingConfig covers PLAN.md phase 6a's explicit
 // non-goal: an existing config predating this change (wildcard bind, no
-// auth section at all — the pre-phase-6a `moltnet init` shape) must be
+// auth section at all, the pre-phase-6a `moltnet init` shape) must be
 // byte-for-byte untouched by a later `moltnet init` rerun against the same
 // directory, never migrated onto the new defaults.
 func TestRunInitNeverRewritesExistingConfig(t *testing.T) {

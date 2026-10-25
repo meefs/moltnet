@@ -12,12 +12,12 @@ import (
 // workersDevSubdomainClaimPrompt is the interactive prompt shown when a
 // deploy hits relaydeploy.ErrWorkersDevSubdomainUnclaimed on a real
 // terminal (attemptInteractiveWorkersDevSubdomainClaim below). A normal
-// echoed prompt, not promptHidden — the subdomain name is not a secret.
+// echoed prompt, not promptHidden; the subdomain name is not a secret.
 // Byte-matched by tests and docs.
 const workersDevSubdomainClaimPrompt = `  choose a workers.dev subdomain (yours forever, e.g. "apresmoi"): `
 
 // maxWorkersDevSubdomainClaimAttempts bounds the interactive claim prompt:
-// a rejected name (locally invalid, or a PUT Cloudflare itself refused —
+// a rejected name (locally invalid, or a PUT Cloudflare itself refused,
 // e.g. already claimed by another account) gets one retry before this gives
 // up and lets the caller fall back to the dashboard guidance, rather than
 // looping forever on typos.
@@ -30,11 +30,11 @@ const maxWorkersDevSubdomainClaimAttempts = 2
 // two codes from the client's side).
 const (
 	// cloudflareErrorSubdomainNameTaken (10031) means the name itself is
-	// already claimed, by this account or another — retryable with a
+	// already claimed, by this account or another; retryable with a
 	// different name.
 	cloudflareErrorSubdomainNameTaken = 10031
 	// cloudflareErrorAccountAlreadyHasSubdomain (10036, HTTP 409) means
-	// this account has already claimed *a* workers.dev subdomain —
+	// this account has already claimed *a* workers.dev subdomain,
 	// Cloudflare allows exactly one per account, ever. Not a failure: the
 	// caller re-reads the existing claim and continues as already claimed.
 	cloudflareErrorAccountAlreadyHasSubdomain = 10036
@@ -68,7 +68,7 @@ func cloudflareAPIErrorHasCode(err error, code int) bool {
 // (relaydeploy.NormalizeWorkersDevSubdomainName /
 // relaydeploy.ValidateWorkersDevSubdomainName), and claims it via
 // client.ClaimWorkersDevSubdomain (PUT
-// /accounts/{account_id}/workers/subdomain) against accountID — already
+// /accounts/{account_id}/workers/subdomain) against accountID; already
 // resolved by the Deploy call that hit ErrWorkersDevSubdomainUnclaimed
 // (relaydeploy.Result.AccountID), so this never re-resolves it itself. It
 // returns the name that ended up claimed and whether the claim succeeded.
@@ -82,16 +82,16 @@ func cloudflareAPIErrorHasCode(err error, code int) bool {
 // (see the cloudflareError* constants above): code 10031 ("name already
 // taken") prints a specific message and lets the operator try a different
 // name; code 10036 ("account already has a subdomain") is not treated as a
-// rejection at all — the existing claim is re-read via
+// rejection at all; the existing claim is re-read via
 // client.WorkersDevSubdomain and returned as already claimed, without
 // spending one of the two attempts. When that follow-up GET itself still
 // reports the account as unclaimed (Cloudflare's own read-after-write lag
-// on the claim it just told us about via 10036), retrying is futile — every
-// further attempt will just be rejected with the same 10036 — so this prints
+// on the claim it just told us about via 10036), retrying is futile, every
+// further attempt will just be rejected with the same 10036, so this prints
 // the propagation-lag message once and returns immediately with
 // propagationPending=true, rather than burning the remaining attempts on a
-// name that was never the problem. Any other rejection — a locally-caught
-// invalid shape, or any other Cloudflare error — prints the reason
+// name that was never the problem. Any other rejection, a locally-caught
+// invalid shape, or any other Cloudflare error, prints the reason
 // verbatim and allows one retry. Exhausting the attempts, or declining by
 // closing input (EOF/Ctrl-D, which skips straight to the fallback instead
 // of spending both attempts on the same empty-name validation error),
@@ -102,7 +102,7 @@ func cloudflareAPIErrorHasCode(err error, code int) bool {
 // claimed=false: it tells the caller (runRelayDeploy) that this function
 // already printed the accurate, specific reason claiming failed, so the
 // caller must not additionally print its own generic "has not claimed a
-// workers.dev subdomain yet" guidance — that would contradict the message
+// workers.dev subdomain yet" guidance; that would contradict the message
 // already shown, which says the opposite (the account does have one;
 // Cloudflare just has not reported it back yet).
 func attemptInteractiveWorkersDevSubdomainClaim(ctx context.Context, client *relaydeploy.Client, accountID string, sections *sectionPrinter) (name string, claimed bool, propagationPending bool) {
@@ -110,8 +110,8 @@ func attemptInteractiveWorkersDevSubdomainClaim(ctx context.Context, client *rel
 	// against the real Cloudflare API; discard anything typed during that
 	// window before reading the answer, so mid-deploy typeahead (most
 	// commonly a stray Enter) never silently burns the first claim attempt
-	// (the same P0 mid-deploy-typeahead guard maybeSaveCloudflareToken uses
-	// — relay_deploy_token.go).
+	// (the same P0 mid-deploy-typeahead guard maybeSaveCloudflareToken uses,
+	// relay_deploy_token.go).
 	flushPendingTerminalInput()
 
 	for attempt := 1; attempt <= maxWorkersDevSubdomainClaimAttempts; attempt++ {
@@ -126,7 +126,7 @@ func attemptInteractiveWorkersDevSubdomainClaim(ctx context.Context, client *rel
 				return "", false, false
 			}
 			// P2-2: yellow() must wrap only the "warning:" tag, not the whole
-			// line — the indent stays outside the color span, matching the
+			// line; the indent stays outside the color span, matching the
 			// note:/warning: convention every other styled line in this
 			// package uses.
 			fmt.Fprintf(stdout, "  %s %v\n", yellow("warning:"), err)
@@ -155,7 +155,7 @@ func attemptInteractiveWorkersDevSubdomainClaim(ctx context.Context, client *rel
 				printInitConfigCheckLine(fmt.Sprintf("this account already has a workers.dev subdomain %q; continuing", existing), "")
 				return existing, true, false
 			}
-			// The follow-up GET still reports the account as unclaimed —
+			// The follow-up GET still reports the account as unclaimed,
 			// Cloudflare's own read-after-write lag on the very claim it just
 			// told us about via 10036. Retrying is futile: every further
 			// attempt in this loop will just be rejected with the same 10036
@@ -165,7 +165,7 @@ func attemptInteractiveWorkersDevSubdomainClaim(ctx context.Context, client *rel
 			// reason instead of its generic (and, here, self-contradictory)
 			// "has not claimed one yet" guidance.
 			sections.start()
-			fmt.Fprintf(stdout, "  %s account already has a subdomain; Cloudflare can take a moment to report it — rerun in a minute\n", yellow("note:"))
+			fmt.Fprintf(stdout, "  %s account already has a subdomain; Cloudflare can take a moment to report it; rerun in a minute\n", yellow("note:"))
 			return "", false, true
 		}
 		if cloudflareAPIErrorHasCode(claimErr, cloudflareErrorSubdomainNameTaken) {

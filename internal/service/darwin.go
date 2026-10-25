@@ -8,7 +8,7 @@ import (
 )
 
 // launchdDomain returns the "gui/<uid>" launchctl domain target for the
-// current user — the modern (`bootstrap`/`bootout`/`kickstart`) launchctl
+// current user; the modern (`bootstrap`/`bootout`/`kickstart`) launchctl
 // subcommands operate on a domain + label/plist target rather than a bare
 // label, unlike the deprecated `load`/`unload`/`start`/`stop`.
 func launchdDomain() string {
@@ -70,7 +70,7 @@ func (m *Manager) startDarwin(ctx context.Context, networkID string) error {
 		return err
 	}
 	// bootstrap is idempotent in effect here: if it's already loaded this
-	// fails with "service already loaded", which is fine — kickstart below
+	// fails with "service already loaded", which is fine; kickstart below
 	// is what actually (re)starts the process either way.
 	_, _ = m.runner.Run(ctx, "launchctl", "bootstrap", launchdDomain(), path)
 	if _, err := m.runner.Run(ctx, "launchctl", "kickstart", launchdServiceTarget(networkID)); err != nil {

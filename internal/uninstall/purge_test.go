@@ -51,8 +51,8 @@ func TestPurgeHomeDirEmptyRootErrors(t *testing.T) {
 
 // TestPurgeHomeDirSymlinkRemovesOnlyTheLink is the P2-2 regression test: a
 // ~/.moltnet that is actually a symlink to real data elsewhere must have
-// only the link removed, with the resolved target reported back untouched
-// — never RemoveAll'd, and never silently claimed as "the data was
+// only the link removed, with the resolved target reported back untouched;
+// never RemoveAll'd, and never silently claimed as "the data was
 // removed" when only the link was.
 func TestPurgeHomeDirSymlinkRemovesOnlyTheLink(t *testing.T) {
 	if runtime.GOOS == "windows" {
@@ -183,8 +183,8 @@ func TestPurgeHomeDirRefusesAncestorOfHome(t *testing.T) {
 }
 
 // TestPurgeHomeDirPurgesLegitOverride is the guard's negative case: a
-// MOLTNET_HOME override that lives entirely outside $HOME — the normal
-// shape of a legitimate override — must still purge exactly as before.
+// MOLTNET_HOME override that lives entirely outside $HOME, the normal
+// shape of a legitimate override, must still purge exactly as before.
 func TestPurgeHomeDirPurgesLegitOverride(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 

@@ -16,7 +16,7 @@ import (
 // The full claim-then-redeploy end-to-end flows (a deploy actually hitting
 // relaydeploy.ErrWorkersDevSubdomainUnclaimed and completing a second,
 // successful Deploy call afterward) live in
-// relay_deploy_subdomain_claim_redeploy_test.go instead — kept in a
+// relay_deploy_subdomain_claim_redeploy_test.go instead, kept in a
 // separate file so this one stays under the repo's 400-line split
 // threshold.
 //
@@ -60,7 +60,7 @@ func TestRunRelayDeployInteractiveSubdomainClaimInvalidNameThenRetrySucceeds(t *
 
 // TestRunRelayDeployInteractiveSubdomainClaimTakenNameRetries covers a name
 // the fake Cloudflare server itself rejects (standing in for "already
-// taken by another account" — Cloudflare documents no specific code for
+// taken by another account", Cloudflare documents no specific code for
 // that): the first attempt is refused with the API's own message, the
 // second (accepted) name succeeds.
 func TestRunRelayDeployInteractiveSubdomainClaimTakenNameRetries(t *testing.T) {
@@ -94,7 +94,7 @@ func TestRunRelayDeployInteractiveSubdomainClaimTakenNameRetries(t *testing.T) {
 // covers both attempts being rejected: run() still returns
 // relaydeploy.ErrWorkersDevSubdomainUnclaimed (the original error, not a
 // distinct claim-failure error), and the standard dashboard guidance is
-// printed as the final fallback — no unbounded retry loop.
+// printed as the final fallback, no unbounded retry loop.
 func TestRunRelayDeployInteractiveSubdomainClaimExhaustsAttemptsFallsBackToGuidance(t *testing.T) {
 	t.Setenv("CLOUDFLARE_API_TOKEN", "env-cf-token")
 	directory := t.TempDir()
@@ -122,7 +122,7 @@ func TestRunRelayDeployInteractiveSubdomainClaimExhaustsAttemptsFallsBackToGuida
 
 // TestRunRelayDeployNonInteractiveWorkersDevSubdomainUnclaimedNeverPrompts
 // covers the non-interactive path unchanged by this fix: no TTY means no
-// claim prompt at all, just the (now claim-mentioning) dashboard guidance —
+// claim prompt at all, just the (now claim-mentioning) dashboard guidance,
 // matching how the pre-existing CLOUDFLARE_API_TOKEN guidance path behaves
 // non-interactively.
 func TestRunRelayDeployNonInteractiveWorkersDevSubdomainUnclaimedNeverPrompts(t *testing.T) {
@@ -166,7 +166,7 @@ func TestBuildWorkersDevSubdomainGuidanceMentionsInteractiveClaim(t *testing.T) 
 }
 
 // TestMaxWorkersDevSubdomainClaimAttemptsIsTwo pins the exact retry budget:
-// the whole point of the bound (see its doc comment — one retry, not an
+// the whole point of the bound (see its doc comment, one retry, not an
 // unbounded loop on typos) depends on this specific value. A mutation that
 // silently widened it (e.g. to 50) would make
 // TestRunRelayDeployInteractiveSubdomainClaimExhaustsAttemptsFallsBackToGuidance
@@ -181,7 +181,7 @@ func TestMaxWorkersDevSubdomainClaimAttemptsIsTwo(t *testing.T) {
 // TestRunRelayDeployInteractiveSubdomainClaimEOFDeclinesToGuidance covers
 // the P3 EOF/Ctrl-D fix: closing input at the claim prompt (no answer at
 // all) must decline straight to the dashboard guidance, spending only the
-// one attempt it actually made — not silently treat the closed input as an
+// one attempt it actually made, not silently treat the closed input as an
 // empty name and print "must not be empty" on both of the two attempts
 // before falling back.
 func TestRunRelayDeployInteractiveSubdomainClaimEOFDeclinesToGuidance(t *testing.T) {
@@ -215,11 +215,11 @@ func TestRunRelayDeployInteractiveSubdomainClaimEOFDeclinesToGuidance(t *testing
 // TestAttemptInteractiveWorkersDevSubdomainClaimAccountAlreadyHasSubdomainContinues
 // covers the P2 real-error-codes fix's 10036 branch directly (calling
 // attemptInteractiveWorkersDevSubdomainClaim rather than driving it through
-// a full run(), since the scenario — the account genuinely already has a
-// claimed subdomain by the time the PUT runs — is a race Deploy's own
+// a full run(), since the scenario, the account genuinely already has a
+// claimed subdomain by the time the PUT runs, is a race Deploy's own
 // earlier ErrWorkersDevSubdomainUnclaimed detection cannot itself model
 // without contradicting its own fake's state): a PUT rejected with 10036
-// must not be treated as a failure to retry — it must re-read the existing
+// must not be treated as a failure to retry, it must re-read the existing
 // claim via GET and report it as claimed.
 func TestAttemptInteractiveWorkersDevSubdomainClaimAccountAlreadyHasSubdomainContinues(t *testing.T) {
 	fake := startFakeCloudflareCLIServerAccountAlreadyHasSubdomain(t, "", "already-claimed-name")
@@ -245,8 +245,8 @@ func TestAttemptInteractiveWorkersDevSubdomainClaimAccountAlreadyHasSubdomainCon
 // TestAttemptInteractiveWorkersDevSubdomainClaimPropagationLagStopsRetrying
 // covers the P3 copy fix: a PUT rejected with 10036 ("account already has a
 // subdomain") whose follow-up GET recheck still reports the account
-// unclaimed — Cloudflare's own read-after-write lag on the very claim it
-// just told us about — must not retry (every further attempt would just hit
+// unclaimed, Cloudflare's own read-after-write lag on the very claim it
+// just told us about, must not retry (every further attempt would just hit
 // the same 10036 again), and must report propagationPending=true so the
 // caller knows not to print its own generic, and here self-contradictory,
 // "has not claimed one yet" guidance on top of the specific reason this
@@ -273,7 +273,7 @@ func TestAttemptInteractiveWorkersDevSubdomainClaimPropagationLagStopsRetrying(t
 	if got := strings.Count(output, workersDevSubdomainClaimPrompt); got != 1 {
 		t.Fatalf("expected exactly one claim prompt attempt before stopping on propagation lag (no futile retry), got %d in %q", got, output)
 	}
-	if !strings.Contains(output, "account already has a subdomain; Cloudflare can take a moment to report it — rerun in a minute") {
+	if !strings.Contains(output, "account already has a subdomain; Cloudflare can take a moment to report it; rerun in a minute") {
 		t.Fatalf("expected the propagation-lag message, got %q", output)
 	}
 }

@@ -112,7 +112,7 @@ func (s *Service) pairCredentialMatchesOrigin(ctx context.Context, claims authn.
 }
 
 // bindOrMatchPairNetwork compares originNetworkID against this credential's
-// learned binding, establishing it if there is none — as ONE atomic step
+// learned binding, establishing it if there is none, as ONE atomic step
 // under a single exclusive lock.
 //
 // Splitting this into a read followed by a later write loses the guarantee

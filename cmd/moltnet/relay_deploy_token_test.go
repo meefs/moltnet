@@ -10,7 +10,7 @@ import (
 // These tests cover the per-network stored Cloudflare API token's pure
 // resolution/save-decision logic, tested directly against
 // resolveCloudflareAPIToken, maybeSaveCloudflareToken, and
-// promptYesNoDefaultYes — no real deploy involved. Full end-to-end deploys
+// promptYesNoDefaultYes, no real deploy involved. Full end-to-end deploys
 // (through a fakeCloudflareCLIServer, relay_deploy_cloudflare_test.go) and
 // --forget-token live in relay_deploy_token_e2e_test.go, split out to keep
 // both files under the repo's 400-line-per-file rule.
@@ -133,7 +133,7 @@ func TestMaybeSaveCloudflareTokenSkipsOfferWhenAlreadyStored(t *testing.T) {
 
 	// storedTokenOK=true means something is already stored; the offer-once
 	// prompt must not re-ask (and promptReader is left untouched, so a
-	// prompt attempt here would hang reading EOF from os.Stdin — proof it
+	// prompt attempt here would hang reading EOF from os.Stdin, proof it
 	// was skipped, not just declined).
 	output := captureStdout(t, func() {
 		if err := maybeSaveCloudflareToken(&sectionPrinter{}, tokenPath, "cf-token", false, true); err != nil {
@@ -149,7 +149,7 @@ func TestMaybeSaveCloudflareTokenSkipsOfferWhenAlreadyStored(t *testing.T) {
 // bare Enter (a real newline, no other input) at promptYesNoDefaultYes must
 // count as yes. Before this test existed, a default-NO mutation of this
 // function's answer logic would have passed every other test in this
-// package — this is the one that actually catches it.
+// package, this is the one that actually catches it.
 func TestPromptYesNoDefaultYesBareEnterSaves(t *testing.T) {
 	withPromptAnswers(t, "")
 
@@ -194,9 +194,9 @@ func TestPromptYesNoDefaultYesEOFDoesNotSave(t *testing.T) {
 
 // TestPromptYesNoDefaultYesWhitelistParsing pins the P0 consent-parser fix:
 // promptYesNoDefaultYes must save on ONLY "", "y", or "yes" (case
-// insensitive, surrounding whitespace trimmed) and treat everything else —
+// insensitive, surrounding whitespace trimmed) and treat everything else,
 // including a typo like "nope" that starts with "n", plain garbage, and an
-// escape sequence — as no. The previous `answer != "n" && answer != "no"`
+// escape sequence, as no. The previous `answer != "n" && answer != "no"`
 // shape was a blocklist, not a whitelist: every one of the "no" cases below
 // except the exact strings "n"/"no" would have wrongly saved under it.
 func TestPromptYesNoDefaultYesWhitelistParsing(t *testing.T) {

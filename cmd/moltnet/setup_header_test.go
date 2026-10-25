@@ -47,7 +47,7 @@ func TestNextPingPongIndexDegenerateSingleFrame(t *testing.T) {
 
 // TestSetupHeaderFramesParseCleanly pins the embedded
 // assets/banner-frames-loop.txt against the same parser/validator
-// banner_frames_test.go pins banner-frames.txt against — a regression guard
+// banner_frames_test.go pins banner-frames.txt against, a regression guard
 // on the asset itself, independent of any terminal.
 func TestSetupHeaderFramesParseCleanly(t *testing.T) {
 	if setupHeaderFramesErr != nil {
@@ -95,7 +95,7 @@ func TestStartSetupHeaderPrintCommandsStartsNothing(t *testing.T) {
 // common case every other setup test already runs under: a piped stdout
 // (captureStdout's os.Pipe, never a real terminal) with isOutputTerminal
 // left at its real, unmocked implementation. startSetupHeader must produce
-// no output and no header at all — the exact behavior every pre-existing
+// no output and no header at all, the exact behavior every pre-existing
 // setup test already implicitly depends on continuing to hold.
 func TestStartSetupHeaderNonTerminalStartsNothing(t *testing.T) {
 	output := captureStdout(t, func() {
@@ -113,7 +113,7 @@ func TestStartSetupHeaderNonTerminalStartsNothing(t *testing.T) {
 // true but leaves stdout an ordinary pipe: stdoutIsRealTTY() stays false
 // (fdFile is satisfied, but isatty itself correctly says no), so
 // setupHeaderEligible() is false and startSetupHeader must fall back to the
-// same static dim(bannerText) output printBanner's own gate produces —
+// same static dim(bannerText) output printBanner's own gate produces,
 // never a live header, never a ticker.
 func TestStartSetupHeaderDegradesToStaticOutsideRealTTY(t *testing.T) {
 	previous := isOutputTerminal
@@ -142,7 +142,7 @@ func TestStartSetupHeaderDegradesToStaticOutsideRealTTY(t *testing.T) {
 
 // TestSetupPromptSelectAndLineCtxAreNoOpWrappersWithoutAHeader proves
 // setupPromptSelect/setupPromptLineCtx behave identically to calling
-// promptSelect/promptLineCtx directly whenever activeSetupHeader is nil —
+// promptSelect/promptLineCtx directly whenever activeSetupHeader is nil,
 // the state every non-PTY test in this package (and --print-commands, and
 // the non-interactive refusal) runs under.
 func TestSetupPromptSelectAndLineCtxAreNoOpWrappersWithoutAHeader(t *testing.T) {
@@ -173,7 +173,7 @@ func TestSetupPromptSelectAndLineCtxAreNoOpWrappersWithoutAHeader(t *testing.T) 
 }
 
 // TestSetupHeaderMethodsNilSafe pins every exported *setupHeader method as a
-// safe no-op on a nil receiver — the degraded/print-commands/non-terminal
+// safe no-op on a nil receiver, the degraded/print-commands/non-terminal
 // contract every call site in setup.go/setup_questions.go relies on without
 // its own nil check.
 func TestSetupHeaderMethodsNilSafe(t *testing.T) {
@@ -196,7 +196,7 @@ func TestFdFileAcceptsBareOSFile(t *testing.T) {
 // TestAdvanceRowsWrappedLineAdvancesByTrueRowCount is P2-1's own test: a
 // single 100-character line (no newline at all) at column 0 on a 45-column
 // terminal must consume 2 additional rows before wrapping a third time
-// would be needed (row 1: cols 1-45, row 2: cols 46-90, row 3: cols 91-100 —
+// would be needed (row 1: cols 1-45, row 2: cols 46-90, row 3: cols 91-100,
 // two row *transitions*, ending mid-row-3 at column 10), not the 0 the old
 // newline-only model (bytes.Count of '\n') would have reported for a line
 // with no '\n' in it at all. Mirrors the reviewer's own real-pty

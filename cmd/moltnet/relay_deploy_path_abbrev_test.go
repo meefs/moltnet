@@ -11,15 +11,15 @@ import (
 )
 
 // These tests cover the P2-3 fix: two operator-facing messages that used to
-// leak a raw absolute path amid otherwise ~-abbreviated output — the
+// leak a raw absolute path amid otherwise ~-abbreviated output, the
 // corrupt-stored-token warning (relay_deploy.go, wrapping
 // relaydeploy.LoadCloudflareToken's own decode error) and the
 // rejected-stored-token error (relay_deploy.go, wrapping
 // internal/relaydeploy's wrapStoredTokenError). Both are fixed at the
 // presentation layer (abbreviatePathInMessage / abbreviatePathError,
-// relay_deploy.go) rather than in internal/relaydeploy itself — that
+// relay_deploy.go) rather than in internal/relaydeploy itself, that
 // package's own tests (deploy_test.go) still pin the raw path in what it
-// returns to its callers — so both tests here set HOME to a real temp
+// returns to its callers, so both tests here set HOME to a real temp
 // directory (not just t.TempDir(), which never sits under HOME) to actually
 // exercise abbreviateHome's rewrite, matching the pattern
 // pair_aftercare_test.go already uses for the same reason.
@@ -78,7 +78,7 @@ func TestRunRelayDeployRejectedStoredTokenAbbreviatesPathInError(t *testing.T) {
 	}
 
 	// The fake only accepts "the-real-token", so authenticating with the
-	// stored (stale) token 401s — relaydeploy.Deploy wraps that as the
+	// stored (stale) token 401s, relaydeploy.Deploy wraps that as the
 	// rejected-stored-token error naming tokenPath.
 	fake := startFakeCloudflareCLIServer(t, "the-real-token")
 	withRelayDeployFakeCloudflare(t, fake)

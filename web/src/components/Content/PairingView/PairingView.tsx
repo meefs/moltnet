@@ -36,7 +36,7 @@ export function PairingView() {
         <Panel.Body>
           {error ? <PairingsError error={error} /> : (
             <p className="text-faint text-[13px] px-2 py-1.5">
-              {isLoading ? "loading…" : `pairing not found${pairingId ? ` — ${pairingId}` : ""}.`}
+              {isLoading ? "loading…" : `pairing not found${pairingId ? `: ${pairingId}` : ""}.`}
             </p>
           )}
         </Panel.Body>
@@ -45,7 +45,7 @@ export function PairingView() {
   }
 
   const remoteName =
-    pairing.remote_network_name || pairing.remote_network_id || "—";
+    pairing.remote_network_name || pairing.remote_network_id || "-";
   const status = pairing.status || "unknown";
   const diagnostics = pairing.diagnostics;
   const remoteNetwork = networkQuery.data;
@@ -120,7 +120,7 @@ export function PairingView() {
           <p className="text-faint text-[13px] px-2 py-1 mb-4">loading…</p>
         ) : networkQuery.error ? (
           <p className="text-coral text-[13px] px-2 py-1 mb-4">
-            unreachable — {(networkQuery.error as Error).message}
+            unreachable: {(networkQuery.error as Error).message}
           </p>
         ) : remoteNetwork ? (
           <div className="max-w-3xl mb-2">
@@ -138,7 +138,7 @@ export function PairingView() {
             ) : null}
             <DetailRow
               label="event stream"
-              value={remoteNetwork.capabilities?.event_stream || "—"}
+              value={remoteNetwork.capabilities?.event_stream || "-"}
             />
             <DetailRow
               label="human ingress"
@@ -193,7 +193,7 @@ export function PairingView() {
 }
 
 function formatDiagnosticReason(reason: string | undefined) {
-  return reason?.replaceAll("_", " ") || "—";
+  return reason?.replaceAll("_", " ") || "-";
 }
 
 function formatProtocols(protocols: NetworkProtocols) {
@@ -203,7 +203,7 @@ function formatProtocols(protocols: NetworkProtocols) {
     protocolPart("pair", protocols.pair),
   ].filter(Boolean);
 
-  return parts.length > 0 ? parts.join(" · ") : "—";
+  return parts.length > 0 ? parts.join(" · ") : "-";
 }
 
 function protocolPart(label: string, values: string[] | undefined) {
@@ -234,7 +234,7 @@ function RemoteList({
   if (error) {
     return (
       <p className="text-coral text-[13px] px-2 py-1 mb-4">
-        unreachable — {(error as Error).message}
+        unreachable: {(error as Error).message}
       </p>
     );
   }

@@ -11,7 +11,7 @@ import (
 // TestResolveConfigPathCwdBoundaryRuneResolvesCwdNotGlobal is the P0-1
 // resolution-level regression the reviewer live-confirmed: a valid cwd
 // config whose 512th byte splits a multibyte rune (€) must still win over a
-// sole global network under ~/.moltnet — not get misclassified as binary,
+// sole global network under ~/.moltnet; not get misclassified as binary,
 // skipped with a warning, and silently resolve the wrong (global) network.
 func TestResolveConfigPathCwdBoundaryRuneResolvesCwdNotGlobal(t *testing.T) {
 	home := t.TempDir()
@@ -36,7 +36,7 @@ func TestResolveConfigPathCwdBoundaryRuneResolvesCwdNotGlobal(t *testing.T) {
 		t.Fatalf("ResolveConfigPath() error = %v", err)
 	}
 	if !found || got != DefaultPath {
-		t.Fatalf("ResolveConfigPath() = (%q, %v), want (%q, true) — the cwd config, not the global network", got, found, DefaultPath)
+		t.Fatalf("ResolveConfigPath() = (%q, %v), want (%q, true): the cwd config, not the global network", got, found, DefaultPath)
 	}
 	if warnings.Len() != 0 {
 		t.Fatalf("expected no binary-shadow warning, got %q", warnings.String())
@@ -45,7 +45,7 @@ func TestResolveConfigPathCwdBoundaryRuneResolvesCwdNotGlobal(t *testing.T) {
 
 // TestResolveConfigPathIDFallsBackToNameMatchedCwd is the P0-2 field
 // scenario: a `moltnet init --dir` install has no ~/.moltnet/<id>/, so
-// --id must resolve it by reading the cwd config's own network.id — never
+// --id must resolve it by reading the cwd config's own network.id; never
 // by cwd precedence, only by name match.
 func TestResolveConfigPathIDFallsBackToNameMatchedCwd(t *testing.T) {
 	home := t.TempDir()
@@ -88,7 +88,7 @@ func TestResolveConfigPathIDMismatchedCwdErrorsClearly(t *testing.T) {
 }
 
 // TestResolveConfigPathIDPrefersGlobalOverNameMatchedCwd: when
-// ~/.moltnet/<id>/ does exist, it still wins outright — the cwd fallback
+// ~/.moltnet/<id>/ does exist, it still wins outright; the cwd fallback
 // only ever engages when the global network is entirely absent.
 func TestResolveConfigPathIDPrefersGlobalOverNameMatchedCwd(t *testing.T) {
 	home := t.TempDir()
@@ -106,7 +106,7 @@ func TestResolveConfigPathIDPrefersGlobalOverNameMatchedCwd(t *testing.T) {
 		t.Fatalf("ResolveConfigPath() error = %v", err)
 	}
 	if !found || got != globalPath {
-		t.Fatalf("ResolveConfigPath() = (%q, %v), want (%q, true) — the global network, not the cwd fallback", got, found, globalPath)
+		t.Fatalf("ResolveConfigPath() = (%q, %v), want (%q, true): the global network, not the cwd fallback", got, found, globalPath)
 	}
 }
 
@@ -114,7 +114,7 @@ func TestResolveConfigPathIDPrefersGlobalOverNameMatchedCwd(t *testing.T) {
 // regression: a sniff read error on one sibling network directory (a
 // permission-denied config file, standing in for anything that makes
 // os.Open fail besides plain absence) must not break no-flag/no-id
-// resolution for every other network under ~/.moltnet — that candidate is
+// resolution for every other network under ~/.moltnet; that candidate is
 // just skipped, like any other unusable one.
 func TestResolveConfigPathUnreadableSiblingNetworkIsSkipped(t *testing.T) {
 	if os.Getuid() == 0 {
@@ -190,7 +190,7 @@ func TestResolveNodeConfigPathIDMismatchedCwdErrorsClearly(t *testing.T) {
 }
 
 // writeNetworkIDFixture writes a minimal but valid Moltnet config declaring
-// network.id — used by the P0-2 name-matched cwd fallback tests, which need
+// network.id, used by the P0-2 name-matched cwd fallback tests, which need
 // a real parseable id, unlike writeResolveFixture's opaque placeholder.
 func writeNetworkIDFixture(t *testing.T, path string, networkID string) {
 	t.Helper()

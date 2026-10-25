@@ -12,7 +12,7 @@ import (
 
 // These tests drive `moltnet relay deploy` end to end through a deploy that
 // hits relaydeploy.ErrWorkersDevSubdomainUnclaimed on a real (fake) TTY: the
-// interactive claim prompt, and — on a successful claim —
+// interactive claim prompt, and, on a successful claim,
 // relaydeploy.Deploy re-run in full (relay_deploy.go). Split out from
 // relay_deploy_subdomain_claim_test.go, which covers the claim prompt
 // loop's own retry/validation/error-code mechanics in isolation, to keep
@@ -68,10 +68,10 @@ func TestRunRelayDeployInteractiveSubdomainClaimThenRedeploySucceeds(t *testing.
 // is TestRunRelayDeployInteractiveSubdomainClaimThenRedeploySucceeds's
 // counterpart for the P1 fix (deploy.go: the !claimed branch's Result must
 // still carry AccountID): it drives the *primary*
-// ErrWorkersDevSubdomainUnclaimed detection path — relaydeploy.Deploy's own
+// ErrWorkersDevSubdomainUnclaimed detection path, relaydeploy.Deploy's own
 // WorkersDevSubdomain GET check, reached only because upload and secret
 // both succeed on this fake even though the account is unclaimed
-// (startFakeCloudflareCLIServerUnclaimedViaSubdomainCheck) — rather than
+// (startFakeCloudflareCLIServerUnclaimedViaSubdomainCheck), rather than
 // the belt-and-braces upload-10063 path every other test here exercises.
 // Before the fix, that branch returned a zeroed Result, so the interactive
 // claim PUT that follows would target /accounts//workers/subdomain (an
@@ -109,7 +109,7 @@ func TestRunRelayDeployInteractiveSubdomainClaimViaSubdomainCheckThenRedeploySuc
 // TestRunRelayDeployInteractiveSubdomainClaimRedeploySucceedsButStillReportsUnclaimedPrintsLagGuidance
 // covers the P2 post-claim propagation-lag messaging fix: the claim PUT
 // itself succeeds (reported as claimed to the operator), but the redeploy
-// Deploy re-run immediately afterward still finds the account unclaimed —
+// Deploy re-run immediately afterward still finds the account unclaimed,
 // Cloudflare's own read-after-write lag (startFakeCloudflareCLIServerClaimLag).
 // The output must carry the specific propagation-lag guidance, never the
 // generic "has not claimed" guidance, which would be actively misleading
@@ -145,7 +145,7 @@ func TestRunRelayDeployInteractiveSubdomainClaimRedeploySucceedsButStillReportsU
 // TestRunRelayDeploySubdomainClaimPropagationLagPrintsOnlySpecificGuidance
 // covers the P3 copy fix end to end: the 10036-rejected claim whose GET
 // recheck still reports the account unclaimed must leave the operator with
-// only the propagation-specific message — never the generic dashboard
+// only the propagation-specific message, never the generic dashboard
 // guidance, which would flatly contradict it (that guidance says the
 // account has not claimed a subdomain at all, when Cloudflare just told us,
 // via 10036, that it has).
@@ -166,7 +166,7 @@ func TestRunRelayDeploySubdomainClaimPropagationLagPrintsOnlySpecificGuidance(t 
 	if !errors.Is(err, relaydeploy.ErrWorkersDevSubdomainUnclaimed) {
 		t.Fatalf("run() relay deploy error = %v, want it to still unwrap to ErrWorkersDevSubdomainUnclaimed", err)
 	}
-	if !strings.Contains(output, "account already has a subdomain; Cloudflare can take a moment to report it — rerun in a minute") {
+	if !strings.Contains(output, "account already has a subdomain; Cloudflare can take a moment to report it; rerun in a minute") {
 		t.Fatalf("expected the propagation-lag message, got %q", output)
 	}
 	if strings.Contains(output, buildWorkersDevSubdomainGuidance("acme-net")) {
@@ -182,7 +182,7 @@ func TestRunRelayDeploySubdomainClaimPropagationLagPrintsOnlySpecificGuidance(t 
 // Deploy is documented and re-run in full once a claim succeeds (see
 // attemptInteractiveWorkersDevSubdomainClaim's doc comment), and that
 // second Deploy call must still reuse an existing RELAY_TOKEN
-// (Options.PriorToken) exactly as the first, aborted attempt would have —
+// (Options.PriorToken) exactly as the first, aborted attempt would have,
 // rotating it on a redeploy the operator did not ask to rotate would break
 // every pairing already using this relay at once.
 func TestRunRelayDeployInteractiveSubdomainClaimRedeployReusesPriorToken(t *testing.T) {
@@ -230,7 +230,7 @@ func TestRunRelayDeployInteractiveSubdomainClaimRedeployReusesPriorToken(t *test
 // path, previously untested end to end: no CLOUDFLARE_API_TOKEN and no
 // stored token (paste prompt), a Cloudflare account with no claimed
 // workers.dev subdomain (claim prompt), then the post-deploy pasted-token
-// save offer — all three interactive prompts answered in the one run,
+// save offer, all three interactive prompts answered in the one run,
 // sharing the same promptReader seam in order.
 func TestRunRelayDeployThreePromptEndToEnd(t *testing.T) {
 	t.Setenv("CLOUDFLARE_API_TOKEN", "")
@@ -268,10 +268,10 @@ func TestRunRelayDeployThreePromptEndToEnd(t *testing.T) {
 		t.Fatalf("expected the post-deploy pasted-token save offer naming %s, got %q", tokenPath, output)
 	}
 
-	// The three prompts must appear in this exact order — the paste prompt
+	// The three prompts must appear in this exact order, the paste prompt
 	// (no CLOUDFLARE_API_TOKEN yet), then the subdomain claim prompt (only
 	// reachable once a token exists to deploy with), then the post-deploy
-	// save offer (only reachable once the deploy itself has succeeded) — not
+	// save offer (only reachable once the deploy itself has succeeded), not
 	// merely all be present somewhere in the output. Indexes, not
 	// substring-count, so a regression that reorders (rather than drops or
 	// duplicates) a prompt still fails this.

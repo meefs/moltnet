@@ -30,7 +30,7 @@ export function PairingsList() {
                   // The pairing id is the one label this operator authored
                   // and can act on: remote_network_name/id are the peer's own
                   // claims, and on the inviting side both are empty until the
-                  // peer makes contact — which rendered a blank row.
+                  // peer makes contact, which rendered a blank row.
                   title={pairing.id}
                   subtitle={pairingSubtitle(pairing, status.detail)}
                   trailing={

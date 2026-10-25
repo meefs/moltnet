@@ -9,7 +9,7 @@ import (
 )
 
 // withScratchScriptExecutable writes a throwaway shell script as
-// currentExecutable's target for the test's duration — the same seam
+// currentExecutable's target for the test's duration, the same seam
 // uninstall_test.go's withScratchExecutable uses, but with a real script
 // body instead of a no-op stub, since these tests need to observe what
 // execChild actually connects the child's stdio to.
@@ -30,7 +30,7 @@ func withScratchScriptExecutable(t *testing.T, script string) string {
 // (SETUP.md's "Driving the terminal": exec with piped stdio, never
 // inherited): a child spawned through execChild must see a closed stdin and
 // a piped (non-TTY) stdout/stderr regardless of whether this test process's
-// own file descriptors are a real terminal — go test's are not, which is
+// own file descriptors are a real terminal, go test's are not, which is
 // exactly the point: execChild must not simply inherit whatever this
 // process has, it must always pipe.
 //
@@ -66,12 +66,12 @@ func TestExecChildPipesNonTTYStdio(t *testing.T) {
 
 // TestExecChildDiscardsStdoutOnSuccess proves "child stdout is suppressed,
 // not rendered": a successful child's stdout is captured by execChild and
-// never surfaced anywhere a caller can observe — childResult carries no
+// never surfaced anywhere a caller can observe, childResult carries no
 // stdout field at all, so there is nothing for a caller to accidentally
 // relay into the wizard's transcript. Its stderr, by contrast, is retained
 // even on success (runner.go's own doc comment: only stdout is discarded on
 // success; stderr is always retained, and it is the caller's choice not to
-// print/surface it when a step succeeds) — asserted here too, so a future
+// print/surface it when a step succeeds), asserted here too, so a future
 // change collapsing that distinction is caught immediately.
 func TestExecChildDiscardsStdoutOnSuccess(t *testing.T) {
 	script := "#!/bin/sh\necho 'noisy child banner'\necho 'retained stderr line' >&2\nexit 0\n"

@@ -23,12 +23,12 @@ func pairAftercareTestConfig(networkID string) app.Config {
 // TestPrintPairInviteAftercareNarrativeShape pins the quiet-by-default
 // `pair invite` aftercare's exact phase structure line by line: a single
 // "pairing ready" checkmark, then the unconditional plain restart reminder
-// (P1 fix — there is no hot-reload, so a pairing written without a restart
+// (P1 fix, there is no hot-reload, so a pairing written without a restart
 // simply does not work yet; this prints regardless of --verbose whenever no
 // restart was actually performed, see printPairRestartLine), then a blank
 // line, then the ONE copyable `moltnet pair '<code>'` command in its own
 // paragraph (rule 4: no separate "they run ..." line, no bare code on its
-// own — the command IS the invite), then a single "next:" line naming the
+// own, the command IS the invite), then a single "next:" line naming the
 // membership command for the one declared room.
 func TestPrintPairInviteAftercareNarrativeShape(t *testing.T) {
 	home := t.TempDir()
@@ -85,7 +85,7 @@ func TestPrintPairInviteAftercareNarrativeShape(t *testing.T) {
 
 // TestPrintPairInviteAftercareVerboseRestoresDetail covers --verbose parity:
 // the quiet essentials (the checkmark, the copyable command, the next: line)
-// must all still be present, plus the detail quiet mode hides — the
+// must all still be present, plus the detail quiet mode hides, the
 // wrote-pairing path line and the remote-admin aside.
 func TestPrintPairInviteAftercareVerboseRestoresDetail(t *testing.T) {
 	home := t.TempDir()
@@ -121,7 +121,7 @@ func TestPrintPairInviteAftercareVerboseRestoresDetail(t *testing.T) {
 	}
 
 	// Superset check: every essential quiet line still appears in verbose
-	// output (content-wise — exact spacing/position may differ).
+	// output (content-wise, exact spacing/position may differ).
 	for _, essential := range []string{
 		"✓ pairing ready",
 		"moltnet pair '" + code + "'",
@@ -325,7 +325,7 @@ func TestPairStatusBlockAlignmentIsPlainWidthInvariant(t *testing.T) {
 	}
 
 	// P3: pin the actual column value, not just its invariance under
-	// styling — the abbreviated path annotation must start exactly at
+	// styling, the abbreviated path annotation must start exactly at
 	// pairStatusColumn in the plain output, confirming printPairWroteLine's
 	// padding lands where pairStatusColumn's own doc comment says it does.
 	firstLine := strings.SplitN(plainOutput, "\n", 2)[0]

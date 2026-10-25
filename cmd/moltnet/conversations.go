@@ -39,7 +39,7 @@ func runConversations(args []string) error {
 	}
 
 	// In the zero-setup operator fallback there is no agent-side
-	// attachment.Rooms allowlist to filter against — the token's own
+	// attachment.Rooms allowlist to filter against, the token's own
 	// server-side visibility is already the whole answer, so every room
 	// ListRooms returned is shown, not silently filtered down to an empty
 	// set (an empty allowedRooms map here would otherwise hide everything).

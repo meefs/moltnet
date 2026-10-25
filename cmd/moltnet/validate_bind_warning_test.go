@@ -8,7 +8,7 @@ import (
 
 // TestRunValidateWarnsOnNonLoopbackOpenRegistration covers PLAN.md phase
 // 6a, item 2: `moltnet validate` must warn when listen_addr resolves
-// non-loopback while agent_registration is open — "any reachable host may
+// non-loopback while agent_registration is open, "any reachable host may
 // register an agent."
 func TestRunValidateWarnsOnNonLoopbackOpenRegistration(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "Moltnet")
@@ -36,7 +36,7 @@ func TestRunValidateWarnsOnNonLoopbackOpenRegistration(t *testing.T) {
 
 // TestRunValidateSilentOnDefaultLoopbackConfig covers the negative space for
 // the same check: the default `moltnet init` output (loopback bind, open
-// registration) must never warn — nothing off-machine can reach it.
+// registration) must never warn, nothing off-machine can reach it.
 func TestRunValidateSilentOnDefaultLoopbackConfig(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "Moltnet")
 	writeNodeConfig(t, path, defaultMoltnetConfig("acme", "Acme Moltnet", "test-operator-token"))
@@ -54,8 +54,8 @@ func TestRunValidateSilentOnDefaultLoopbackConfig(t *testing.T) {
 
 // TestRunValidateSilentOnNonLoopbackWithoutOpenRegistration covers the other
 // half of the negative space: a non-loopback bind alone, with auth.mode:
-// bearer and registration not open (bearerMoltnetConfig's default — see
-// templates.go, PLAN.md phase 6a review P2-1), must not warn — this is the
+// bearer and registration not open (bearerMoltnetConfig's default, see
+// templates.go, PLAN.md phase 6a review P2-1), must not warn, this is the
 // ordinary "securing remote agents" bearer-token shape (see
 // website/src/content/docs/guides/securing-remote-agents.md), and it must
 // stay quiet.
@@ -82,7 +82,7 @@ func TestRunValidateSilentOnNonLoopbackWithoutOpenRegistration(t *testing.T) {
 
 // TestRunValidateWarnsOnNonLoopbackModeNone covers PLAN.md phase 6a review,
 // P2-3: a non-loopback bind with auth.mode: none (every write and admin
-// route anonymous, with no registration step needed at all — the
+// route anonymous, with no registration step needed at all, the
 // pre-phase-6a default) must warn, even though agent_registration is not
 // "open". The original check keyed only on agent_registration and stayed
 // silent on exactly this shape.

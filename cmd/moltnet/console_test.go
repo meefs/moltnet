@@ -128,7 +128,7 @@ func listenAddrOf(t *testing.T, server *httptest.Server) string {
 //
 // Split out to console_down_test.go: those four cases all assert on the
 // two-stream captureStdoutAndStderr split (stdout empty, the down-server
-// fact on stderr — the P2 fix), which kept pushing this file toward the
+// fact on stderr; the P2 fix), which kept pushing this file toward the
 // repo's 400-line limit.
 
 // --- success paths: --print / --no-open / TTY / non-TTY --------------------

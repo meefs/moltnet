@@ -24,7 +24,7 @@ import (
 // registration/collision path in internal/rooms/messaging.go's
 // validateSenderIdentity outright (it branches straight to
 // validateHumanSender for Type=="human"), so this fallback never registers,
-// mints, or persists any new identity as a side effect of sending — it only
+// mints, or persists any new identity as a side effect of sending; it only
 // ever needs a static bearer token with the write scope, which is exactly
 // what selectLeastPrivilegedToken below hands it.
 const operatorSenderID = "operator"
@@ -33,7 +33,7 @@ const operatorSenderID = "operator"
 // send/read/conversations/participants expose alongside their existing
 // agent-config flags (--config/--network/--member): --base-url and
 // --token-env. When baseURL is non-empty it always wins outright, exactly
-// like admin's --base-url (resolveAdminClient) — neither the client config
+// like admin's --base-url (resolveAdminClient); neither the client config
 // nor the local-server fallback is ever consulted.
 //
 // There is deliberately no bare --token flag here, unlike admin's
@@ -55,7 +55,7 @@ func bindOperatorOverrideFlags(flags *flag.FlagSet) *operatorOverrideOptions {
 
 // operatorSenderActor builds the "From" actor `moltnet send` uses in the
 // zero-setup fallback: --member if given, else operatorSenderID. Type is
-// always "human" — see operatorSenderID's doc comment for why. networkID is
+// always "human"; see operatorSenderID's doc comment for why. networkID is
 // carried through only for display/wire completeness; the human path never
 // consults Actor.NetworkID server-side (validateSenderIdentity branches to
 // validateHumanSender for Type=="human" before agentCollisionID, the only
@@ -80,8 +80,8 @@ func (o operatorOverrideOptions) attachment() clientconfig.AttachmentConfig {
 // participants funnel through: an explicit --base-url always wins outright;
 // otherwise try the existing agent-config path unchanged
 // (resolveClientForMember, backed by `moltnet connect`'s
-// .moltnet/config.json); only when that fails with errClientConfigNotFound
-// — no client config exists anywhere, not a malformed or ambiguous one —
+// .moltnet/config.json); only when that fails with errClientConfigNotFound,
+// no client config exists anywhere, not a malformed or ambiguous one,
 // fall back to the local Moltnet *server* config every other command
 // (admin, service, pair, console) already resolves, so an operator who has
 // only ever run `init`/`service install`/`relay deploy`/`pair invite` can
@@ -89,7 +89,7 @@ func (o operatorOverrideOptions) attachment() clientconfig.AttachmentConfig {
 //
 // usingFallback tells callers whether attachment carries a real agent-side
 // rooms/DMs allowlist (client-config path, false) or none at all (either
-// fallback path, true) — ensureTargetAllowed's callers must skip it in the
+// fallback path, true); ensureTargetAllowed's callers must skip it in the
 // true case, deferring entirely to the server's own write-policy/access
 // checks, which are authoritative regardless.
 func resolveClientOrOperator(
@@ -125,7 +125,7 @@ func resolveClientOrOperator(
 
 // resolveOperatorClient is the local-server half of resolveClientOrOperator:
 // it resolves the local Moltnet *server* config the same way admin commands
-// do (resolveAdminFromServerConfig, app.ResolveConfigPath — --network
+// do (resolveAdminFromServerConfig, app.ResolveConfigPath; --network
 // doubles as the id disambiguator under ~/.moltnet/, exactly like admin's
 // --network and start/pair/relay/service's --id), then applies two
 // guardrails an admin-scoped fallback does not need:
@@ -133,13 +133,13 @@ func resolveClientOrOperator(
 //   - loopback only: the derived base URL (consoleBaseURL's own
 //     wildcard-to-127.0.0.1 mapping) must resolve to a loopback address. A
 //     server bound to a LAN or public host never gets its operator token
-//     silently sent there by this fallback — the caller gets an actionable
+//     silently sent there by this fallback; the caller gets an actionable
 //     error naming --base-url/--token-env instead.
 //   - least privilege: the selected token is the narrowest configured token
 //     that actually satisfies requiredScope (selectLeastPrivilegedToken),
 //     never a broader one when a narrower one exists, and never an
 //     admin-only token for an operation that does not accept admin in its
-//     place (send's write requirement has no such admin bypass — see
+//     place (send's write requirement has no such admin bypass; see
 //     tokenAllowsScope).
 func resolveOperatorClient(networkID string, requiredScope authn.Scope) (clientconfig.AttachmentConfig, *moltnetclient.Client, error) {
 	path, found, err := app.ResolveConfigPath("", strings.TrimSpace(networkID))
@@ -181,7 +181,7 @@ func resolveOperatorClient(networkID string, requiredScope authn.Scope) (clientc
 	}
 	// NewLoopbackOnly, not New: this is the path whose documented invariant
 	// is "never leaves the machine" (operatorBaseURL's loopback check
-	// above) — that invariant must hold even if the local server itself
+	// above); that invariant must hold even if the local server itself
 	// issues a redirect (moltnetclient.NewLoopbackOnly's doc comment).
 	client, err := moltnetclient.NewLoopbackOnly(attachment)
 	if err != nil {
@@ -193,11 +193,11 @@ func resolveOperatorClient(networkID string, requiredScope authn.Scope) (clientc
 // operatorAuthForScope picks the local-server auth this fallback hands to
 // moltnetclient: none at all when the resolved config's auth.mode is
 // neither "bearer" nor "open" (an unauthenticated server needs no token),
-// or — for either mode — the least-privileged configured token that
+// or, for either mode, the least-privileged configured token that
 // satisfies requiredScope. "open" mode is not "no auth needed": its
 // PublicRead widening only ever covers reads (internal/transport/auth.go's
 // publicInOpen/optionalAuthInOpen), never POST /v1/messages, which
-// authorizes on authorizedAnyWithVerifier regardless of mode — so an open
+// authorizes on authorizedAnyWithVerifier regardless of mode; so an open
 // server still 401s a tokenless send exactly like a bearer one does. The
 // only case that still falls back to no auth is an open server with zero
 // configured tokens at all (bearer mode can never reach here with none:
@@ -229,7 +229,7 @@ func operatorAuthForScope(config app.Config, requiredScope authn.Scope) (clientc
 //
 // Privilege ranks by tokenLessPrivileged: a token that does not carry
 // ScopeAdmin always outranks one that does, regardless of how many scopes
-// either has — an [admin]-only token must never beat an [observe]-only
+// either has; an [admin]-only token must never beat an [observe]-only
 // token for a read command just because config order happened to list it
 // first. Only among tokens tied on that first axis does scope count break
 // the tie, and only among tokens tied on both does document order (the
@@ -282,12 +282,12 @@ func tokenCarriesAdmin(token authn.TokenConfig) bool {
 // tokenAllowsScope reports whether token satisfies requiredScope for the
 // purposes of this fallback. It is a literal scope match, with exactly one
 // widening: an admin-scoped token stands in for ScopeObserve, mirroring
-// internal/transport/scopes.go's readScopes ([observe, admin]) — every read
+// internal/transport/scopes.go's readScopes ([observe, admin]); every read
 // endpoint this fallback calls (GET /v1/rooms, /v1/dms, .../messages)
 // already accepts admin in place of observe server-side. There is no such
 // widening for ScopeWrite: POST /v1/messages authorizes on literally
 // [write, pair] (internal/transport/http.go), so an admin-only token
-// without write would 403 there regardless — never select one and claim it
+// without write would 403 there regardless; never select one and claim it
 // satisfies a write requirement it cannot actually meet.
 func tokenAllowsScope(token authn.TokenConfig, requiredScope authn.Scope) bool {
 	for _, scope := range token.Scopes {

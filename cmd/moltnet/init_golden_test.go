@@ -13,8 +13,8 @@ import (
 // PLAN.md's output-UX review called out (P3-4): a regression in any printed
 // command (a dropped --id, a resurrected `pair invite --network-id local`,
 // a stale aftercare note) must fail one of these, not just change prose
-// someone reads past. Each scenario is pinned twice — quiet (the default)
-// and --verbose — so a --verbose regression that silently stops restoring
+// someone reads past. Each scenario is pinned twice, quiet (the default)
+// and --verbose, so a --verbose regression that silently stops restoring
 // detail fails here too, not just informally.
 //
 // Every printed path goes through abbreviateHome, so as long as each test
@@ -58,7 +58,7 @@ func TestRunInitGoldenIDBearerFresh(t *testing.T) {
 		"  ✓ created ~/.moltnet/acme/\n" +
 		"  ✓ wrote Moltnet       network: acme · auth: bearer\n" +
 		"  ✓ wrote MoltnetNode\n" +
-		"  ✓ operator + console tokens stored in Moltnet (0600) — full access + read-only console\n" +
+		"  ✓ operator + console tokens stored in Moltnet (0600); full access + read-only console\n" +
 		"    commands pick it up automatically\n" +
 		"\n" +
 		"  next: moltnet service install --id acme          run it as a service\n"
@@ -83,7 +83,7 @@ func TestRunInitGoldenIDWithoutBearer(t *testing.T) {
 		"  Initializing beta\n" +
 		"\n" +
 		"  ✓ beta ready          ~/.moltnet/beta/\n" +
-		"  note: local agent self-registration is open — any local agent can claim its own id and receive its own token\n" +
+		"  note: local agent self-registration is open; any local agent can claim its own id and receive its own token\n" +
 		"\n" +
 		"  next: moltnet service install --id beta          run it as a service\n"
 	if quiet != wantQuiet {
@@ -101,7 +101,7 @@ func TestRunInitGoldenIDWithoutBearer(t *testing.T) {
 		"  Initializing beta\n" +
 		"\n" +
 		"  ✓ beta ready          ~/.moltnet/beta/\n" +
-		"  note: local agent self-registration is open — any local agent can claim its own id and receive its own token\n" +
+		"  note: local agent self-registration is open; any local agent can claim its own id and receive its own token\n" +
 		"  ✓ created ~/.moltnet/beta/\n" +
 		"  ✓ wrote Moltnet       network: beta · auth: open\n" +
 		"  ✓ wrote MoltnetNode\n" +
@@ -115,7 +115,7 @@ func TestRunInitGoldenIDWithoutBearer(t *testing.T) {
 
 // TestRunInitGoldenDirLocalID pins `moltnet init --dir <path>`: the network
 // id defaults to "local", so the next: line must NOT print
-// `pair invite --network-id local` (P1-4 — it can never succeed) and prints
+// `pair invite --network-id local` (P1-4, it can never succeed) and prints
 // re-init guidance instead, both quiet and --verbose.
 func TestRunInitGoldenDirLocalID(t *testing.T) {
 	home := t.TempDir()
@@ -131,7 +131,7 @@ func TestRunInitGoldenDirLocalID(t *testing.T) {
 		"  Initializing local\n" +
 		"\n" +
 		"  ✓ local ready         ~/customdir/\n" +
-		"  note: local agent self-registration is open — any local agent can claim its own id and receive its own token\n" +
+		"  note: local agent self-registration is open; any local agent can claim its own id and receive its own token\n" +
 		"\n" +
 		"  next: moltnet init --id <network-id>             re-init with a real network id before pairing\n"
 	if quiet != wantQuiet {
@@ -148,7 +148,7 @@ func TestRunInitGoldenDirLocalID(t *testing.T) {
 		"  Initializing local\n" +
 		"\n" +
 		"  ✓ local ready         ~/customdir2/\n" +
-		"  note: local agent self-registration is open — any local agent can claim its own id and receive its own token\n" +
+		"  note: local agent self-registration is open; any local agent can claim its own id and receive its own token\n" +
 		"  ✓ created ~/customdir2/\n" +
 		"  ✓ wrote Moltnet       network: local · auth: open\n" +
 		"  ✓ wrote MoltnetNode\n" +
@@ -166,8 +166,8 @@ func TestRunInitGoldenDirLocalID(t *testing.T) {
 // open config (auth.mode: open, one "operator" token, no "pair" scope), so
 // this --bearer rerun exercises 7.0's AddOperatorToken upgrade case
 // (config_writeback_tokens.go), not the old "genuinely empty auth.tokens"
-// path: it must leave the existing operator token completely untouched —
-// same secret, same 3 scopes — and only add the console token and flip
+// path: it must leave the existing operator token completely untouched,
+// same secret, same 3 scopes, and only add the console token and flip
 // auth.mode to bearer. Quiet mode still collapses to the single checkmark;
 // --verbose names the "updated Moltnet" line and the token-added line
 // truthfully for this upgrade shape specifically (added console token, not
@@ -227,7 +227,7 @@ func TestRunInitGoldenBearerOnExistingConfig(t *testing.T) {
 		"  ✓ using ~/.moltnet/friend/\n" +
 		"  ✓ updated Moltnet     added console token · auth: bearer\n" +
 		"  · MoltnetNode already exists (unchanged)\n" +
-		"  ✓ added a console token to ~/.moltnet/friend/Moltnet (0600) and switched auth.mode to bearer — full access + read-only console\n" +
+		"  ✓ added a console token to ~/.moltnet/friend/Moltnet (0600) and switched auth.mode to bearer; full access + read-only console\n" +
 		"    commands pick it up automatically\n" +
 		"\n" +
 		"  next: moltnet service install --id friend        run it as a service\n"
@@ -273,7 +273,7 @@ func TestRunInitGoldenBearerOnExistingConfig(t *testing.T) {
 // TestRunInitGoldenVerboseIsSupersetOfQuiet is the --verbose-parity test the
 // redesign calls for: for a representative scenario, every line quiet mode
 // prints (the checkmark's outcome text and the next: command) must also
-// appear, content-wise, in --verbose's output — --verbose only ever adds
+// appear, content-wise, in --verbose's output, --verbose only ever adds
 // detail, it never drops or changes the essentials.
 func TestRunInitGoldenVerboseIsSupersetOfQuiet(t *testing.T) {
 	home := t.TempDir()

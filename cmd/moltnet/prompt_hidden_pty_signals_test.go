@@ -10,7 +10,7 @@ import (
 // TestPromptHiddenPTYSignalsRestoreEchoAndExit covers the P1-1 fix: SIGINT,
 // SIGTERM, and SIGHUP arriving while promptHidden is blocked reading must
 // each (a) make the process exit promptly, with the conventional
-// 128+signal exit code, and (b) leave the terminal's ECHO bit restored —
+// 128+signal exit code, and (b) leave the terminal's ECHO bit restored,
 // not left off, which is what happened before this fix (see prompt_hidden.go's
 // disableTerminalEcho doc comment: runCLI's own
 // signal.NotifyContext(SIGINT, SIGTERM) means the process does not die on
@@ -39,13 +39,13 @@ func TestPromptHiddenPTYSignalsRestoreEchoAndExit(t *testing.T) {
 			readMasterUntil(t, master, "paste token (input hidden): ", 5*time.Second)
 			// promptHidden prints its (short, non-secret) question before
 			// disabling echo, so seeing the question alone does not yet
-			// prove disableTerminalEcho — and its signal.Notify
-			// registration, which runs right after — has completed; poll
+			// prove disableTerminalEcho, and its signal.Notify
+			// registration, which runs right after, has completed; poll
 			// instead of asserting on a single snapshot.
 			waitForMasterEchoOff(t, master, 2*time.Second)
 			// signal.Notify runs immediately after the termios ioctl inside
 			// disableTerminalEcho, in the same goroutine with no further
-			// I/O in between (prompt_hidden.go) — a short grace period
+			// I/O in between (prompt_hidden.go); a short grace period
 			// closes that last sliver of scheduling race before signaling.
 			time.Sleep(20 * time.Millisecond)
 

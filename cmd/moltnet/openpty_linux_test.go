@@ -9,8 +9,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// openTestPTY allocates a fresh Unix98 pseudo-terminal pair — a master
-// (control) side and its paired slave (child) side — via /dev/ptmx, the
+// openTestPTY allocates a fresh Unix98 pseudo-terminal pair, a master
+// (control) side and its paired slave (child) side, via /dev/ptmx, the
 // same device a real terminal emulator uses. Tests use it to exercise
 // disableTerminalEcho's real termios ioctls against an actual terminal
 // device, never the test's own controlling terminal (see HARD RULE in the

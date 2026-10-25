@@ -42,7 +42,7 @@ await build({
 });
 
 // The Cloudflare Script Upload API (PUT /accounts/:id/workers/scripts/:name)
-// wants a flat, typed `bindings` array — not wrangler.jsonc's nested
+// wants a flat, typed `bindings` array, not wrangler.jsonc's nested
 // `durable_objects: { bindings: [...] }` config-file shape.
 const durableObjectBindings = (wranglerConfig.durable_objects?.bindings ?? []).map((binding) => ({
   type: "durable_object_namespace",

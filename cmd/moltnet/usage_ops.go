@@ -99,7 +99,7 @@ invite" to reuse.
 
 A Cloudflare account with no workers.dev subdomain claimed yet is prompted
 for one interactively (both stdin and stdout must be real terminals).
---subdomain supplies that name non-interactively instead — required when
+--subdomain supplies that name non-interactively instead; required when
 either stream is not a terminal. Claiming a workers.dev subdomain is
 PERMANENT for the account (Cloudflare allows exactly one, ever), so passing
 --subdomain is your explicit confirmation of that claim; it is a no-op if
@@ -163,8 +163,8 @@ func buildUninstallUsage() string {
   moltnet uninstall [--yes] [--purge]
 
 Stops and removes the installed launchd/systemd service for every network
-found — both under ~/.moltnet/ and as a dangling unit/plist file whose
-network directory was already removed by hand — then deletes the running
+found, both under ~/.moltnet/ and as a dangling unit/plist file whose
+network directory was already removed by hand, then deletes the running
 moltnet binary itself (found via the equivalent of os.Executable,
 symlink-resolved). Prints each planned action before prompting, and again
 as each one completes.
@@ -178,7 +178,7 @@ MOLTNET_HOME is set, --purge also removes that install-state directory.
 On a terminal, uninstall (and --purge, if given) prompts for confirmation
 before doing anything. --yes skips the prompt(s); it is required when
 stdin is not a terminal (scripts, CI), and "--purge --yes" is the only
-fully silent path — the docs call this scorched-earth on purpose.
+fully silent path; the docs call this scorched-earth on purpose.
 
 After removing the binary, uninstall warns about any other "moltnet"
 executable left on $PATH (a stale copy from a different install method or
@@ -195,15 +195,15 @@ This installs the canonical Moltnet skill into a runtime workspace (the
 default) or, with --global, into every well-known global agent home instead.
 
 --runtime accepts any name and defaults to none, which installs the generic
-skill under .agents/skills/moltnet/SKILL.md — there is no built-in default
+skill under .agents/skills/moltnet/SKILL.md; there is no built-in default
 runtime, since assuming one that does not match the caller's actual agent
 would be silently wrong. Known runtimes (openclaw, picoclaw, tinyclaw,
 claude-code, codex) get their runtime-specific file placement instead; any
 other name still installs the same usable generic skill.
 
 --global ignores --workspace and installs into ~/.claude/, ~/.codex/, and
-~/.agents/ instead — every well-known global agent home, not just the one
-implied by --runtime — so an agent learns Moltnet exists in every session on
+~/.agents/ instead, every well-known global agent home, not just the one
+implied by --runtime, so an agent learns Moltnet exists in every session on
 this machine, not only inside the one workspace where someone happened to
 run "moltnet skill install".
 `

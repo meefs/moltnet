@@ -34,16 +34,16 @@ type RoomWriteback struct {
 
 // WriteRoom appends room into the Moltnet config file at path, preserving
 // every other plaintext secret already there. It refuses outright when
-// rooms[] already has an entry with room.ID — unlike WritePairing's
+// rooms[] already has an entry with room.ID, unlike WritePairing's
 // --force-overridable ErrPairingExists, `room create` has no in-place-update
 // story yet (that is `admin room members add`/a future `room update`'s job),
 // so a second `room create` for the same id is always a mistake to surface,
 // never a silent overwrite. The write is atomic (temp file + rename in the
-// same directory), mode 0600, and refuses a symlinked target — the same
+// same directory), mode 0600, and refuses a symlinked target; the same
 // mechanism WritePairing uses, reused here rather than shared with it
 // directly: a room create writes a much wider field set (name, visibility,
 // write_policy, members, credential) than the {id, federation} shape
-// WritePairing's own upsertSharedRoom knows how to extend (PLAN.md 7A.1 —
+// WritePairing's own upsertSharedRoom knows how to extend (PLAN.md 7A.1;
 // upsertSharedRoom is the wrong helper for this precisely because of that
 // narrower shape).
 //
@@ -51,7 +51,7 @@ type RoomWriteback struct {
 // every config-time room to declare an explicit stance so
 // validateRoomFederationStances never trips the first time a pairing is
 // added. Callers that want the "no federation configured yet" default pass
-// protocol.DefaultRoomFederation() explicitly rather than leaving this nil —
+// protocol.DefaultRoomFederation() explicitly rather than leaving this nil,
 // WriteRoom itself does not substitute a default, so a nil here would write
 // a room this same package's own federation rule then refuses to load.
 func WriteRoom(path string, room RoomWriteback) error {
@@ -122,7 +122,7 @@ func roomWritebackMap(room RoomWriteback) map[string]any {
 // MarshalJSON/MarshalYAML encoding (federation.go) without routing a
 // SecretString-adjacent typed struct through the untyped document: "none" or
 // "all" scalars, or the list of pairing ids for "list" mode. A nil
-// federation normalizes to "none" (protocol.NormalizeRoomFederation) — see
+// federation normalizes to "none" (protocol.NormalizeRoomFederation); see
 // WriteRoom's doc comment for why a room create writeback is never allowed
 // to leave this field absent instead.
 func roomFederationWritebackValue(federation *protocol.RoomFederation) any {

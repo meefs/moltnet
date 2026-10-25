@@ -20,7 +20,7 @@ import (
 
 // roomCreateTestConfigBody writes a minimal bearer-mode Moltnet config with
 // one admin-scoped operator token, in-memory storage, and any seedRooms
-// already present in rooms[] — the fixture every room_create_test.go/
+// already present in rooms[], the fixture every room_create_test.go/
 // room_create_federation_test.go/room_join_test.go case starts from.
 func roomCreateTestConfigBody(networkID, listenAddr, operatorToken string, seedRooms string) string {
 	return fmt.Sprintf(`version: moltnet.v1
@@ -64,7 +64,7 @@ func writeRoomCreateTestConfig(t *testing.T, path, body string) {
 // config write must stand (this is PLAN.md 7A.1's "fall back to a restart
 // reminder, never roll back the write, when the daemon is not answering"),
 // federation must land as an explicit "none" (never nil), and a pairing
-// added afterward must still reload cleanly — the golden test PLAN.md's 7A
+// added afterward must still reload cleanly, the golden test PLAN.md's 7A
 // federation rule calls for.
 func TestRoomCreateWritesExplicitNoneFederationAndSurvivesRollback(t *testing.T) {
 	home := t.TempDir()
@@ -211,11 +211,11 @@ func TestRoomCreateAppliesSingleRoomDeltaWithoutWipingOtherMembers(t *testing.T)
 // TestRoomCreateRefusesLiveRoomNotTrackedInConfig is P2-1's regression test,
 // reproducing the reviewer's proven scenario exactly: a room already exists
 // on the running service (here, via a direct ApplyConfig call standing in
-// for POST /v1/rooms, the console, or a separate `moltnet apply` — none of
+// for POST /v1/rooms, the console, or a separate `moltnet apply`, none of
 // which ever touch *this* config file's rooms[]) with real members. Before
 // the fix, `moltnet room create` for that same id passed WriteRoom's
 // config-only duplicate check, then POSTed a create delta that
-// ReconcileRoomContext turned into a wholesale membership replacement —
+// ReconcileRoomContext turned into a wholesale membership replacement,
 // members gone, exit code 0, success JSON printed. This asserts the command
 // now refuses instead, and that the room's live members and this config's
 // rooms[] (which never had the room) are both left exactly as they were.
@@ -284,8 +284,8 @@ func TestRoomCreateRefusesLiveRoomNotTrackedInConfig(t *testing.T) {
 // mitigation's regression test for the gap refuseIfRoomAlreadyLive cannot
 // cover on its own: when the service is unreachable, runRoomCreate's
 // live-room preflight (step 1) never runs at all, so a room id that already
-// exists in the persistent store — with real members a different config
-// never tracked — gets its config entry written here anyway, and that entry
+// exists in the persistent store, with real members a different config
+// never tracked, gets its config entry written here anyway, and that entry
 // becomes the room's whole membership at the next service start
 // (applyRequestFromConfig -> ReconcileRoomContext). This asserts the
 // restart-reminder fallback now says so on stderr, alongside the existing

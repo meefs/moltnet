@@ -36,7 +36,7 @@ describe("pairing delivery status", () => {
     render(<PairingView />);
     const section = screen.getByRole("region", { name: "Outbound delivery" });
     expect(within(section).getByRole("group", { name: "pending messages" }).textContent).toBe("0pending messages");
-    expect(within(section).getByRole("group", { name: "oldest pending" }).textContent).toBe("—oldest pending");
+    expect(within(section).getByRole("group", { name: "oldest pending" }).textContent).toBe("-oldest pending");
     expect(within(section).getByRole("group", { name: "dropped messages" }).textContent).toBe("5dropped messages");
     expect(section.textContent).not.toContain("last delivery error");
     expect(within(section).getByRole("group", { name: "rejected messages" }).textContent).toBe("2rejected messages");

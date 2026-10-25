@@ -40,7 +40,7 @@ type gitCheckoutStatus struct {
 
 // generatedWebDistPathspec excludes the tracked `web/dist` directory from
 // the working-tree cleanliness check. `web/dist` is vite's build output,
-// re-included by web/.gitignore so `go build` works without npm — but that
+// re-included by web/.gitignore so `go build` works without npm, but that
 // also means `make build`'s `console-build` step (vite's emptyOutDir)
 // regenerates it on every rebuild. Without this exclusion, the very
 // `make build` a source update runs to verify the rebuild works would dirty
@@ -89,7 +89,7 @@ func isGitCheckout(ctx context.Context, runner CommandRunner, checkout string) b
 
 // inspectGitCheckout gathers the branch, working-tree cleanliness, and
 // local/upstream commits for checkout. It never mutates the checkout: every
-// git subcommand it runs is read-only (it does not fetch — callers that need
+// git subcommand it runs is read-only (it does not fetch; callers that need
 // an up-to-date upstream comparison must call gitFetch first).
 func inspectGitCheckout(ctx context.Context, runner CommandRunner, checkout string) (gitCheckoutStatus, error) {
 	var status gitCheckoutStatus
@@ -130,8 +130,8 @@ func inspectGitCheckout(ctx context.Context, runner CommandRunner, checkout stri
 // gitFetch runs `git fetch` in checkout: it updates remote-tracking refs
 // (like @{u}, which inspectGitCheckout reads) but never touches the working
 // tree or the current branch, so it is safe to run before a real update has
-// decided whether it is allowed to mutate anything. Callers that skip this
-// — the original bug this fixes — compare against whatever @{u} happened to
+// decided whether it is allowed to mutate anything. Callers that skip this,
+// the original bug this fixes, compare against whatever @{u} happened to
 // point at after the last unrelated fetch (a prior `git pull`, an editor's
 // background fetch, ...), which can be arbitrarily stale and makes an
 // available update permanently invisible.

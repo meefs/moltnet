@@ -21,7 +21,7 @@ import (
 
 // GetNetwork calls GET /v1/network (PLAN.md 7C.1's `moltnet status`): network
 // identity, protocol/capability advertisement, and the NetworkWarning codes
-// internal/rooms/service.go's networkWarningsLocked already computes —
+// internal/rooms/service.go's networkWarningsLocked already computes;
 // service.Network() bakes them into this same response, so status needs no
 // separate warnings call.
 func (c *Client) GetNetwork(ctx context.Context) (protocol.Network, error) {
@@ -47,7 +47,7 @@ func (c *Client) ListAgents(ctx context.Context, page protocol.PageRequest) (pro
 // (internal/transport/auth.go): it accepts the same observe/admin scopes as
 // a read, but additionally refuses a self-registered agent's own token, so a
 // caller resolving with authn.ScopeObserve can still get a 403 here even
-// though every other status leg succeeded — status must treat that as this
+// though every other status leg succeeded; status must treat that as this
 // one leg being unavailable, not the whole command failing.
 func (c *Client) ListPairings(ctx context.Context, page protocol.PageRequest) (protocol.PairingPage, error) {
 	var result protocol.PairingPage
@@ -60,7 +60,7 @@ func (c *Client) ListPairings(ctx context.Context, page protocol.PageRequest) (p
 
 // Metrics calls GET /metrics, admin-scoped server-side
 // (internal/transport/http.go), and returns the raw Prometheus text
-// exposition body (observability.Metrics.ServeHTTP) — the one Moltnet
+// exposition body (observability.Metrics.ServeHTTP); the one Moltnet
 // endpoint this client speaks that is not JSON, so it bypasses doJSON's
 // decoder entirely via doText instead. Callers (moltnet status --verbose,
 // PLAN.md 7C.1) parse the handful of metric names they care about out of the

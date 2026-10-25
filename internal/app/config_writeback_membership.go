@@ -15,7 +15,7 @@ import (
 // necessarily a caller mistake: a room can exist on the live service without
 // ever having been declared in this config file (created directly via
 // POST /v1/rooms, the console, or `moltnet apply`, none of which touch
-// rooms[]) — see UpdateRoomMembers's doc comment for how callers are meant
+// rooms[]); see UpdateRoomMembers's doc comment for how callers are meant
 // to treat this case.
 var ErrRoomConfigNotFound = errors.New("room not found in config")
 

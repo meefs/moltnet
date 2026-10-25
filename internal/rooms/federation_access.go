@@ -15,7 +15,7 @@ import (
 // pair-scoped auth.tokens[] entry with the same id as the pairings[] entry
 // it belongs to (see PairingWriteback/AuthTokenWriteback constructions in
 // cmd/moltnet/pair_invite.go and cmd/moltnet/pair_join.go, unchanged by this
-// fix) — so claims.TokenID already identifies the exact pairing a bearer
+// fix), so claims.TokenID already identifies the exact pairing a bearer
 // secret belongs to, independent of claims.Network(). That identity binding
 // is the "placeholder": it exists the instant a credential is minted and
 // requires no round trip to the peer, whereas the network binding
@@ -30,7 +30,7 @@ import (
 // TokenID-equals-pairing-ID invariant (it predates this change), so no
 // config migration is needed. The only credential this newly refuses is one
 // an operator hand-edited into auth.tokens[] with the `pair` scope, no bound
-// network, and an id that does not match any configured pairing — which is
+// network, and an id that does not match any configured pairing, which is
 // exactly the shape of credential this fix exists to stop trusting
 // unconditionally; failing it closed is the intended behavior, not a
 // regression.
@@ -92,7 +92,7 @@ func (s *Service) PairingForPairScopedContext(ctx context.Context) (protocol.Pai
 }
 
 // pairScopedWriteAllowed and roomVisibleToPairScopedContext used to return
-// true outright whenever a pair-scoped claim carried no bound network —
+// true outright whenever a pair-scoped claim carried no bound network,
 // the inviter-side fail-open 7B.1 closes: `pair invite` mints exactly that
 // shape of credential (see pairingForPairScopedContext's doc comment), so
 // every room's federation list was advisory on the inviting side. Both
@@ -103,7 +103,7 @@ func (s *Service) PairingForPairScopedContext(ctx context.Context) (protocol.Pai
 // F1 (confirmed live): a claim without the `pair` scope at all is not the
 // only shape that must bypass the pairing lookup below. `--bearer` init
 // used to mint (and existing configs in the wild still have) an operator
-// token scoped [observe, write, admin, pair] — carrying `pair` alongside
+// token scoped [observe, write, admin, pair]: carrying `pair` alongside
 // `admin`/`write` was meant to let the same token double as a pairing
 // credential, but it meant this gate treated that operator as a peer,
 // looked for a pairing literally named "operator", found none, and denied

@@ -11,7 +11,7 @@ response body. Tests must use raw WebSocket clients against `wrangler dev`.
 
 Keep Durable Object hibernation enabled. An `accept()`ed socket bills duration
 for its whole connected life at the 128 MiB minimum, so a non-hibernating room
-costs roughly 10,800 GB-s/day while completely idle — most of a free-tier day
+costs roughly 10,800 GB-s/day while completely idle, most of a free-tier day
 for a relay that has carried nothing.
 
 Hibernation makes one rule load-bearing: **no admission-relevant state in

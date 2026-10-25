@@ -31,7 +31,7 @@ func runNode(ctx context.Context, args []string) error {
 		// The flag package stops parsing at the first non-flag argument, so
 		// `moltnet node start <path> --id x` never reaches --id as a flag at
 		// all: it lands here as three unparsed positional args (path, --id,
-		// x), with *id left at its zero value — every flag after the path is
+		// x), with *id left at its zero value, every flag after the path is
 		// silently dropped, not applied and not rejected, even though the
 		// usage text (buildNodeUsage) already documents flags-first
 		// ([--id <network-id>] [path]). Extra args that still look like a

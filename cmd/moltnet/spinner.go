@@ -9,7 +9,7 @@ import (
 // spinnerFrames is the braille-dot animation `moltnet relay deploy` (and any
 // future multi-second network wait) cycles through while a spinner is
 // running. A var, not a const slice, so a test can swap in a smaller/larger
-// set if it ever needs to; spinnerInterval is a var for the same reason —
+// set if it ever needs to; spinnerInterval is a var for the same reason,
 // tests shorten it so a handful of frames render inside a short sleep
 // instead of needing to wait out a realistic interval.
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
@@ -19,25 +19,25 @@ var spinnerInterval = 90 * time.Millisecond
 
 // spinnerEnabled reports whether the CLI should show the animated progress
 // spinner for a network wait: only over a genuine terminal (stdoutIsRealTTY,
-// banner_player.go's own unmockable file-descriptor check — never the
+// banner_player.go's own unmockable file-descriptor check, never the
 // mockable isOutputTerminal seam other tests override to simulate a TTY
-// without one actually attached) with color actually enabled (colorEnabled
-// — NO_COLOR/TERM=dumb excluded). This mirrors playBanner's own gating
+// without one actually attached) with color actually enabled (colorEnabled,
+// NO_COLOR/TERM=dumb excluded). This mirrors playBanner's own gating
 // exactly, for the same reason: every existing captureStdout-based test in
 // this package writes to an os.Pipe, never a real pty, so spinner frames can
 // never leak into a piped/golden capture regardless of what any test forces
-// isOutputTerminal to — piped output must stay clean.
+// isOutputTerminal to, piped output must stay clean.
 func spinnerEnabled() bool {
 	return stdoutIsRealTTY() && colorEnabled()
 }
 
-// spinner is a small progress indicator for a network wait — the sequence
+// spinner is a small progress indicator for a network wait, the sequence
 // of Cloudflare API calls `moltnet relay deploy` makes inside a single
 // relaydeploy.Deploy call (token verify -> account -> upload -> secret ->
 // subdomain) is the first use, via startSpinner/Stop wrapping that call in
 // relay_deploy.go. It redraws "<frame> <label>" in place on one line every
 // spinnerInterval and clears that line completely on Stop, so whatever the
-// caller prints next starts on a clean line — it never fights
+// caller prints next starts on a clean line, it never fights
 // sectionPrinter's blank-line bookkeeping (style.go), since by the time
 // Stop returns nothing of the spinner remains on screen.
 type spinner struct {
@@ -49,7 +49,7 @@ type spinner struct {
 // startSpinner starts and returns a running spinner showing label, or nil
 // when spinnerEnabled() is false. Every method on a nil *spinner is a safe
 // no-op (see Stop), so callers never need their own enabled check at the
-// call site — `sp := startSpinner("..."); ...; sp.Stop()` is always safe to
+// call site, `sp := startSpinner("..."); ...; sp.Stop()` is always safe to
 // write unconditionally.
 func startSpinner(label string) *spinner {
 	if !spinnerEnabled() {

@@ -9,7 +9,7 @@ import (
 // TestBareCommandPrintsHelpInsteadOfStartingServer is the PLAN 7A.5
 // regression test: bare `moltnet` used to start a foreground daemon
 // (runServer) with no explanation, which blocked a terminal for anyone who
-// typed the bare command just to discover the tool — the help block never
+// typed the bare command just to discover the tool, the help block never
 // even advertised this as a way to start it (it lists `start`/`server`
 // instead). Bare `moltnet` must now behave like `moltnet help`: print usage
 // and return immediately, never blocking on runServer. This is asserted

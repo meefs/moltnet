@@ -14,7 +14,7 @@ import (
 // (main.go) too, in addition to stdout.
 
 // captureMainOutput sets os.Args to args for the duration of fn (restoring
-// it after) and returns everything fn wrote to stdout — for the handful of
+// it after) and returns everything fn wrote to stdout, for the handful of
 // tests that exercise main()/runMain() directly rather than calling run()
 // with an explicit argument slice.
 func captureMainOutput(t *testing.T, args []string, fn func()) string {

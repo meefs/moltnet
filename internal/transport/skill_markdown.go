@@ -301,7 +301,7 @@ func roomInfosForRequest(
 }
 
 // canReadRoomFallback is roomInfosForRequest's CanRead formula for a room
-// with no server-computed Access (room.Access == nil) — mirroring
+// with no server-computed Access (room.Access == nil), mirroring
 // internal/rooms/access_policy.go's canReadRoom precedence (minus the
 // pairing check, unavailable here) so agent-restricted claims (any
 // self-registered agent token, or a static token scoped to specific agents)
@@ -310,7 +310,7 @@ func roomInfosForRequest(
 // `observe` must not grant every room, only ones it is a member of (or
 // public ones). Production always supplies a pre-computed Access
 // (ListRoomsContext calls readableRoom for every room), so only a bare
-// fakeService test fixture ever exercises this fallback — it must not
+// fakeService test fixture ever exercises this fallback; it must not
 // silently claim broader access than the real service would.
 func canReadRoomFallback(authMode string, publicRead bool, claims authn.Claims, hasClaims bool, visibility string, members []string) bool {
 	if authMode == authn.ModeNone && !publicRead {

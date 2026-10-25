@@ -21,7 +21,7 @@ import (
 // currentExecutable resolves the path of the running moltnet binary
 // (symlink-resolved), the same way resolveServiceSpec does. It is a var,
 // not a direct call, so `moltnet uninstall` tests can point it at a
-// throwaway copy in a temp dir instead of the real go test binary —
+// throwaway copy in a temp dir instead of the real go test binary,
 // deleting *that* mid-test-run would be actively dangerous.
 var currentExecutable = func() (string, error) {
 	path, err := os.Executable()
@@ -104,7 +104,7 @@ func runUninstallCommand(ctx context.Context, args []string) error {
 			return fmt.Errorf("stop service for network %q: %w", id, err)
 		}
 		// P1 fix: a network whose service was never installed (the common
-		// `moltnet init` without `service install` path) gets no ✓ line —
+		// `moltnet init` without `service install` path) gets no ✓ line,
 		// manager.Uninstall is a truthful no-op for it, so claiming "stopped
 		// and removed" would be untruthful. See installedServiceIDs and
 		// printUninstallPlan, which agree on the same servicesInstalled set.
@@ -126,7 +126,7 @@ func runUninstallCommand(ctx context.Context, args []string) error {
 	// Scanned only now, after the binary is actually gone: a PATH entry
 	// that is a symlink to the binary just deleted fails os.Stat exactly
 	// like "nothing here", so OtherCopies (which relies on os.Stat) cannot
-	// report it — DanglingSymlinks uses os.Lstat instead, specifically to
+	// report it, DanglingSymlinks uses os.Lstat instead, specifically to
 	// catch that case.
 	danglingSymlinks := uninstall.DanglingSymlinks(os.Getenv("PATH"), binaryPath)
 	if len(otherCopies) > 0 || len(danglingSymlinks) > 0 {
@@ -141,7 +141,7 @@ func runUninstallCommand(ctx context.Context, args []string) error {
 	if len(danglingSymlinks) > 0 {
 		fmt.Fprintf(stdout, "  %s dangling moltnet symlinks remain on PATH:\n", yellow("warning:"))
 		for _, link := range danglingSymlinks {
-			fmt.Fprintf(stdout, "    dangling symlink: %s — remove it with rm %s\n", link, link)
+			fmt.Fprintf(stdout, "    dangling symlink: %s; remove it with rm %s\n", link, link)
 		}
 	}
 
@@ -149,7 +149,7 @@ func runUninstallCommand(ctx context.Context, args []string) error {
 }
 
 // printUninstallCheck prints one two-space-indented, green-checkmarked
-// completed-action line — the shared house-style building block behind
+// completed-action line, the shared house-style building block behind
 // every "✓ ..." line `moltnet uninstall` prints, mirroring
 // printInitConfigCheckLine's role for `moltnet init`.
 func printUninstallCheck(format string, args ...any) {
@@ -157,7 +157,7 @@ func printUninstallCheck(format string, args ...any) {
 }
 
 // installedServiceIDs reports, for each id in networkIDs, whether it
-// actually has an installed unit/plist (manager.IsInstalled) — not merely a
+// actually has an installed unit/plist (manager.IsInstalled), not merely a
 // ~/.moltnet/<id>/ directory. `moltnet init` alone (no `service install`)
 // leaves a network directory with no service, and uninstall.NetworkIDs's
 // union deliberately includes that id anyway (so --purge can still find its
@@ -188,7 +188,7 @@ func installedServiceIDs(manager *service.Manager, networkIDs []string) (map[str
 // line instead. Only ids with servicesInstalled[id] true get a "stop and
 // remove the service" bullet (P1): a network with no installed service
 // (e.g. `moltnet init` without `service install`) has nothing here for
-// uninstall to stop, so it gets no bullet at all — silence, not a false
+// uninstall to stop, so it gets no bullet at all, silence, not a false
 // promise.
 func printUninstallPlan(networkIDs []string, servicesInstalled map[string]bool, binaryPath string, purge bool, overridePath string, overrideActive bool) {
 	fmt.Fprintf(stdout, "  %s\n", dim("Plan:"))
@@ -205,7 +205,7 @@ func printUninstallPlan(networkIDs []string, servicesInstalled map[string]bool, 
 	}
 	fmt.Fprintf(stdout, "    - delete the binary at %s\n", binaryPath)
 	if purge {
-		fmt.Fprintln(stdout, "    - remove ~/.moltnet — all network data and config (--purge)")
+		fmt.Fprintln(stdout, "    - remove ~/.moltnet: all network data and config (--purge)")
 		if overrideActive {
 			fmt.Fprintf(stdout, "    - remove the MOLTNET_HOME install state at %s (--purge)\n", overridePath)
 		}
@@ -220,8 +220,8 @@ func printUninstallPlan(networkIDs []string, servicesInstalled map[string]bool, 
 // moltnetHomeOverride reports whether MOLTNET_HOME points updater's
 // install/update state (install.json, update.lock) somewhere other than
 // the default ~/.moltnet that --purge already removes via
-// app.HomeMoltnetDir. It reuses updater.ResolveHome — the exact resolution
-// `moltnet update` itself uses to read and write that state — so this can
+// app.HomeMoltnetDir. It reuses updater.ResolveHome, the exact resolution
+// `moltnet update` itself uses to read and write that state, so this can
 // never drift from where that state actually lives.
 func moltnetHomeOverride() (path string, active bool) {
 	resolved := updater.ResolveHome()
@@ -246,7 +246,7 @@ func moltnetHomeOverride() (path string, active bool) {
 // hadPrecedingOutput reports whether the service-removal loop above already
 // printed a ✓ line: the interactive main prompt (runUninstallCommand) always
 // emits its own blank line right after "Proceed? [y/N] y", so this function
-// only needs to add another one here when something was printed since —
+// only needs to add another one here when something was printed since,
 // otherwise the two blank-line emitters collide into a doubled blank line
 // with nothing between them (the common case: --purge with zero installed
 // services). With preceding output, this reproduces the exact spacing the
@@ -304,7 +304,7 @@ func runUninstallPurge(yes bool, overridePath string, overrideActive bool, hadPr
 
 // printPurgeResult reports what PurgeHomeDir(path) actually did. A missing
 // path, a symlink (whose target is never touched), and a real removed
-// directory each get a distinct, accurate message — PLAN.md phase 5 item 2
+// directory each get a distinct, accurate message, PLAN.md phase 5 item 2
 // and the P2-2 fix both require --purge never claim data was removed when
 // it was not.
 func printPurgeResult(path string, result uninstall.PurgeResult) {
@@ -322,8 +322,8 @@ func printPurgeResult(path string, result uninstall.PurgeResult) {
 
 // buildPurgeConfirmationPrompt builds the second, more explicit confirmation
 // PLAN.md phase 5 item 2 requires for --purge: it always names the
-// dir-derived network ids about to be destroyed, and — when root turns out
-// to be a symlink, or MOLTNET_HOME points install state somewhere else —
+// dir-derived network ids about to be destroyed, and, when root turns out
+// to be a symlink, or MOLTNET_HOME points install state somewhere else,
 // says so explicitly, since --purge only ever removes root itself (never a
 // symlink's resolved target) and would otherwise silently miss install
 // state living outside ~/.moltnet.
@@ -354,7 +354,7 @@ func buildPurgeConfirmationPrompt(dirNetworkIDs []string, root string, rootState
 
 // describeNetworkIDs joins networkIDs for the confirmation prompt's
 // "destroying data for network(s): ..." line. Callers only reach this with
-// a non-empty list — buildPurgeConfirmationPrompt handles the empty case
+// a non-empty list, buildPurgeConfirmationPrompt handles the empty case
 // with its own "no network data found" wording instead.
 func describeNetworkIDs(networkIDs []string) string {
 	return strings.Join(networkIDs, ", ")
@@ -381,7 +381,7 @@ func removeUninstallBinary(binaryPath string) {
 // promptReader is what promptYesNo reads confirmation answers from. It is a
 // var, defaulting to os.Stdin, so tests can drive `moltnet uninstall`'s
 // confirmation gates end to end with a scripted answer instead of needing a
-// real terminal — see cmd/moltnet/uninstall_test.go.
+// real terminal, see cmd/moltnet/uninstall_test.go.
 var promptReader io.Reader = os.Stdin
 
 // promptYesNo prints question, reads one line from promptReader, and

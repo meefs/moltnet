@@ -13,7 +13,7 @@ import (
 
 // The health-check failure paths for `moltnet console` live in this file,
 // split out of console_test.go (which was approaching the repo's 400-line
-// limit) once the P2 fix moved this failure prose from stdout to stderr —
+// limit) once the P2 fix moved this failure prose from stdout to stderr,
 // every case here now needs the two-stream captureStdoutAndStderr helper
 // (main_test.go) instead of plain captureStdout, so splitting them out
 // together keeps console_test.go's own success-path cases the simpler,
@@ -43,7 +43,7 @@ func TestRunConsoleServerErrorStatusNeverOpensBrowser(t *testing.T) {
 	})
 
 	// P2: the down-server fact and its suggested next command print to
-	// stderr, never stdout — stdout must stay empty so a script capturing
+	// stderr, never stdout, stdout must stay empty so a script capturing
 	// it (`URL=$(moltnet console --print)`) is never poisoned with prose.
 	if stdoutOutput != "" {
 		t.Fatalf("expected empty stdout on a down server, got %q", stdoutOutput)

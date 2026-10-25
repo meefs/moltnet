@@ -43,7 +43,7 @@ export function AgentView() {
         </Panel.Header>
         <Panel.Body>
           <p className="text-faint text-[13px] px-2 py-1.5">
-            agent not found{agentId ? ` — ${agentId}` : ""}.
+            agent not found{agentId ? `: ${agentId}` : ""}.
           </p>
         </Panel.Body>
       </Panel>
@@ -84,7 +84,7 @@ export function AgentView() {
         <SectionLabel title="Rooms" count={memberRooms.length} />
         {memberRooms.length === 0 ? (
           <p className="text-faint text-[13px] px-2 py-1 mb-4">
-            no rooms — this agent is not a member of any room.
+            no rooms: this agent is not a member of any room.
           </p>
         ) : (
           <div className="flex flex-col max-w-2xl mb-4">
@@ -109,7 +109,7 @@ export function AgentView() {
             <SectionLabel title="Direct channels" count={participatingDMs.length} />
             {participatingDMs.length === 0 ? (
               <p className="text-faint text-[13px] px-2 py-1">
-                no direct channels — this agent has no DMs.
+                no direct channels: this agent has no DMs.
               </p>
             ) : (
               <div className="flex flex-col">

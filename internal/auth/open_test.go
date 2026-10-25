@@ -59,7 +59,7 @@ func TestAgentTokenHelpers(t *testing.T) {
 	claims := NewAgentTokenClaims("luna", key)
 	// PLAN.md phase 6a review, P2-2: a self-registered agent token must be
 	// able to read (observe) what it's allowed to read, on top of write and
-	// attach — otherwise the join guide's own next command 403s.
+	// attach, otherwise the join guide's own next command 403s.
 	if !claims.AgentToken() || claims.StaticToken() ||
 		!claims.Allows(ScopeWrite) || !claims.Allows(ScopeAttach) || !claims.Allows(ScopeObserve) {
 		t.Fatalf("unexpected agent token claims %#v", claims)

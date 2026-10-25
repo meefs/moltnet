@@ -107,7 +107,7 @@ func TestRunControlLoopPublishesPiControlResponse(t *testing.T) {
 		t.Fatalf("unexpected published parts %#v", published.Parts)
 	}
 	// Gap 2: the reply publish must thread cause_event_ids back to the
-	// inbound message that triggered this wake (msg_1), not drop them —
+	// inbound message that triggered this wake (msg_1), not drop them,
 	// this is what lets the reply's own message.accepted causal event
 	// chain back to the wake that produced it.
 	if len(published.CauseEventIDs) != 1 || published.CauseEventIDs[0] != protocol.MessageEventID("msg_1") {

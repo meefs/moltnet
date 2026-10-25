@@ -195,7 +195,7 @@ func (s *Service) findPairing(pairingID string) (protocol.Pairing, error) {
 }
 
 // findPairingByID resolves a pairing by its exact id, without depending on a
-// configured transport client — unlike the exported findPairing, which
+// configured transport client, unlike the exported findPairing, which
 // requires s.pairingClient because it also backs outbound diagnostics
 // queries. This is the lookup pairingForPairScopedContext (federation_access.go)
 // uses for the 7B.1 placeholder binding: a pair-scoped credential's TokenID

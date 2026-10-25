@@ -17,18 +17,18 @@ import (
 // uses (its own env var, own scenario switch): P2-3's fix installs an
 // os.Exit-driven signal handler for SIGHUP/SIGTSTP
 // (setup_prompt_select_raw_unix.go), and exercising an os.Exit path safely
-// needs a genuinely separate process — running it in this test binary's own
+// needs a genuinely separate process; running it in this test binary's own
 // process would kill the whole `go test` run, not just the scenario under
 // test.
 const setupSelectSignalHelperEnv = "MOLTNET_SETUP_SELECT_SIGNAL_HELPER"
 
 // TestSetupSelectSignalHelperProcess is never meaningfully run by `go test`
-// itself — the driving tests below re-exec this same test binary with
+// itself; the driving tests below re-exec this same test binary with
 // -test.run scoped to just this function and setupSelectSignalHelperEnv
 // set, so it runs as its own separate process with its real
 // os.Stdin/os.Stdout dup'd to a pty's slave side (promptReader defaults to
 // os.Stdin at package init, so no extra seam-swapping is needed inside this
-// fresh process — it already is the real terminal path).
+// fresh process; it already is the real terminal path).
 func TestSetupSelectSignalHelperProcess(t *testing.T) {
 	if os.Getenv(setupSelectSignalHelperEnv) == "" {
 		return
@@ -43,7 +43,7 @@ func TestSetupSelectSignalHelperProcess(t *testing.T) {
 
 // startSetupSelectSignalHelper re-execs this test binary as a fresh process
 // running TestSetupSelectSignalHelperProcess, with its stdin and stdout
-// dup'd to slave (a real pty's slave side — requireTestPTY, openpty_test.go)
+// dup'd to slave (a real pty's slave side; requireTestPTY, openpty_test.go)
 // and its stderr piped back. The caller owns starting/signaling/waiting on
 // the returned *exec.Cmd, mirroring startPromptHiddenHelper's own contract
 // (prompt_hidden_pty_test.go) without sharing its helper process or env var.
@@ -71,7 +71,7 @@ func startSetupSelectSignalHelper(t *testing.T, slave *os.File) (cmd *exec.Cmd, 
 // real-pty coverage: SIGHUP and SIGTSTP arriving while a select question is
 // genuinely blocked reading a keypress must each restore the terminal (not
 // leave ECHO|ICANON cleared indefinitely, worse than promptHidden's own
-// ECHO-only exposure) and exit with the conventional 128+signal code —
+// ECHO-only exposure) and exit with the conventional 128+signal code,
 // exactly the guarantee setup_prompt_select_raw_unix.go's doc comment now
 // makes, and the gap the finding's own doc-comment quote ("ISIG is
 // deliberately left untouched... that reasoning holds for SIGINT only")

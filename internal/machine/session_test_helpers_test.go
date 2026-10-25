@@ -40,7 +40,7 @@ func decodeResponses(t *testing.T, raw []byte) []protocol.MachineResponse {
 //
 // These waits are COMPLETION waits, not rate assertions: nothing here asserts
 // that the session is fast, only that it finishes. A fixed short deadline
-// therefore does not test the product, it tests the hardware — and
+// therefore does not test the product, it tests the hardware, and
 // TestSessionActiveCapacity gates protocol.MachineMaxActiveRequests (512)
 // goroutines, so under -race on a 2-core CI runner the legitimate drain
 // exceeded the old fixed 2s and failed there while taking 0.5s here.
@@ -310,7 +310,7 @@ func (reader *stagedReadCloser) Close() error {
 // terminalWriteSignal wraps the session's output and closes its channel after
 // the first response is written. emitTerminal (session_lifecycle.go) claims the
 // terminal in the registry *before* writing it, so a test gating input on this
-// signal knows the target correlation is already final — which is the only way
+// signal knows the target correlation is already final, which is the only way
 // to establish the precondition "the operation completed, then a cancel
 // arrived" without depending on goroutine scheduling.
 type terminalWriteSignal struct {
