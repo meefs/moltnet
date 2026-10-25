@@ -177,6 +177,11 @@ func TestRelayMessageSelection(t *testing.T) {
 	waitForRelayCalls(t, client, 2)
 	waitForRelayDone(t, client)
 	waitForRelayDone(t, client)
+	// The fake client signals done before RelayMessage returns, so the
+	// service records the relay success afterwards. Pending clears only once
+	// that outcome is settled; a late success would otherwise overwrite the
+	// error status set below.
+	waitForDeliveriesSettled(t, service)
 	calls := client.snapshotCalls()
 	if len(calls) == 2 && calls[0].ID == "pair_c" {
 		calls[0], calls[1] = calls[1], calls[0]
@@ -326,6 +331,31 @@ func waitForRelayCalls(t *testing.T, client *recordingPairingClient, want int) {
 		return
 	}
 	t.Fatalf("timed out waiting for %d relay calls", want)
+}
+
+func waitForDeliveriesSettled(t *testing.T, service *Service) {
+	t.Helper()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		pairings, err := service.ListPairings()
+		if err != nil {
+			t.Fatalf("ListPairings() error = %v", err)
+		}
+		settled := true
+		for _, pairing := range pairings {
+			if pairing.Delivery == nil || pairing.Delivery.Pending > 0 {
+				settled = false
+			}
+		}
+		if settled {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("pairing deliveries never settled: %#v", pairings)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 }
 
 func waitForRelayDone(t *testing.T, client *recordingPairingClient) {

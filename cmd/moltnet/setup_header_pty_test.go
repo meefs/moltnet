@@ -327,9 +327,9 @@ func TestSetupHeaderStopsRepaintingOnceViewportReached(t *testing.T) {
 	// otherwise "no escapes after the threshold" below would be vacuously
 	// true for the wrong reason (the ticker never running at all).
 	waitForIdxChange(t, h, h.snapshotIdx(), 2*time.Second)
-	if !strings.Contains(buf.String(), "\x1b[2K") {
-		t.Fatalf("no redraw observed before the viewport fills: %q", buf.String())
-	}
+	// The frame index advances before the redraw bytes reach the master
+	// side, so wait for them to be drained rather than checking at once.
+	waitForSubstring(t, buf, "\x1b[2K", 2*time.Second)
 
 	headerRows := len(h.frames[0].rows)
 	for h.snapshotBodyLines()+headerRows < viewportRows {
