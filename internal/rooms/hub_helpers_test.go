@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -322,3 +323,5 @@ func pairGet(t *testing.T, url, secret string) string {
 	raw, _ := io.ReadAll(response.Body)
 	return string(raw)
 }
+
+func urlQuery(value string) string { return url.QueryEscape(value) }

@@ -26,6 +26,9 @@ func joinedTopology(t *testing.T, open func(t *testing.T) backendStore) hubTopol
 
 func TestHubRoomFansOutAcrossThreeNetworks(t *testing.T) {
 	for _, backend := range envelopeTestBackends(t) {
+		if backend.name == "postgres" {
+			continue // three networks cannot share one database; the store suite covers Postgres
+		}
 		t.Run(backend.name, func(t *testing.T) {
 			h := joinedTopology(t, backend.open)
 			h.alpha.post(t, "hello from alpha")
