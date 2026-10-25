@@ -39,9 +39,7 @@ func TestRoomInviteAdmitsTheJoinerOnceAndPinsItsKeyOverThePairing(t *testing.T) 
 	}
 	h.beta.start(t) // the server finishes the pending join
 	waitFor(t, func() bool { return h.beta.joined(t, h.global) })
-	if joins, _ := h.beta.invites.Joins(); len(joins) != 0 {
-		t.Fatalf("pending join kept after joining: %#v", joins)
-	}
+	waitFor(t, func() bool { joins, _ := h.beta.invites.Joins(); return len(joins) == 0 })
 	if _, ok, _ := h.home.invites.Grant("link-beta", h.global, time.Now()); ok {
 		t.Fatal("the grant was not consumed")
 	}

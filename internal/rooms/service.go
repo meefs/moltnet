@@ -98,6 +98,7 @@ type Service struct {
 	hubMu                sync.Mutex
 	hubRosters           hubRosterCache
 	hubSyncWake          chan struct{}
+	hubSyncMu            sync.Mutex
 	hubSyncInterval      time.Duration
 	identity             *netkeys.Identity
 	keyPins              *netkeys.PinStore

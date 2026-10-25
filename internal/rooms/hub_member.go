@@ -224,9 +224,24 @@ func (s *Service) applyPulledControl(ctx context.Context, hub store.HubRoom, eve
 	if err != nil {
 		return hubRoster{}, err
 	}
-	pulled, err := controlRecords(hub.GlobalRoomID, before.Epoch+1, events)
+	// A concurrent sync may have stored some of these already: events up to
+	// the stored head must be exactly the stored ones (the store refuses a
+	// forked log), and only the rest extends it.
+	start := before.Epoch + 1
+	if len(events) > 0 {
+		if first, _, err := protocol.ParseRoomControlUnverified(events[0]); err == nil && first.Seq < start && first.Seq >= 1 {
+			start = first.Seq
+		}
+	}
+	pulled, err := controlRecords(hub.GlobalRoomID, start, events)
 	if err != nil {
 		return hubRoster{}, hubInvalidError(err.Error())
+	}
+	if overlap := min(int64(len(pulled)), before.Epoch-start+1); overlap > 0 {
+		if err := s.hubs.AppendHubControlContext(ctx, pulled[:overlap]); err != nil {
+			return hubRoster{}, err
+		}
+		pulled = pulled[overlap:]
 	}
 	if len(pulled) == 0 {
 		return before, nil

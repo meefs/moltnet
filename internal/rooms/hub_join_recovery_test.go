@@ -65,3 +65,28 @@ func TestHubJoinRefusesATakenLocalRoomBeforeWritingAnything(t *testing.T) {
 		t.Fatalf("a refused join left a hub record: %#v", hubs)
 	}
 }
+
+// Concurrent catch-ups of one room (the loop, a gap, an operator) agree:
+// none fails on events the other just stored.
+func TestHubConcurrentSyncsOfOneRoomBothSucceed(t *testing.T) {
+	h := joinedTopology(t, memoryBackend)
+	for round := 0; round < 5; round++ {
+		role := []string{protocol.RoomRoleAdmin, protocol.RoomRoleWriter}[round%2]
+		if _, err := h.home.service.AppendHubControlContext(contextBackground(), rooms.HubControlRequest{
+			GlobalRoomID: h.global, Kind: protocol.RoomControlSetRole, NetworkID: "alpha", Role: role}); err != nil {
+			t.Fatal(err)
+		}
+		errs := make(chan error, 4)
+		for range 4 {
+			go func() {
+				_, err := h.beta.service.SyncHubRoomContext(contextBackground(), h.global)
+				errs <- err
+			}()
+		}
+		for range 4 {
+			if err := <-errs; err != nil {
+				t.Fatalf("round %d: %v", round, err)
+			}
+		}
+	}
+}

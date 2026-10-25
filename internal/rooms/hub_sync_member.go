@@ -55,6 +55,9 @@ func (s *Service) syncHubRoom(ctx context.Context, hub store.HubRoom) error {
 	if hub.IsHome() {
 		return nil
 	}
+	// One catch-up at a time: two would race the forward-only cursor.
+	s.hubSyncMu.Lock()
+	defer s.hubSyncMu.Unlock()
 	client, ok := s.pairingClient.(roomSyncClient)
 	if !ok {
 		return hubUnavailableError("pairing client cannot sync hub rooms")
