@@ -53,11 +53,39 @@ func TestServerGeneratesPersistentKeyBesideConfig(t *testing.T) {
 }
 
 func TestKeysDirWithoutConfigFile(t *testing.T) {
+	t.Setenv(KeysDirEnv, "")
 	sqlite := Config{Storage: StorageConfig{Kind: storageKindSQLite, SQLite: SQLiteStorageConfig{Path: "/data/net/moltnet.db"}}}
 	if got := sqlite.KeysDir(); got != "/data/net/keys" {
 		t.Fatalf("sqlite keys dir = %q", got)
 	}
 	if got := (Config{}).KeysDir(); got != "" {
 		t.Fatalf("memory keys dir = %q, want ephemeral", got)
+	}
+}
+
+func TestNoDurableKeysDirMeansNoSigningKey(t *testing.T) {
+	t.Setenv(KeysDirEnv, "")
+	for _, kind := range []string{storageKindMemory, storageKindPostgres} {
+		identity, pins, err := loadNetworkKeys(Config{Storage: StorageConfig{Kind: kind}})
+		if err != nil || identity != nil || pins == nil {
+			t.Fatalf("%s: identity=%v pins=%v err=%v; an ephemeral key would change on every restart", kind, identity, pins, err)
+		}
+	}
+}
+
+func TestKeysDirEnvChoosesDurableDirectory(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv(KeysDirEnv, dir)
+	config := Config{Storage: StorageConfig{Kind: storageKindPostgres}}
+	if config.KeysDir() != dir {
+		t.Fatalf("keys dir = %q, want %q", config.KeysDir(), dir)
+	}
+	first, _, err := loadNetworkKeys(config)
+	if err != nil || first == nil {
+		t.Fatalf("first load: %v %v", first, err)
+	}
+	second, _, err := loadNetworkKeys(config)
+	if err != nil || second == nil || second.Fingerprint() != first.Fingerprint() {
+		t.Fatalf("key changed across restarts: %v %v", second, err)
 	}
 }
