@@ -89,6 +89,13 @@ func (s *Service) appendLocalHubMessage(ctx context.Context, request protocol.Se
 	if err := s.requireHubs(); err != nil {
 		return store.AppendLifecycle{}, err
 	}
+	if hub.IsHome() {
+		// The home reads the epoch, signs and places under one placement
+		// lock: a control change can never land between the epoch a
+		// message is signed under and the receipt that places it.
+		s.hubMu.Lock()
+		defer s.hubMu.Unlock()
+	}
 	roster, _, err := s.hubRoster(ctx, hub, 0)
 	if err != nil {
 		return store.AppendLifecycle{}, err
@@ -104,8 +111,6 @@ func (s *Service) appendLocalHubMessage(ctx context.Context, request protocol.Se
 	if !hub.IsHome() {
 		return s.appendHub(ctx, request, message, event, envelope, nil, []string{hub.HomePairingID})
 	}
-	s.hubMu.Lock()
-	defer s.hubMu.Unlock()
 	placed, err := s.nextHubReceipt(ctx, hub, roster.Epoch, envelope.Digest)
 	if err != nil {
 		return store.AppendLifecycle{}, err
