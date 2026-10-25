@@ -23,8 +23,18 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 		return protocol.MessageAccepted{}, humanIngressDisabledError()
 	}
 	request.Origin = canonicalOriginIDs(request.Origin)
-	if _, relayed := s.pairingForPairScopedContext(ctx); relayed {
+	if pairing, relayed := s.pairingForPairScopedContext(ctx); relayed {
 		request = stripPeerTestimony(request)
+		if isHubRequest(request) {
+			return s.receiveHubMessage(ctx, request)
+		}
+		if pairing.IsRoomLink() {
+			return protocol.MessageAccepted{}, hubForbiddenError("a room link carries only signed hub room messages")
+		}
+	} else {
+		// Envelopes and receipts are peer statements; local callers never
+		// supply them.
+		request.Envelope, request.Receipt = nil, nil
 	}
 	if err := s.validateSenderIdentity(ctx, request.From, request.Origin); err != nil {
 		return protocol.MessageAccepted{}, err
@@ -153,6 +163,11 @@ func (s *Service) appendAndPublishMessage(
 	message protocol.Message,
 	event protocol.Event,
 ) (store.AppendLifecycle, error) {
+	if hub, ok, err := s.hubRoomForTarget(ctx, message.Target); err != nil {
+		return store.AppendLifecycle{}, err
+	} else if ok {
+		return s.appendLocalHubMessage(ctx, request, message, event, hub)
+	}
 	s.deliveryMu.Lock()
 	defer s.deliveryMu.Unlock()
 
@@ -193,7 +208,13 @@ func (s *Service) appendAndPublishMessage(
 	if err != nil {
 		return store.AppendLifecycle{}, err
 	}
+	s.publishAppended(ctx, request, message, event, lifecycle)
+	return lifecycle, nil
+}
 
+// publishAppended runs after a durable, non-duplicate append: drop logs,
+// the causal stamp, and lifecycle and message events, exactly once.
+func (s *Service) publishAppended(ctx context.Context, request protocol.SendMessageRequest, message protocol.Message, event protocol.Event, lifecycle store.AppendLifecycle) {
 	for pairingID, dropped := range lifecycle.PairingDeliveriesDropped {
 		s.logDroppedDeliveries(ctx, pairingID, dropped)
 	}
@@ -220,7 +241,6 @@ func (s *Service) appendAndPublishMessage(
 		})
 	}
 	s.publishEvent(event)
-	return lifecycle, nil
 }
 
 func (s *Service) validateDMSenderTopology(target protocol.Target, actor protocol.Actor) error {

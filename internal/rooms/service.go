@@ -85,19 +85,23 @@ type Service struct {
 	transcriptWriter          *observability.TranscriptWriter
 	pairingDeliveries         store.PairingDeliveryStore
 	envelopes                 store.MessageEnvelopeStore
-	identity                  *netkeys.Identity
-	keyPins                   *netkeys.PinStore
-	deliveryRetryMin          time.Duration
-	deliveryRetryMax          time.Duration
-	deliveryPollInterval      time.Duration
-	deliveryTimeout           time.Duration
-	relayWake                 chan struct{}
-	relayStart                sync.Once
-	relayWG                   sync.WaitGroup
-	pairingsMu                sync.RWMutex
-	pairingPublishMu          sync.Mutex
-	deliveryMu                sync.Mutex
-	pairingStatuses           map[string]pairingStatus
+	hubs                      store.HubStore
+	// hubMu serializes hub control-log appends and receipt placement, so
+	// one home assigns each room seq exactly once.
+	hubMu                sync.Mutex
+	identity             *netkeys.Identity
+	keyPins              *netkeys.PinStore
+	deliveryRetryMin     time.Duration
+	deliveryRetryMax     time.Duration
+	deliveryPollInterval time.Duration
+	deliveryTimeout      time.Duration
+	relayWake            chan struct{}
+	relayStart           sync.Once
+	relayWG              sync.WaitGroup
+	pairingsMu           sync.RWMutex
+	pairingPublishMu     sync.Mutex
+	deliveryMu           sync.Mutex
+	pairingStatuses      map[string]pairingStatus
 	// learnedPairNetworks pins a pair credential to the origin network it
 	// first asserted, for credentials config never bound (the inviting side).
 	// Guarded by pairingsMu. See pairing_binding.go.
@@ -189,6 +193,7 @@ func NewService(config ServiceConfig) *Service {
 	}
 	service.pairingDeliveries, _ = config.Messages.(store.PairingDeliveryStore)
 	service.envelopes, _ = config.Messages.(store.MessageEnvelopeStore)
+	service.hubs, _ = config.Messages.(store.HubStore)
 	service.identity, service.keyPins = config.Identity, config.KeyPins
 	if service.keyPins == nil {
 		service.keyPins = netkeys.NewMemoryPinStore()

@@ -17,6 +17,9 @@ func (s *Service) enforceTargetWritePolicy(ctx context.Context, target protocol.
 	if room.ID == "" {
 		return nil
 	}
+	if err := s.enforceHubWrite(ctx, target, room.ID); err != nil {
+		return err
+	}
 	if !s.canWriteRoom(ctx, room, actor) && room.Follow != nil {
 		return followReadOnlyError(room.ID)
 	}

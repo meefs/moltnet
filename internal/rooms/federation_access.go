@@ -122,7 +122,7 @@ func (s *Service) pairScopedWriteAllowed(ctx context.Context, room protocol.Room
 		return true
 	}
 	pairing, ok := s.pairingForPairScopedContext(ctx)
-	return ok && protocol.RoomFederationAllows(room.Federation, pairing.ID)
+	return ok && !pairing.IsRoomLink() && protocol.RoomFederationAllows(room.Federation, pairing.ID)
 }
 
 func (s *Service) roomVisibleToPairScopedContext(ctx context.Context, room protocol.Room) bool {
@@ -131,5 +131,7 @@ func (s *Service) roomVisibleToPairScopedContext(ctx context.Context, room proto
 		return true
 	}
 	pairing, ok := s.pairingForPairScopedContext(ctx)
-	return ok && protocol.RoomFederationAllows(room.Federation, pairing.ID)
+	// A room link discovers no rooms and, through them, no agents: it
+	// carries hub rooms only, which it reaches by global room id.
+	return ok && !pairing.IsRoomLink() && protocol.RoomFederationAllows(room.Federation, pairing.ID)
 }
