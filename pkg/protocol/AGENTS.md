@@ -69,3 +69,14 @@ both stamped from `internal/rooms/causal.go`:
 - `testdata/stele.causal-contract.v1.json` — immutable cross-language corpus
   snapshot; `scripts/verify-stele-corpus.sh` checks it against the published
   `@noopolis/stele` package before CI and release.
+
+## Network Identity and Signed Envelopes
+
+- `network_identity.go` — Ed25519 network key wire forms, `sha256:<hex>`
+  fingerprints, trust levels (`verified`, `introduced`), and the HTTP-only
+  signature states.
+- `envelope.go` / `envelope_canonical.go` — `moltnet.envelope.v1`: the
+  origin-signed message statement, encoded as canonical-json.v1, digested and
+  signed with domain separation, parsed strictly. `global_room_id`,
+  `membership_epoch`, and per-room `origin_seq` are reserved optional fields
+  for hub rooms. None of this enters the machine v1 contract.
