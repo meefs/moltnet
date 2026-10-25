@@ -95,6 +95,7 @@ func runPairJoin(ctx context.Context, args []string) error {
 		verbose:           *verboseFlag,
 		remoteNetworkID:   invite.NetworkID,
 		remoteNetworkName: invite.NetworkName,
+		remoteFingerprint: invite.NetworkFingerprint,
 	})
 }
 

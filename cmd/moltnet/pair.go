@@ -154,6 +154,7 @@ type pairAftercareOptions struct {
 	verbose           bool
 	remoteNetworkID   string
 	remoteNetworkName string
+	remoteFingerprint string
 }
 
 // pairStatusColumn is the column plain (unstyled) "wrote pairing" status

@@ -37,11 +37,14 @@ func TestPairInviteCarriesKeyAndJoinPinsIt(t *testing.T) {
 	}
 
 	bobPath := writeMoltnetConfig(t, t.TempDir(), "bob-net", "Bob")
-	captureStdout(t, func() {
+	joinOutput := captureStdout(t, func() {
 		if err := run(context.Background(), []string{"pair", code, "--config", bobPath}, "test"); err != nil {
 			t.Fatal(err)
 		}
 	})
+	if !strings.Contains(joinOutput, "trusted alice-net key "+protocol.DisplayFingerprint(aliceKey.Fingerprint())) {
+		t.Fatalf("join output does not name the key it pinned:\n%s", joinOutput)
+	}
 	pin, ok, err := netkeys.OpenPinStore(netkeys.DirForConfig(bobPath)).Lookup("alice-net")
 	if err != nil || !ok || pin.Fingerprint != aliceKey.Fingerprint() || pin.Trust != protocol.KeyTrustVerified ||
 		pin.Source != netkeys.PinSourceInvite || pin.SourceID != "friend-net" {
