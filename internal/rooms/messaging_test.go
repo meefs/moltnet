@@ -376,3 +376,11 @@ func TestSendMessagePublishesSingleDMCreatedEventUnderConcurrency(t *testing.T) 
 	case <-time.After(50 * time.Millisecond):
 	}
 }
+
+func TestStripPeerTestimonyDropsCauseEventIDs(t *testing.T) {
+	stripped := stripPeerTestimony(protocol.SendMessageRequest{CauseEventIDs: []string{"evt-1"},
+		Origin: protocol.MessageOrigin{NetworkID: "n", MessageID: "m", ClaimedNetworkID: "x"}})
+	if stripped.CauseEventIDs != nil || stripped.Origin.ClaimedNetworkID != "" || stripped.Origin.NetworkID != "n" {
+		t.Fatalf("stripped = %#v", stripped)
+	}
+}

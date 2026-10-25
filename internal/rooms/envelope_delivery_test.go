@@ -328,3 +328,25 @@ func TestHTTPRendersSignedFactsFromTheEnvelope(t *testing.T) {
 		t.Fatalf("author must be the signed author: %#v", got.From)
 	}
 }
+
+func TestPairRelayDropsUnsignedTestimony(t *testing.T) {
+	originKey := newTestIdentity(t)
+	peer := newSignedPeer(t, netkeys.NewMemoryPinStore())
+	pinAsInvite(t, peer.pins, "origin", originKey)
+	request := signedRequest(t, originKey, "testimony", "hello")
+	request.Origin.ClaimedAuthor = &protocol.Actor{Type: "agent", ID: "ceo"}
+	request.Origin.ClaimedNetworkID, request.Origin.ClaimedMessageID = "elsewhere", "m-9"
+	request.Origin.ClaimedDiscoveryNetworkID = "elsewhere"
+	request.CauseEventIDs = []string{"evt-forged"}
+	if status, body := deliveryPost(t, peer.pairURL, "pair-secret", request); status != http.StatusAccepted {
+		t.Fatalf("send: %d %s", status, body)
+	}
+	page, err := peer.service.ListRoomMessages("research", "", 10)
+	if err != nil || len(page.Messages) != 1 {
+		t.Fatalf("messages = %#v, %v", page, err)
+	}
+	origin := page.Messages[0].Origin
+	if origin.ClaimedAuthor != nil || origin.ClaimedNetworkID != "" || origin.ClaimedMessageID != "" || origin.ClaimedDiscoveryNetworkID != "" {
+		t.Fatalf("claimed_* testimony survived a pairing relay: %#v", origin)
+	}
+}
