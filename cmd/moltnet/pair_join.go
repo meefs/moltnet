@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"strings"
 
 	"github.com/noopolis/moltnet/internal/app"
+	"github.com/noopolis/moltnet/internal/netkeys"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
@@ -56,6 +58,10 @@ func runPairJoin(ctx context.Context, args []string) error {
 			"invite network id %q collides with the local network id in %s; ask the sender to regenerate the invite with a distinct network.id, or change your own, then retry",
 			invite.NetworkID, path,
 		)
+	}
+
+	if err := pinInviteKey(path, invite); err != nil {
+		return err
 	}
 
 	pairing := app.PairingWriteback{
@@ -126,4 +132,22 @@ func splitPairJoinArgs(args []string) ([]string, string, error) {
 	}
 
 	return flagArgs, code, nil
+}
+
+// pinInviteKey pins the inviter's signing key as verified: the invite came
+// to this operator out of band, which is the independent channel that makes
+// the key trustworthy. Invites from networks without keys pin nothing; their
+// messages arrive unsigned until a key is pinned some other way.
+func pinInviteKey(configPath string, invite protocol.Invite) error {
+	if invite.NetworkFingerprint == "" {
+		return nil
+	}
+	_, err := netkeys.OpenPinStore(netkeys.DirForConfig(configPath)).PinKey(netkeys.Pin{
+		NetworkID: invite.NetworkID, Fingerprint: invite.NetworkFingerprint, PublicKey: invite.NetworkPublicKey,
+		Trust: protocol.KeyTrustVerified, Source: netkeys.PinSourceInvite, SourceID: invite.PairingID,
+	})
+	if errors.Is(err, netkeys.ErrPinConflict) {
+		return fmt.Errorf("%w\nthe invite's key differs from the one already trusted for %q; if that network really has a new identity, run `moltnet keys forget %s` and pair again", err, invite.NetworkID, invite.NetworkID)
+	}
+	return err
 }

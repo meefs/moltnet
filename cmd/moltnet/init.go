@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/noopolis/moltnet/internal/app"
+	"github.com/noopolis/moltnet/internal/netkeys"
 	"github.com/noopolis/moltnet/pkg/nodeconfig"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
@@ -331,6 +332,11 @@ func runInit(ctx context.Context, args []string) error {
 	}
 	nodeCreated, err := writeFileIfMissing(nodePath, defaultMoltnetNodeConfig(id, nodeBaseURL))
 	if err != nil {
+		return err
+	}
+	// Generate the network signing key now (0600, .moltnet/keys/) so
+	// `moltnet keys show` and `pair invite` work before the first start.
+	if _, _, err := netkeys.LoadOrCreateIdentity(netkeys.DirForConfig(serverPath)); err != nil {
 		return err
 	}
 

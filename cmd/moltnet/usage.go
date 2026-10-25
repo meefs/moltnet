@@ -7,6 +7,7 @@ func buildUsage() string {
   moltnet console [--id <network-id>] [--config <path>] [--print] [--no-open] [--no-restart]
   moltnet conversations [--network <id>] [--member <id>]
   moltnet init [--id <network-id>] [--name <name>] [--dir <path>] [--bearer] [--listen <addr>] [--room <id>]
+  moltnet keys show|list|trust|forget [--config <path>] [--id <network-id>]
   moltnet machine --config <path> [--network <id>] [--member <id>]
   moltnet machine-contract
   moltnet pair invite [--relay-url <wss://url> --relay-token-env <env>] [--id <pairing-id>] [--room <shared-room-id>] [--print-only] [--force] [--restart] [--config <path>] [--network-id <network-id>]
@@ -52,6 +53,7 @@ Commands:
   console           Open (or print) the resolved network's web console
   conversations     List the configured rooms and DMs this agent can use
   init              Create canonical Moltnet and MoltnetNode config files
+  keys              Show this network's signing key and manage pinned peer keys
   machine           Run the long-lived machine JSONL protocol over standard I/O
   machine-contract  Print the canonical machine conformance contract
   pair              Pair with another Moltnet network over a relay: generate or consume an invite
