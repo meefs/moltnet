@@ -46,13 +46,15 @@ failure it prints the tail of every log first.
    joins it; home then holds two pairings to lab. Home's and lab's next
    messages still cross over the room link (fanout and submission), with no
    rejection either way.
-7. **Catch-up from sync alone:** desk is stopped, two messages and three
-   ~250 KB messages (~1 MB, more than one transport response) are posted,
+7. **Catch-up from sync alone:** desk is stopped, two messages, three
+   ~250 KB messages and one whose live delivery is within ~6 KB of the
+   1 MiB transport limit (lab must receive it live over the relay) are posted,
    home is stopped and its queued rows for desk are deleted from its SQLite
-   outbox (asserted non-empty first). desk restarts and holds all five,
-   logged as a sync catch-up over the relay.
+   outbox (asserted non-empty first). desk restarts and holds all six, the
+   near-limit one complete and nothing withheld, logged as a sync catch-up
+   over the relay.
 8. **Sync log:** lab's own room-link credential pages through the home's
-   `/v1/hub/sync` and reads exactly the 11 messages placed since it joined.
+   `/v1/hub/sync` and reads exactly the 12 messages placed since it joined.
 9. **Removal:** `room remove research <desk>`; a later home message reaches
    lab but not desk; desk's own write is refused by the home (counted as a
    rejection on desk) and stored nowhere.

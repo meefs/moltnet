@@ -345,7 +345,11 @@ rooms only: no room or agent discovery, no DMs, no ordinary rooms).
   verified receipt is stored, receipt-only when its message is hidden or
   refused, so it meets the conflict rules above. Pages (and control log
   pages, which carry `more`) stay under 640 KiB of JSON, control events
-  first; a single message too large for any page travels receipt-only.
+  first; a page with a single entry may use the whole 1 MiB transport limit
+  (an entry's message does not repeat the entry's receipt, so it is no larger
+  than its live delivery). A message that fits no page even alone travels
+  with `withheld: "too_large"`; the member stores the receipt as withheld and
+  `GET /v1/rooms/{id}/hub` lists it under `withheld`.
   Members sync at start, on reconnect, on a gap, and every 30 seconds.
 - **Order.** Stored history is in arrival order. The HTTP message APIs add
   `room_seq` and `membership_epoch` to each placed shared-room message;

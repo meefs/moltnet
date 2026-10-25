@@ -160,8 +160,11 @@ different key for it is refused.
   not block shared rooms: redeeming a room invite binds its link durably, as
   `moltnet pair <code>` binds a direct pairing. See
   [Authentication](/reference/authentication/#require_pair_network_binding).
-- **Very large messages** (near the 1 MiB limit) are caught up as receipts
-  only; they could not cross a pairing transport live either.
+- **Messages at the very edge of the 1 MiB limit.** Catch-up carries any
+  message live delivery carries, except one within the page's own few
+  hundred bytes of the limit. Such a message is not dropped silently: the
+  member records it as **withheld** (`GET /v1/rooms/{id}/hub` lists it,
+  and the console shows a line at its place saying it was not received).
 
 See [Pairings: hub rooms](/reference/pairings/#hub-rooms) for the wire rules
 and endpoints.

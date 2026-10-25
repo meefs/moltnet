@@ -144,6 +144,14 @@ post home research lead "while desk was down 1"
 post lab research scout "while desk was down 2"
 big="$(head -c 250000 /dev/zero | tr '\0' 'x')"
 for n in 1 2 3; do post home research lead "big-$n:$big"; done
+# One message whose live delivery is within ~6 KB of the 1 MiB transport
+# limit (each text byte costs ~2.33 bytes live: raw plus base64 in the
+# envelope). lab must receive it live over the relay, and desk by catch-up.
+huge="$(head -c 446000 /dev/zero | tr '\0' 'y')"
+post home research lead "huge:$huge"
+deadline=$((SECONDS + timeout_seconds))
+until has_prefix lab research "huge:"; do ((SECONDS < deadline)) || fail "lab never received the near-limit message live"; sleep 0.5; done
+[[ "$(pairing_rejected home room-lab)" == "0" ]] || fail "the relay refused the near-limit message live"
 wait_text home research "while desk was down 2"
 stop_server home
 queued="$(outbox_rows home room-desk)"
@@ -158,8 +166,13 @@ for n in 1 2 3; do
 	deadline=$((SECONDS + timeout_seconds))
 	until has_prefix desk research "big-$n:"; do ((SECONDS < deadline)) || fail "desk never caught up on big-$n"; sleep 0.5; done
 done
+deadline=$((SECONDS + timeout_seconds))
+until has_prefix desk research "huge:"; do ((SECONDS < deadline)) || fail "desk never caught up on the near-limit message"; sleep 0.5; done
+huge_length="$(messages desk research | jq '[.messages[] | select(.parts[0].text | startswith("huge:"))][0].parts[0].text | length')"
+[[ "$huge_length" == "$((446000 + 5))" ]] || fail "desk caught up the near-limit message truncated: $huge_length chars"
+api desk GET /v1/rooms/research/hub | jq -e '(.withheld // []) | length == 0' >/dev/null || fail "desk reports withheld messages"
 grep -q "hub room caught up" "$run_dir/desk.log" || fail "desk's catch-up was not logged"
-pass "desk caught up from the home's sync log alone ($queued queued rows cleared; ~1 MB of history over the relay, paged)"
+pass "desk caught up from the home's sync log alone ($queued queued rows cleared; ~2 MB over the relay, paged, the near-limit message complete)"
 
 # --- origin's own copy learns its room seq; sync clamps a non-member ---------
 lab_token="$(invite_code "$run_dir/invite-lab.log" | node -e '
@@ -170,10 +183,10 @@ lab_token="$(invite_code "$run_dir/invite-lab.log" | node -e '
 [[ -n "$lab_token" ]] || fail "could not read lab's room link credential from its invite"
 sync_page="$(curl -sS -H "Authorization: Bearer $lab_token" "$(url_of home)/v1/hub/sync?after=0&room=$(jq -rn --arg g "$global" '$g|@uri')")"
 # Every message so far was placed while lab was a member: 4 before the
-# direct pairing, 2 beside it, 2 while desk was down, 3 big ones.
+# direct pairing, 2 beside it, 2 while desk was down, 3 big ones, 1 huge.
 lab_entries="$(sync_message_count "$lab_token")" || fail "lab's sync pages failed"
-[[ "$lab_entries" == 11 ]] || fail "lab's sync log shows $lab_entries messages, want 11"
-pass "lab's own link reads the room's whole sync log across pages (11 messages)"
+[[ "$lab_entries" == 12 ]] || fail "lab's sync log shows $lab_entries messages, want 12"
+pass "lab's own link reads the room's whole sync log across pages (12 messages)"
 
 # --- remove desk: it receives nothing new, its writes are refused ------------
 "$moltnet" room remove research "$net_desk" --config "$(config_of home)" >"$run_dir/remove.log" 2>&1 || fail "room remove: $(cat "$run_dir/remove.log")"
