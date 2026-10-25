@@ -3,8 +3,12 @@ package rooms_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
+
+	"github.com/noopolis/moltnet/internal/rooms"
+	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
 // loseFirstAck serves the first message submission for real and then
@@ -90,4 +94,26 @@ func storedEnvelopeEpoch(t *testing.T, network *hubNet, messageID string) int64 
 		t.Fatalf("%s has no signed hub envelope for %s", network.id, messageID)
 	}
 	return *signed.MembershipEpoch
+}
+
+func TestHubMemberRefusesAnEpochRollbackDeliveredInReverseOrder(t *testing.T) {
+	h := joinedTopology(t, memoryBackend)
+	if _, err := h.home.service.AppendHubControlContext(contextBackground(), rooms.HubControlRequest{
+		GlobalRoomID: h.global, Kind: protocol.RoomControlSetRole, NetworkID: "alpha", Role: protocol.RoomRoleAdmin}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.beta.service.SyncHubRoomContext(contextBackground(), h.global); err != nil {
+		t.Fatal(err)
+	}
+	canonical := canonicalRoomOf(h.global)
+	later := hubEnvelope(t, h.alpha.identity, "alpha", h.global, canonical, "rev-5", "placed at seq 5, epoch 3", 3, 5)
+	later.Receipt = homeReceipt(t, h.home.identity, h.global, 3, 5, eventID(t, later), strings.Repeat("4", 64))
+	if status, body := hubPost(t, h.beta, "beta-link-secret", later); status != http.StatusAccepted {
+		t.Fatalf("seq 5: %d %s", status, body)
+	}
+	earlier := hubEnvelope(t, h.alpha.identity, "alpha", h.global, canonical, "rev-3", "placed at seq 3, epoch 4", 4, 3)
+	earlier.Receipt = homeReceipt(t, h.home.identity, h.global, 4, 3, eventID(t, earlier), strings.Repeat("2", 64))
+	if status, body := hubPost(t, h.beta, "beta-link-secret", earlier); status != http.StatusConflict {
+		t.Fatalf("a newer epoch placed before an older one was accepted: %d %s", status, body)
+	}
 }

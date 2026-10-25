@@ -179,7 +179,7 @@ func (s *MemoryStore) replaceOutboundEnvelopeLocked(record MessageEnvelopeRecord
 
 // checkHubReceiptLocked runs checkHubReceipt against the stored receipts.
 func (s *MemoryStore) checkHubReceiptLocked(record HubReceiptRecord) (bool, error) {
-	var atSeq, forEvent, previous, next *HubReceiptRecord
+	var atSeq, forEvent, previous, next, before, after *HubReceiptRecord
 	for index := range s.hub.Receipts {
 		stored := &s.hub.Receipts[index]
 		if stored.GlobalRoomID != record.GlobalRoomID {
@@ -199,8 +199,14 @@ func (s *MemoryStore) checkHubReceiptLocked(record HubReceiptRecord) (bool, erro
 		case record.RoomSeq + 1:
 			next = stored
 		}
+		if stored.RoomSeq < record.RoomSeq && (before == nil || stored.RoomSeq > before.RoomSeq) {
+			before = stored
+		}
+		if stored.RoomSeq > record.RoomSeq && (after == nil || stored.RoomSeq < after.RoomSeq) {
+			after = stored
+		}
 	}
-	return checkHubReceipt(record, atSeq, forEvent, previous, next)
+	return checkHubReceipt(record, atSeq, forEvent, previous, next, before, after)
 }
 
 // appendWithHubReceiptLocked guards a message append with its receipt:

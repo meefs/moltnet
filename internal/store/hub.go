@@ -46,14 +46,17 @@ type HubControlRecord struct {
 // HubReceiptRecord is one stored, already verified receipt, bound to the
 // local message it placed.
 type HubReceiptRecord struct {
-	GlobalRoomID string                     `json:"global_room_id"`
-	HubEpoch     int64                      `json:"hub_epoch"`
-	RoomSeq      int64                      `json:"room_seq"`
-	EventID      string                     `json:"event_id"`
-	Digest       string                     `json:"digest"`
-	PrevDigest   string                     `json:"prev_digest,omitempty"`
-	MessageID    string                     `json:"message_id"`
-	Receipt      protocol.SignedRoomReceipt `json:"receipt"`
+	GlobalRoomID string `json:"global_room_id"`
+	HubEpoch     int64  `json:"hub_epoch"`
+	// MembershipEpoch is the receipt's signed membership epoch; it never
+	// decreases along room seqs.
+	MembershipEpoch int64                      `json:"membership_epoch,omitempty"`
+	RoomSeq         int64                      `json:"room_seq"`
+	EventID         string                     `json:"event_id"`
+	Digest          string                     `json:"digest"`
+	PrevDigest      string                     `json:"prev_digest,omitempty"`
+	MessageID       string                     `json:"message_id"`
+	Receipt         protocol.SignedRoomReceipt `json:"receipt"`
 }
 
 // HubStore persists hub rooms, their control logs and message receipts.
@@ -104,14 +107,19 @@ func hubReceiptConflict(record HubReceiptRecord, reason string) error {
 }
 
 // checkHubReceipt applies the conflict rules against the stored receipts
-// at the same seq, for the same event, and at the neighbouring seqs.
+// at the same seq, for the same event, at the adjacent seqs (hash chain),
+// and at the nearest stored seqs either side (membership epochs never
+// decrease along room seqs, whichever order receipts arrive in).
 // duplicate means this exact receipt is already stored.
-func checkHubReceipt(record HubReceiptRecord, atSeq, forEvent, previous, next *HubReceiptRecord) (duplicate bool, err error) {
+func checkHubReceipt(record HubReceiptRecord, atSeq, forEvent, previous, next, before, after *HubReceiptRecord) (duplicate bool, err error) {
 	if atSeq != nil && atSeq.Digest != record.Digest {
 		return false, hubReceiptConflict(record, "a different receipt holds this room seq")
 	}
 	if forEvent != nil && forEvent.Digest != record.Digest {
 		return false, hubReceiptConflict(record, "this event was already placed by a different receipt")
+	}
+	if atSeq != nil {
+		return true, nil
 	}
 	if previous != nil && previous.Digest != record.PrevDigest {
 		return false, hubReceiptConflict(record, "prev_receipt_hash does not chain to the stored previous receipt")
@@ -119,7 +127,13 @@ func checkHubReceipt(record HubReceiptRecord, atSeq, forEvent, previous, next *H
 	if next != nil && next.PrevDigest != record.Digest {
 		return false, hubReceiptConflict(record, "the stored next receipt does not chain to this one")
 	}
-	return atSeq != nil, nil
+	if before != nil && before.MembershipEpoch > record.MembershipEpoch {
+		return false, hubReceiptConflict(record, fmt.Sprintf("membership epoch %d follows epoch %d at seq %d", record.MembershipEpoch, before.MembershipEpoch, before.RoomSeq))
+	}
+	if after != nil && after.MembershipEpoch < record.MembershipEpoch {
+		return false, hubReceiptConflict(record, fmt.Sprintf("membership epoch %d precedes epoch %d at seq %d", record.MembershipEpoch, after.MembershipEpoch, after.RoomSeq))
+	}
+	return false, nil
 }
 
 func controlConflict(globalRoomID string, seq int64, reason string) error {

@@ -25,7 +25,7 @@ func hubRoomsMigration() migration {
 		`CREATE TABLE IF NOT EXISTS hub_receipts (
 			global_room_id TEXT NOT NULL, hub_epoch BIGINT NOT NULL, room_seq BIGINT NOT NULL,
 			event_id TEXT NOT NULL, digest TEXT NOT NULL, prev_digest TEXT NOT NULL, message_id TEXT NOT NULL,
-			receipt_json TEXT NOT NULL,
+			receipt_json TEXT NOT NULL, membership_epoch BIGINT NOT NULL DEFAULT 0,
 			PRIMARY KEY (global_room_id, hub_epoch, room_seq), UNIQUE (global_room_id, event_id)
 		)`,
 		`CREATE INDEX IF NOT EXISTS hub_receipts_message ON hub_receipts (message_id)`,
@@ -149,12 +149,12 @@ func (s *SQLStore) HubControlLogContext(ctx context.Context, globalRoomID string
 	return records, rows.Err()
 }
 
-const hubReceiptColumns = `global_room_id, hub_epoch, room_seq, event_id, digest, prev_digest, message_id, receipt_json`
+const hubReceiptColumns = `global_room_id, hub_epoch, room_seq, event_id, digest, prev_digest, message_id, receipt_json, membership_epoch`
 
 func scanHubReceipt(row interface{ Scan(...any) error }) (HubReceiptRecord, error) {
 	var record HubReceiptRecord
 	var encoded string
-	if err := row.Scan(&record.GlobalRoomID, &record.HubEpoch, &record.RoomSeq, &record.EventID, &record.Digest, &record.PrevDigest, &record.MessageID, &encoded); err != nil {
+	if err := row.Scan(&record.GlobalRoomID, &record.HubEpoch, &record.RoomSeq, &record.EventID, &record.Digest, &record.PrevDigest, &record.MessageID, &encoded, &record.MembershipEpoch); err != nil {
 		return HubReceiptRecord{}, err
 	}
 	if err := json.Unmarshal([]byte(encoded), &record.Receipt); err != nil {
@@ -210,6 +210,12 @@ func (s *SQLStore) guardHubReceipt(ctx context.Context, tx *sql.Tx, record *HubR
 	if record == nil {
 		return false, nil
 	}
+	// The no-op update row-locks the hub room (and takes SQLite's write
+	// lock), so concurrent receipt appends for one room are serialized and
+	// each sees the other's neighbours.
+	if _, err := tx.ExecContext(ctx, bindQuery(s.dialect, `UPDATE hub_rooms SET home_network_id = home_network_id WHERE global_room_id = ?`), record.GlobalRoomID); err != nil {
+		return false, err
+	}
 	lookup := func(where string, args ...any) (*HubReceiptRecord, error) {
 		return s.hubReceiptWhere(ctx, tx, where, args...)
 	}
@@ -229,15 +235,23 @@ func (s *SQLStore) guardHubReceipt(ctx context.Context, tx *sql.Tx, record *HubR
 	if err != nil {
 		return false, err
 	}
-	return checkHubReceipt(*record, atSeq, forEvent, previous, next)
+	before, err := lookup(`global_room_id = ? AND hub_epoch = ? AND room_seq < ? ORDER BY room_seq DESC LIMIT 1`, record.GlobalRoomID, record.HubEpoch, record.RoomSeq)
+	if err != nil {
+		return false, err
+	}
+	after, err := lookup(`global_room_id = ? AND hub_epoch = ? AND room_seq > ? ORDER BY room_seq ASC LIMIT 1`, record.GlobalRoomID, record.HubEpoch, record.RoomSeq)
+	if err != nil {
+		return false, err
+	}
+	return checkHubReceipt(*record, atSeq, forEvent, previous, next, before, after)
 }
 
 func (s *SQLStore) insertHubReceipt(ctx context.Context, tx *sql.Tx, record *HubReceiptRecord) error {
 	if record == nil {
 		return nil
 	}
-	_, err := tx.ExecContext(ctx, bindQuery(s.dialect, `INSERT INTO hub_receipts (`+hubReceiptColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
-		record.GlobalRoomID, record.HubEpoch, record.RoomSeq, record.EventID, record.Digest, record.PrevDigest, record.MessageID, marshalJSON(record.Receipt))
+	_, err := tx.ExecContext(ctx, bindQuery(s.dialect, `INSERT INTO hub_receipts (`+hubReceiptColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+		record.GlobalRoomID, record.HubEpoch, record.RoomSeq, record.EventID, record.Digest, record.PrevDigest, record.MessageID, marshalJSON(record.Receipt), record.MembershipEpoch)
 	if err != nil {
 		return fmt.Errorf("%w: insert hub receipt: %v", ErrHubReceiptConflict, err)
 	}

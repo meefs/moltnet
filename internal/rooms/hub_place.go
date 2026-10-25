@@ -153,7 +153,7 @@ func (s *Service) nextHubReceipt(ctx context.Context, hub store.HubRoom, epoch i
 	if err != nil {
 		return store.HubReceiptRecord{}, err
 	}
-	return store.HubReceiptRecord{GlobalRoomID: hub.GlobalRoomID, HubEpoch: receipt.HubEpoch, RoomSeq: receipt.RoomSeq,
+	return store.HubReceiptRecord{GlobalRoomID: hub.GlobalRoomID, HubEpoch: receipt.HubEpoch, MembershipEpoch: receipt.MembershipEpoch, RoomSeq: receipt.RoomSeq,
 		EventID: eventID, Digest: digest, PrevDigest: receipt.PrevReceiptHash, Receipt: signed}, nil
 }
 

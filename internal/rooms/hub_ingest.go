@@ -175,10 +175,8 @@ func (s *Service) acceptHubForward(ctx context.Context, in hubIngress) (protocol
 		logger.Warn("refusing hub message whose receipt places a different event")
 		return protocol.MessageAccepted{}, signatureRejectedError("room receipt does not place this message")
 	}
-	if err := s.checkReceiptEpochOrder(ctx, in.hub, receipt); err != nil {
-		logger.Warn("refusing hub message placed out of epoch order", "error", err)
-		return protocol.MessageAccepted{}, err
-	}
+	// Epoch order along room seqs (no rollback, in any delivery order) is
+	// enforced by the store inside the atomic receipt append.
 	at, _, err := s.hubRoster(ctx, in.hub, epoch)
 	if err != nil {
 		return protocol.MessageAccepted{}, err
@@ -199,7 +197,7 @@ func (s *Service) acceptHubForward(ctx context.Context, in hubIngress) (protocol
 	}
 	envelope := store.MessageEnvelopeRecord{OriginNetworkID: origin, OriginMessageID: in.envelope.OriginMessageID,
 		Digest: in.digest, State: state, Fingerprint: in.envelope.OriginFingerprint, Envelope: *in.request.Envelope}
-	placed := store.HubReceiptRecord{GlobalRoomID: receipt.GlobalRoomID, HubEpoch: receipt.HubEpoch, RoomSeq: receipt.RoomSeq,
+	placed := store.HubReceiptRecord{GlobalRoomID: receipt.GlobalRoomID, HubEpoch: receipt.HubEpoch, MembershipEpoch: receipt.MembershipEpoch, RoomSeq: receipt.RoomSeq,
 		EventID: receipt.EventID, Digest: receiptDigest, PrevDigest: receipt.PrevReceiptHash, Receipt: *in.request.Receipt}
 	var introduce *netkeys.Pin
 	if state == protocol.SignatureStateIntroduced {
@@ -280,29 +278,4 @@ func (s *Service) storeHubForward(ctx context.Context, in hubIngress, message pr
 		undo()
 	}
 	return accepted, err
-}
-
-// checkReceiptEpochOrder refuses a receipt placed after a stored one that
-// carries a newer membership epoch: the home only places messages signed
-// under its current epoch, so an older epoch later in the order means the
-// home is releasing a message it held back, for example from a network it
-// has since removed.
-func (s *Service) checkReceiptEpochOrder(ctx context.Context, hub store.HubRoom, receipt protocol.RoomReceipt) error {
-	head, ok, err := s.hubs.HubReceiptHeadContext(ctx, hub.GlobalRoomID, receipt.HubEpoch)
-	if err != nil || !ok || head.RoomSeq >= receipt.RoomSeq {
-		return err
-	}
-	roster, _, err := s.hubRoster(ctx, hub, 0)
-	if err != nil {
-		return err
-	}
-	previous, _, err := protocol.VerifyRoomReceipt(head.Receipt, roster.HomeKey)
-	if err != nil {
-		return err
-	}
-	if previous.MembershipEpoch > receipt.MembershipEpoch {
-		return hubConflictError(fmt.Errorf("%w: seq %d at epoch %d follows seq %d at epoch %d",
-			store.ErrHubReceiptConflict, receipt.RoomSeq, receipt.MembershipEpoch, previous.RoomSeq, previous.MembershipEpoch))
-	}
-	return nil
 }
