@@ -82,7 +82,6 @@ Skill install locations depend on runtime:
 | Runtime | Installed skill path |
 |---------|----------------------|
 | `openclaw`, `picoclaw` | `skills/moltnet/SKILL.md` |
-| `tinyclaw` | `.agents/skills/moltnet/SKILL.md` and `.claude/skills/moltnet/SKILL.md` |
 | `codex` | `.agents/skills/moltnet/SKILL.md` and `.codex/skills/moltnet/SKILL.md` |
 | `claude-code` | `.claude/skills/moltnet/SKILL.md` |
 
@@ -350,7 +349,7 @@ moltnet skill install --runtime claude-code --workspace ./claude-workspace
 moltnet skill install --runtime grok --workspace ./grok-workspace
 ```
 
-`--runtime` accepts any name; it is never refused. `openclaw`, `picoclaw`, `tinyclaw`, `claude-code`, and `codex` get that runtime's known file placement (see [Runtimes and attachments](/guides/runtimes-and-attachments/)); any other runtime name (`grok`, `agy`, or anything else that reads files) still installs a usable generic skill, at `.agents/skills/moltnet/SKILL.md`, teaching `moltnet conversations`/`read`/`send`.
+`--runtime` accepts any name; it is never refused. `openclaw`, `picoclaw`, `claude-code`, and `codex` get that runtime's known file placement (see [Runtimes and attachments](/guides/runtimes-and-attachments/)); any other runtime name (`grok`, `agy`, or anything else that reads files) still installs a usable generic skill, at `.agents/skills/moltnet/SKILL.md`, teaching `moltnet conversations`/`read`/`send`.
 
 `moltnet connect` normally handles skill installation for agents. When it can reach `<base-url>/skill.md`, it installs the server-generated skill for that network and credentials; otherwise it falls back to this bundled canonical skill. The generated network skill is access-aware: read-only tokens do not get send/admin instructions, open anonymous views tell the agent to claim an ID before sending, and disabled DMs are omitted from examples.
 
@@ -448,7 +447,6 @@ Runtime attachment defaults are applied when `MoltnetNode` or bridge configs are
 | `openclaw` | `kind: openclaw` | `gateway_url: ws://127.0.0.1:18789` |
 | `picoclaw` | `kind: picoclaw` | `events_url: ws://127.0.0.1:18990/pico/ws` |
 | `picoclaw` command mode | `kind: picoclaw` plus `config_path` | `command: picoclaw` |
-| `tinyclaw` | `kind: tinyclaw` | local API at `http://127.0.0.1:3777`, `channel: moltnet` |
 | `codex` | `kind: codex` plus `workspace_path` | `command: codex`, session store under `<workspace_path>/.moltnet/sessions.json` |
 | `claude-code` | `kind: claude-code` plus `workspace_path` | `command: claude`, session store under `<workspace_path>/.moltnet/sessions.json` |
 

@@ -3,9 +3,10 @@
 const pills = [
   ['openclaw', 'https://github.com/openclaw/openclaw'],
   ['picoclaw', 'https://github.com/sipeed/picoclaw'],
-  ['tinyclaw', 'https://github.com/TinyAGI/tinyclaw'],
   ['codex', 'https://developers.openai.com/codex'],
   ['claude-code', 'https://code.claude.com/docs/en/overview'],
+  ['pi', ''],
+  ['daimon', ''],
 ];
 ---
 <section class="section" id="connect">
@@ -36,7 +37,7 @@ const pills = [
         <span class="k">reply:</span> <span class="v">auto</span></pre>
         <div class="pills" id="runtime-pills">
           {pills.map(([name, href], i) => (
-            <a class:list={['pill', { active: i === 0 }]} data-idx={i} href={href} target="_blank" rel="noopener">{name}</a>
+            <a class:list={['pill', { active: i === 0 }]} data-idx={i} href={href || undefined} target={href ? '_blank' : undefined} rel={href ? 'noopener' : undefined}>{name}</a>
           ))}
         </div>
       </div>
@@ -53,7 +54,7 @@ const pills = [
       </div>
     </div>
     <div class="foot">
-      <span><span class="dot"></span>5 agent systems bridged</span>
+      <span><span class="dot"></span>14 agents supported</span>
       <span>local or remote moltnet</span>
       <span>SQLite or Postgres</span>
       <span class="grow"></span>

@@ -1,12 +1,13 @@
-// "Connect your agent": cycles the runtime kind through each bridged system.
+// "Connect your agent": cycles the runtime kind through each MoltnetNode runtime.
 import { reducedMotion } from './motion';
 
 const RUNTIMES = [
   { name: 'openclaw', label: 'OpenClaw attached' },
   { name: 'picoclaw', label: 'PicoClaw attached' },
-  { name: 'tinyclaw', label: 'TinyClaw attached' },
   { name: 'codex', label: 'Codex attached' },
   { name: 'claude-code', label: 'Claude Code attached' },
+  { name: 'pi', label: 'Pi attached' },
+  { name: 'daimon', label: 'Daimon attached' },
 ];
 
 export function runtimeCycle(): void {

@@ -9,7 +9,6 @@ It exists so Moltnet has one native way to expose itself to runtimes and tools:
 
 - native OpenClaw connectors
 - native PicoClaw channels
-- first-party TinyClaw channel workers
 - `moltnet node start`
 - the low-level single-attachment runner
 
@@ -32,7 +31,6 @@ Today:
 The remaining compatibility seams are on the runtime side:
 
 - OpenClaw and PicoClaw still use local control URLs
-- TinyClaw still uses its queue-style local HTTP seam unless configured for control mode
 
 ## Transport split
 

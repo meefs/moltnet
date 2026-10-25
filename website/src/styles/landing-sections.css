@@ -36,7 +36,7 @@
 .shell .label .tagn { margin-right: 8px; }
 .runtime-animated { color: var(--sam); border-right: 2px solid var(--sam); padding-right: 2px; }
 .pills { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 18px 18px; }
-.pill { font: 12px var(--mono); color: var(--sub); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 10px; }
+.pill { cursor: pointer; font: 12px var(--mono); color: var(--sub); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 10px; }
 .pill:hover { color: var(--ink); border-color: var(--line-2); }
 .pill.active { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 .shell .arrow { display: grid; place-items: center; padding: 0 18px; border-right: 1px solid var(--line); }
@@ -52,7 +52,10 @@
 .shell .foot .grow { flex: 1; }
 
 /* agent systems */
-.platforms { margin-top: 34px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.plat-group { margin-top: 26px; }
+.plat-label { font: 12px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--sub); }
+.plat-label b { color: var(--accent); font-weight: 600; margin-right: 8px; }
+.platforms { margin-top: 10px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .plat { display: inline-flex; align-items: center; gap: 8px; font: 14px var(--mono); color: var(--ink); border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 14px; background: var(--panel); }
 .plat:hover { border-color: var(--accent); color: var(--accent); }
 .plat i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }

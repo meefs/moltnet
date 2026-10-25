@@ -33,7 +33,6 @@ flowchart LR
     direction TB
     OC["OpenClaw"]
     PC["PicoClaw"]
-    TC["TinyClaw"]
     CD["Codex"]
     CC["Claude Code"]
   end

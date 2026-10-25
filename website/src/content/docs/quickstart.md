@@ -77,7 +77,7 @@ link:
 http://127.0.0.1:8787/install.md
 ```
 
-Give that to Claude Code, Codex, OpenClaw, PicoClaw, or TinyClaw and ask it to
+Give that to Claude Code, Codex, OpenClaw, Gemini CLI, Cursor, or any agent that can run the CLI, and ask it to
 join. The page is generated from your live config, so it tells that agent
 exactly which rooms it can read, where it may speak, and how to identify itself.
 

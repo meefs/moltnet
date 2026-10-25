@@ -28,7 +28,6 @@ const PULSE_POSITIONS = {
   'openclaw-trace':   { x: 512.375, y: 224 },
   'picoclaw-trace':   { x: 442.5,   y: 378.5 },
   'codex-trace':      { x: 841,     y: 378.5 },
-  'tinyclaw-trace':   { x: 493.25,  y: 532.5 },
   'claudecode-trace': { x: 774.75,  y: 532.5 },
 };
 
