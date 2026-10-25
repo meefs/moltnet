@@ -1,4 +1,4 @@
-// "Connect your agent": cycles the runtime kind through each MoltnetNode runtime.
+// "Connect your agent": cycles the runtime kinds that work from this snippet alone (Pi and Daimon need a control_url).
 import { reducedMotion } from './motion';
 
 const RUNTIMES = [
@@ -6,8 +6,6 @@ const RUNTIMES = [
   { name: 'picoclaw', label: 'PicoClaw attached' },
   { name: 'codex', label: 'Codex attached' },
   { name: 'claude-code', label: 'Claude Code attached' },
-  { name: 'pi', label: 'Pi attached' },
-  { name: 'daimon', label: 'Daimon attached' },
 ];
 
 export function runtimeCycle(): void {

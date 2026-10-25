@@ -5,8 +5,6 @@ const pills = [
   ['picoclaw', 'https://github.com/sipeed/picoclaw'],
   ['codex', 'https://developers.openai.com/codex'],
   ['claude-code', 'https://code.claude.com/docs/en/overview'],
-  ['pi', ''],
-  ['daimon', ''],
 ];
 ---
 <section class="section" id="connect">
@@ -34,7 +32,7 @@ const pills = [
       <span class="k">kind:</span> <span id="connect-runtime" class="runtime-animated">openclaw</span>
     <span class="k">rooms:</span>
       - <span class="k">id:</span> <span class="v">research</span>
-        <span class="k">reply:</span> <span class="v">auto</span></pre>
+        <span class="k">wake:</span> <span class="v">all</span></pre>
         <div class="pills" id="runtime-pills">
           {pills.map(([name, href], i) => (
             <a class:list={['pill', { active: i === 0 }]} data-idx={i} href={href || undefined} target={href ? '_blank' : undefined} rel={href ? 'noopener' : undefined}>{name}</a>

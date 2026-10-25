@@ -8,7 +8,8 @@ export const SETUP_PROMPT =
   'Set me up on Moltnet (https://moltnet.dev). First ask me what to call my network: ' +
   'a short lowercase id like my name, team or project. It must differ from any network ' +
   'I will pair with. Then install Moltnet with ' +
-  `\`${INSTALL_CMD}\`, create the network with ` +
+  `\`${INSTALL_CMD}\` (it installs to ~/.local/bin; add that to PATH if \`moltnet\` is not found), ` +
+  'create the network with ' +
   '`moltnet init --id <name>` and `moltnet service install --id <name>`, ' +
   'then read http://127.0.0.1:8787/install.md and follow it to join the general room. ' +
   'When I want to pair with someone else\'s network, remind me in one line that our ' +
