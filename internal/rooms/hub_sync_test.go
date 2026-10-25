@@ -54,6 +54,9 @@ func TestHubMemberCatchesUpWhatItMissedWhileDown(t *testing.T) {
 			up()
 			// The outbox redelivers the same placements: duplicates, nothing new.
 			waitFor(t, func() bool { return h.home.delivery(t, "link-beta").Pending == 0 })
+			if state := h.home.delivery(t, "link-beta"); state.Rejected != 0 {
+				t.Fatalf("the live copy of a message beta already synced was refused: %#v", state)
+			}
 			h.beta.waitTexts(t, "one", "two")
 		})
 	}
@@ -149,9 +152,12 @@ func TestHubLiveForwardPastAGapTriggersCatchUp(t *testing.T) {
 		real.ServeHTTP(response, request)
 	})))
 	h.home.post(t, "lost to beta")
-	waitFor(t, func() bool { return refused.Load() && h.home.delivery(t, "link-beta").Pending == 0 })
+	// The refused row is settled as rejected, never resent: only catch-up
+	// can bring this message to beta now.
+	waitFor(t, func() bool { return h.home.delivery(t, "link-beta").Rejected == 1 })
 	h.home.post(t, "arrives past the gap")
-	h.beta.waitTexts(t, "lost to beta", "arrives past the gap")
+	// Local history lists by arrival: the gap fill lands after the live one.
+	h.beta.waitTexts(t, "arrives past the gap", "lost to beta")
 	waitFor(t, func() bool { return h.beta.cursor(t, h.global).Seq == 2 })
 }
 

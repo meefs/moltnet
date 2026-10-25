@@ -271,9 +271,13 @@ func (s *Service) hubMessage(ctx context.Context, in hubIngress) (protocol.Messa
 	origin := in.envelope.OriginNetworkID
 	id := hubMessageID(in.digest)
 	author := in.envelope.Author
+	// The link it came over, whether delivered live or pulled by sync, so
+	// both paths store the same projection and dedupe against each other.
+	received := s.normalizeOrigin(ctx, protocol.MessageOrigin{NetworkID: origin, MessageID: in.envelope.OriginMessageID}, id)
+	received.ReceivedVia = in.pairing.ID
 	return protocol.Message{
 		ID: id, NetworkID: s.networkID,
-		Origin: s.normalizeOrigin(ctx, protocol.MessageOrigin{NetworkID: origin, MessageID: in.envelope.OriginMessageID}, id),
+		Origin: received,
 		Target: protocol.Target{Kind: protocol.TargetKindRoom, RoomID: in.hub.LocalRoomID},
 		From:   protocol.NormalizeActor(origin, protocol.Actor{Type: author.Type, ID: author.ID, Name: author.Name, NetworkID: origin}),
 		Parts:  append([]protocol.Part(nil), in.request.Parts...),
