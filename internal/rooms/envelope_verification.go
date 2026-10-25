@@ -55,6 +55,13 @@ func (s *Service) verifyInboundEnvelope(ctx context.Context, request protocol.Se
 		logger.Warn("rejecting envelope signed for a different origin network", "envelope_origin", envelope.OriginNetworkID)
 		return nil, signatureRejectedError("message envelope origin does not match the message origin")
 	}
+	// The FQID is not a signed field, so it must be exactly the one the
+	// signed origin and author id determine; anything else is unsigned
+	// testimony that would render as verified.
+	if fqid := request.From.FQID; fqid != "" && fqid != protocol.AgentFQID(envelope.OriginNetworkID, envelope.Author.ID) {
+		logger.Warn("rejecting signed message whose author fqid differs from the signed author", "fqid", fqid)
+		return nil, signatureRejectedError("author fqid does not match the signed origin and author")
+	}
 	if err := protocol.EnvelopeMatchesRequest(envelope, request); err != nil {
 		logger.Warn("rejecting message whose content differs from its signed envelope")
 		return nil, signatureRejectedError(err.Error())

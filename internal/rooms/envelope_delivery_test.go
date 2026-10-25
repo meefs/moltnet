@@ -127,17 +127,31 @@ func TestTamperedSignedMessageRejected(t *testing.T) {
 	}
 
 	// A hop renames the author in both places.
+	// A hop swaps only the unsigned FQID to point at another identity.
+	fqid := signedRequest(t, originKey, "fqid-tamper", "original text")
+	fqid.From.FQID = protocol.AgentFQID("origin", "operator")
+	if status, body := deliveryPost(t, peer.pairURL, "pair-secret", fqid); status != http.StatusForbidden {
+		t.Fatalf("fqid swap accepted: %d %s", status, body)
+	}
+	consistent := signedRequest(t, originKey, "fqid-consistent", "consistent fqid")
+	consistent.From.FQID = protocol.AgentFQID("origin", "writer")
+	if status, body := deliveryPost(t, peer.pairURL, "pair-secret", consistent); status != http.StatusAccepted {
+		t.Fatalf("consistent fqid refused: %d %s", status, body)
+	}
+
 	author := signedRequest(t, originKey, "author-tamper", "original text")
 	author.From.Name = "Operator"
 	if status, body := deliveryPost(t, peer.pairURL, "pair-secret", author); status != http.StatusForbidden {
 		t.Fatalf("author rename accepted: %d %s", status, body)
 	}
-	assertNoDelivered(t, peer.service)
+	if page, _ := peer.service.ListRoomMessages("research", "", 100); len(page.Messages) != 1 {
+		t.Fatalf("only the consistent message may land: %#v", page.Messages)
+	}
 
 	if status, body := deliveryPost(t, peer.pairURL, "pair-secret", signedRequest(t, originKey, "untouched", "original text")); status != http.StatusAccepted {
 		t.Fatalf("untouched signed message: %d %s", status, body)
 	}
-	assertDeliveryTexts(t, peer.service, "original text")
+	assertDeliveryTexts(t, peer.service, "consistent fqid", "original text")
 }
 
 func TestConflictingSignedDuplicateRejected(t *testing.T) {
