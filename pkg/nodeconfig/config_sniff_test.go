@@ -9,7 +9,7 @@ import (
 // boundaryRuneNodeConfigContents is boundaryRuneConfigContents' MoltnetNode
 // counterpart (see internal/app/config_sniff_test.go): a valid YAML
 // MoltnetNode config padded so a multibyte UTF-8 rune (€) straddles the
-// 512-byte sniff sample boundary — the exact P0-1 field scenario where
+// 512-byte sniff sample boundary; the exact P0-1 field scenario where
 // naive truncation-then-utf8.Valid would misclassify valid text as binary.
 func boundaryRuneNodeConfigContents(networkID string) []byte {
 	header := []byte("version: moltnet.node.v1\nmoltnet:\n  base_url: http://127.0.0.1:8787\n  network_id: " + networkID + "\n# ")

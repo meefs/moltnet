@@ -248,8 +248,8 @@ func roomMessageCount(t *testing.T, service *Service, roomID string) int {
 	return len(page.Messages)
 }
 
-// An UNBOUND pair credential — the shape `moltnet pair invite` always mints,
-// because the inviting side never learns its peer's real network id — used to
+// An UNBOUND pair credential (the shape `moltnet pair invite` always mints,
+// because the inviting side never learns its peer's real network id) used to
 // be allowed to assert any origin network on every message, forever. That is
 // the cross-pairing impersonation the code logged about but permitted.
 //

@@ -37,7 +37,7 @@ type fakeCloudflareConfig struct {
 	// code 10063 ("You need a workers.dev subdomain in order to proceed."),
 	// the field-observed failure mode: a minimal-scope token whose auth
 	// itself succeeds, but where Cloudflare rejects the worker upload
-	// itself — before Deploy ever reaches the WorkersDevSubdomain check —
+	// itself, before Deploy ever reaches the WorkersDevSubdomain check,
 	// on an account with no claimed subdomain.
 	forceUpload10063 bool
 
@@ -46,7 +46,7 @@ type fakeCloudflareConfig struct {
 	// is rejected with Cloudflare's documented error code 10031 ("name
 	// already taken"). Once claimed, subsequent GET /workers/subdomain
 	// calls report it via claimedSubdomain (set on a successful PUT),
-	// regardless of the static cfg.subdomain configured above — mirroring
+	// regardless of the static cfg.subdomain configured above, mirroring
 	// the real account-level claim's effect on every later call.
 	claimSubdomain string
 }
@@ -68,7 +68,7 @@ type fakeCloudflareServer struct {
 	// scriptMigrationTags models the per-script Durable Object migration
 	// state a real Cloudflare account carries: presence of scriptName as a
 	// key means the script exists (GET /workers/scripts lists it), and the
-	// value is its current migration_tag — "" until a migration has ever
+	// value is its current migration_tag: "" until a migration has ever
 	// been applied to it. handleUploadWorker updates this on every
 	// successful upload (see applyMigrationLocked); handleGetService and
 	// checkMigrationPrecondition both read it, mirroring how Client.
@@ -167,7 +167,7 @@ func (f *fakeCloudflareServer) handleUploadWorker(w http.ResponseWriter, r *http
 		// Mirrors the exact field-observed rejection: HTTP 412, Cloudflare
 		// error code 10079 ("Actor migration tag precondition failed, got
 		// tag '<provided old_tag>' when expected tag is '<script's actual
-		// tag>'") — see checkMigrationPrecondition's doc comment.
+		// tag>'"); see checkMigrationPrecondition's doc comment.
 		writeCloudflareEnvelope(w, http.StatusPreconditionFailed, false, nil, []CloudflareMessage{{Code: 10079, Message: err.Error()}})
 		return
 	}
@@ -199,7 +199,7 @@ func (f *fakeCloudflareServer) handleUploadWorker(w http.ResponseWriter, r *http
 // `new_tag` object): the API wants a flat, typed top-level `bindings` array
 // and, when present, a single-step `migrations` object. `migrations` itself
 // is optional on the wire (Cloudflare accepts an upload with no migrations
-// key at all, leaving Durable Object bindings untouched) — that is exactly
+// key at all, leaving Durable Object bindings untouched); that is exactly
 // prepareUploadMetadata's redeploy-over-an-already-migrated-script path
 // (see deploy.go / upload_metadata.go), so this only validates the key's
 // shape when it is present, rather than requiring it on every upload.
@@ -317,8 +317,8 @@ func (f *fakeCloudflareServer) handleWorkersDevSubdomain(w http.ResponseWriter, 
 }
 
 // handleClaimSubdomain backs Client.ClaimWorkersDevSubdomain (PUT). Only
-// f.cfg.claimSubdomain — when set — is accepted; anything else is rejected
-// with Cloudflare's documented error code 10031 ("name already taken" —
+// f.cfg.claimSubdomain, when set, is accepted; anything else is rejected
+// with Cloudflare's documented error code 10031 ("name already taken":
 // see fakeCloudflareConfig.claimSubdomain). Cloudflare's own request body
 // shape ({"subdomain": "..."}) is decoded and validated, matching
 // Client.ClaimWorkersDevSubdomain's payload exactly.

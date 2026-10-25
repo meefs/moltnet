@@ -52,7 +52,7 @@ func deliverControlMessage(
 		// connection (e.g. a resume-cursor gap replay resent it after
 		// the bridge's cursor aged out of the server's replay
 		// history). Report again for evidence, but never re-attempt
-		// the control POST — that is exactly the storming behavior
+		// the control POST; that is exactly the storming behavior
 		// this fix removes.
 		reportWakeFailure(ctx, client, config, event, state.attempts, protocol.WakeFailureClassificationPermanent, state.lastErr)
 		return nil
@@ -123,7 +123,7 @@ func deliverControlMessage(
 // retry-budget-exhausted) wake failure without tearing down the attachment
 // socket, so the failure is ledger-visible instead of a silent skip. This
 // is the bridge-side counterpart to publishControlResponse: same
-// best-effort posture — a failing report here must never turn into a
+// best-effort posture: a failing report here must never turn into a
 // second error out of deliverControlMessage, since the caller has already
 // committed to skipping (ACK + advance) this event.ID.
 func reportWakeFailure(

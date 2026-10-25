@@ -63,7 +63,7 @@ func NetworkIDs(manager *service.Manager) ([]string, error) {
 // `moltnet init` network, and any id with leading/trailing whitespace,
 // which would build a unit/plist path for "acme" (service.SystemdUnitPath
 // trims first) while every other part of the plan still prints and acts on
-// the untrimmed "acme " — two different ids for what should be one
+// the untrimmed "acme ", two different ids for what should be one
 // network.
 func validNetworkID(id string) bool {
 	if strings.HasPrefix(id, ".") {

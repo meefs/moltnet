@@ -84,7 +84,7 @@ func (r Result) string(verbose bool) string {
 }
 
 // refusalSummary names the actual blocker for a real run's refusal
-// (RefusalReason, set by every mutation-refusal path — an unsupported
+// (RefusalReason, set by every mutation-refusal path, an unsupported
 // install method, a dirty source checkout, a detached HEAD, an unwritable
 // install directory) instead of a single generic sentence that reads the
 // same whether the fix is "reinstall from a release tarball" or "commit
@@ -100,7 +100,7 @@ func refusalSummary(r Result) string {
 
 // sourceCheckSummary previews what a real run would do for a source
 // install: the same "Rebuild available" line only when the checkout is
-// clean and on a branch — a real run would refuse otherwise, so
+// clean and on a branch; a real run would refuse otherwise, so
 // --check/--dry-run must not promise a rebuild they know would be
 // blocked. Otherwise it prints the exact refusal a real run would give,
 // built from the same dirtyCheckoutRefusalMessage/detachedHeadRefusalMessage

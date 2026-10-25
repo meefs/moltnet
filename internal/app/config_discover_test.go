@@ -10,7 +10,7 @@ import (
 
 // binaryLikeCandidateContents returns bytes that fail the text sniff (a NUL
 // byte within the first 512), standing in for a stray compiled binary
-// shadowing a config filename on a case-insensitive filesystem — the field
+// shadowing a config filename on a case-insensitive filesystem, the field
 // bug this guard exists for.
 func binaryLikeCandidateContents() []byte {
 	contents := []byte("\x7fELF\x02\x01\x01\x00")

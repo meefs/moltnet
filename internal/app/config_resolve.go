@@ -40,7 +40,7 @@ func NetworkHomeDir(id string) (string, error) {
 //  1. Explicit (--config, or MOLTNET_CONFIG) wins outright.
 //  2. Otherwise, when id is non-empty: ~/.moltnet/<id>/Moltnet is resolved
 //     first. If ~/.moltnet/<id>/ does not exist at all, this falls back to
-//     the same cwd discovery order step 3 uses — but ONLY when that cwd
+//     the same cwd discovery order step 3 uses, but ONLY when that cwd
 //     candidate sniffs as text AND its own network.id equals id (P0-2, a
 //     --dir install resolving by name from its own directory). This is a
 //     name match, never blind cwd precedence: a same-named file (or, on a
@@ -49,12 +49,12 @@ func NetworkHomeDir(id string) (string, error) {
 //     erroring by name.
 //  3. Otherwise (no explicit, no id), the cwd discovery order (./Moltnet
 //     and the alternate filenames DiscoverPath recognizes) is tried, then
-//     the sole network directory under ~/.moltnet/ — cwd participates only
+//     the sole network directory under ~/.moltnet/, cwd participates only
 //     in this no-flag, no-id path (aside from the name-matched fallback in
 //     step 2).
 //
 // found is false, with a nil error, only when nothing exists anywhere in
-// that order — callers that treat a missing config as "use defaults"
+// that order; callers that treat a missing config as "use defaults"
 // (start) and callers that treat it as an error ("run moltnet init first":
 // pair, relay) both build on this same tri-state result.
 func ResolveConfigPath(explicit string, id string) (path string, found bool, err error) {
@@ -108,7 +108,7 @@ func ResolveNodeConfigPath(explicit string, id string) (path string, found bool,
 // a name-matched cwd candidate when an explicit --id has no
 // ~/.moltnet/<id>/ directory (P0-2): discover locates a cwd candidate using
 // the same discovery order the no-id path already uses (so it is already
-// text-sniffed — a binary shadow never reaches networkID), and networkID
+// text-sniffed; a binary shadow never reaches networkID), and networkID
 // reads the network id that candidate declares. Both are nil in the id=""
 // case, where the fallback never runs.
 type cwdIDFallback struct {
@@ -117,7 +117,7 @@ type cwdIDFallback struct {
 }
 
 // resolve reports whether f's cwd discovery order turns up a candidate that
-// declares network id == id — the only condition under which --id may fall
+// declares network id == id, the only condition under which --id may fall
 // back to a cwd config. Discovery failure, no candidate, or a candidate
 // that fails to parse or names a different network are all "no match, no
 // error": the caller's own "no network found" error covers every one of
@@ -140,7 +140,7 @@ func (f cwdIDFallback) resolve(id string) (path string, ok bool) {
 
 // cwdConfigNetworkID reads path's declared network.id without running the
 // full validation loadFileConfig performs (permission checks, room/pairing
-// validation) — it exists solely so cwdIDFallback can compare a cwd
+// validation); it exists solely so cwdIDFallback can compare a cwd
 // candidate against a requested --id (P0-2) before anything tries to fully
 // load it. The full loader still runs, and can still fail loudly, once the
 // path is actually chosen. A decode failure reports ("", false): the
@@ -163,7 +163,7 @@ func cwdConfigNetworkID(path string) (string, bool) {
 // decodes moltnet.network_id from a cwd candidate using a plain (non-strict)
 // unmarshal into nodeconfig.Config's exported fields, skipping the
 // validation, permission checks, and token-path resolution nodeconfig.LoadFile
-// performs — those still run, in full, once the path is actually chosen.
+// performs; those still run, in full, once the path is actually chosen.
 func cwdNodeNetworkID(path string) (string, bool) {
 	contents, err := os.ReadFile(path)
 	if err != nil {
@@ -184,7 +184,7 @@ func cwdNodeNetworkID(path string) (string, bool) {
 }
 
 // ListNetworkIDs returns the sorted subdirectory names under ~/.moltnet,
-// each one a network id `moltnet init` created there — regardless of
+// each one a network id `moltnet init` created there, regardless of
 // whether the network still contains a config file. Unlike
 // resolveHomeNetworkConfig (which only counts a directory when it holds a
 // specific filename), this is used by `moltnet uninstall` to enumerate
@@ -219,7 +219,7 @@ func ListNetworkIDs() ([]string, error) {
 // resolveHomeNetworkConfig looks for filename under ~/.moltnet/<network-id>/
 // directories. With id set, only that network's directory is considered
 // first; when ~/.moltnet/<id>/ does not exist at all, cwdFallback lets a
-// --dir install still resolve by name (P0-2) — see cwdIDFallback.resolve.
+// --dir install still resolve by name (P0-2); see cwdIDFallback.resolve.
 // With id empty, exactly one network directory containing filename must
 // exist; zero is reported as "not found" (found=false, err=nil) so callers
 // can fall back to their own default behavior, and more than one is an
@@ -251,7 +251,7 @@ func resolveHomeNetworkConfig(filename string, id string, cwdFallback cwdIDFallb
 			// No config file for id under ~/.moltnet: a --dir install
 			// named differently from its network id can still resolve
 			// here, but only by a positive name match against a cwd
-			// candidate (P0-2) — never blind cwd precedence. An unrelated
+			// candidate (P0-2), never blind cwd precedence. An unrelated
 			// or mismatched cwd candidate falls straight through to the
 			// "no network" error below, exactly as if cwd held nothing.
 			if cwdPath, ok := cwdFallback.resolve(id); ok {
@@ -280,7 +280,7 @@ func resolveHomeNetworkConfig(filename string, id string, cwdFallback cwdIDFallb
 }
 
 // homeNetworkNotTextError is the P2-5 error for a network directory that
-// does exist but whose config content fails the text sniff — distinct from
+// does exist but whose config content fails the text sniff, distinct from
 // homeNetworkNotFoundError's "no such network" case, since here the
 // directory and file are both right there; only their content is wrong.
 func homeNetworkNotTextError(path string) error {
@@ -288,7 +288,7 @@ func homeNetworkNotTextError(path string) error {
 }
 
 // homeNetworkNotFoundError is the P2-5 error for "no such network anywhere
-// this id could resolve" — ~/.moltnet/<id>/ absent and no name-matched cwd
+// this id could resolve", ~/.moltnet/<id>/ absent and no name-matched cwd
 // fallback either. It names the ids that do exist under root (if any, and
 // if root is itself listable) so a typo is obvious at a glance, and
 // suggests --config as the escape hatch for a network this id genuinely

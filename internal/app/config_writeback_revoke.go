@@ -20,7 +20,7 @@ var ErrPairingNotFound = errors.New("pairing not found")
 // auth.tokens[] under the exact same id as the pairing (config_writeback.go's
 // PairingWriteback/AuthTokenWriteback), so a revoke that only removed the
 // pairings[] entry and left that token behind would leave the peer fully
-// authenticated on a pairing that no longer appears anywhere in pairings[] —
+// authenticated on a pairing that no longer appears anywhere in pairings[];
 // UX.md and PLAN.md's 7B.3 both call this out explicitly as the part that
 // must not be skipped.
 //
@@ -30,7 +30,7 @@ var ErrPairingNotFound = errors.New("pairing not found")
 // pairing id is a live grant waiting to be silently reactivated: generating
 // a *new* pairing that happens to reuse the same id (`pair invite --id
 // <id>` again) mints a fresh credential and, with the old federation entry
-// untouched, instantly regains access to every room it names — no separate
+// untouched, instantly regains access to every room it names; no separate
 // re-grant step, no visible signal the old grant survived. That makes
 // revocation reversible by re-pairing alone, which defeats the point of a
 // revoke command: an operator revoking access wants it gone until they
@@ -43,14 +43,14 @@ var ErrPairingNotFound = errors.New("pairing not found")
 // "none": protocol.ValidateRoomFederation rejects an explicit "list" naming
 // zero pairings outright ("federation list must name at least one pairing"),
 // so leaving an emptied list in place would make the room's own config
-// un-reloadable — caught immediately by this call's post-write
+// un-reloadable, caught immediately by this call's post-write
 // LoadConfigForPath check (via the caller, revokePairingWithRollback), which
 // would then roll the whole revoke back. "none" is the correct steady state
 // for a room with no remaining federation grants regardless: it is exactly
 // what protocol.DefaultRoomFederation returns for a room that was never
 // federated to begin with. Only "all" federation is left untouched, matching
 // upsertSharedRoom's own asymmetric handling of that case
-// (federatedRoomFederationValue) — there is nothing to strip from a room
+// (federatedRoomFederationValue); there is nothing to strip from a room
 // that federates with everyone.
 //
 // RevokeResult reports what RevokePairing actually found and removed, so a
@@ -68,7 +68,7 @@ type RevokeResult struct {
 
 // Like WritePairing, this refuses a symlinked config target and writes
 // atomically (temp file + rename), mode 0600. It does not itself verify the
-// result reloads cleanly — callers wanting that (and a rollback on failure)
+// result reloads cleanly; callers wanting that (and a rollback on failure)
 // use the same LoadConfigForPath-and-restore pattern writePairingWithRollback
 // (cmd/moltnet/pair.go) already establishes for WritePairing.
 func RevokePairing(path string, pairingID string) (RevokeResult, error) {
@@ -110,7 +110,7 @@ func RevokePairing(path string, pairingID string) (RevokeResult, error) {
 }
 
 // removePairing deletes the pairings[] entry with id pairingID, reporting
-// ErrPairingNotFound when there is none — a revoke against an id that was
+// ErrPairingNotFound when there is none; a revoke against an id that was
 // never paired (typo, already revoked) is a caller mistake worth surfacing,
 // unlike removeAuthToken's and stripPairingFromRoomFederations's silent
 // no-ops below, which cover already-legitimately-absent state (a pairing
@@ -184,7 +184,7 @@ func stripPairingFromRoomFederations(doc map[string]any, pairingID string) {
 
 // stripPairingFromFederationValue is federatedRoomFederationValue's inverse:
 // a list loses pairingID if present, reverting to the scalar "none" if that
-// empties it (protocol.ValidateRoomFederation rejects a zero-length list —
+// empties it (protocol.ValidateRoomFederation rejects a zero-length list;
 // see RevokePairing's doc comment); "all", "none", an absent field, or any
 // other scalar this package does not model as a list are left untouched
 // (nothing to strip from them). changed reports whether current actually

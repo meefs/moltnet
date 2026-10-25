@@ -44,7 +44,7 @@ type Result struct {
 	// Warnings for a real run: main.go already prints the returned error
 	// (this same text) to stderr, so also queuing it as a stdout warning
 	// would print the identical sentence twice. --check/--dry-run never set
-	// this — a refusal there is informational only and stays in Warnings,
+	// this; a refusal there is informational only and stays in Warnings,
 	// since no error is returned to echo it.
 	RefusalReason string
 	Server        ServerInfo

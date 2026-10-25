@@ -7,8 +7,8 @@ import (
 
 // TestCheckReportGatesRebuildAvailableOnCleanNonDetachedCheckout is the
 // regression test for P2-4: --check/--dry-run must not promise "Rebuild
-// available" when the checkout is dirty or HEAD is detached — a real run
-// would refuse in both cases — and must instead preview the exact refusal
+// available" when the checkout is dirty or HEAD is detached (a real run
+// would refuse in both cases) and must instead preview the exact refusal
 // a real run would give.
 func TestCheckReportGatesRebuildAvailableOnCleanNonDetachedCheckout(t *testing.T) {
 	tests := []struct {

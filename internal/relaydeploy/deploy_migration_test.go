@@ -53,7 +53,7 @@ func TestDeployFreshCreateSendsMigrationUnchanged(t *testing.T) {
 // TestDeployRedeployOverExistingMigrationOmitsMigrationsKey is the direct
 // regression test for the field failure: a second Deploy() against a script
 // already migrated to "v1" by the first must send upload metadata with NO
-// "migrations" key at all (not an empty one), and must still succeed —
+// "migrations" key at all (not an empty one), and must still succeed,
 // where the pre-fix code sent the embedded migration unconditionally and
 // got the verbatim 412/10079 rejection reproduced by
 // TestFakeUploadRejectsUnconditionalMigrationReplayWithFieldObserved412
@@ -97,7 +97,7 @@ func TestDeployRedeployOverExistingMigrationOmitsMigrationsKey(t *testing.T) {
 // TestDeployUnrecognizedMigrationTagFailsClearly covers the third branch:
 // a script whose current migration tag matches neither "" (never migrated)
 // nor the embedded migration's own new_tag ("v1") has no safe automatic
-// path — moltnet relay only ever ships one migration step, so there is no
+// path, moltnet relay only ever ships one migration step, so there is no
 // chain to replay from. Deploy must fail with an error naming both tags,
 // never guess or upload anyway.
 func TestDeployUnrecognizedMigrationTagFailsClearly(t *testing.T) {
@@ -124,7 +124,7 @@ func TestDeployUnrecognizedMigrationTagFailsClearly(t *testing.T) {
 // TestDeployClaimThenRerunFreshScriptSendsMigration covers the
 // claim-then-rerun flow's "script does not exist yet" branch: an operator
 // claims a workers.dev subdomain (e.g. via the interactive prompt) before
-// any script named scriptName has ever been uploaded — that first Deploy
+// any script named scriptName has ever been uploaded, that first Deploy
 // after the claim must still find no script on GET /workers/scripts and
 // send the migration exactly as any first-ever deploy would.
 func TestDeployClaimThenRerunFreshScriptSendsMigration(t *testing.T) {
@@ -151,8 +151,8 @@ func TestDeployClaimThenRerunFreshScriptSendsMigration(t *testing.T) {
 // TestDeployClaimThenRerunExistingScriptOmitsMigration covers the
 // claim-then-rerun flow's "script already exists" branch. Since the
 // claim-state-before-any-mutation fix (deploy.go), Deploy's first attempt on
-// an unclaimed account never uploads anything at all — see
-// TestDeployWorkersDevSubdomainUnclaimedFailsBeforeAnyUpload — so a script
+// an unclaimed account never uploads anything at all, see
+// TestDeployWorkersDevSubdomainUnclaimedFailsBeforeAnyUpload, so a script
 // that already exists and is migrated to "v1" by the time of the
 // claim-then-rerun must have gotten there some other way (e.g. a deploy
 // while the account still had a different, since-abandoned claim); this test
@@ -193,9 +193,9 @@ func TestDeployClaimThenRerunExistingScriptOmitsMigration(t *testing.T) {
 // TestFakeUploadRejectsUnconditionalMigrationReplayWithFieldObserved412
 // proves, by construction, that the new fake actually catches the pre-fix
 // bug: it drives Client.UploadWorkerModule directly with
-// relay.WorkerMetadataJSON completely unmodified — exactly what the old
+// relay.WorkerMetadataJSON completely unmodified, exactly what the old
 // deploy() sent on every call, redeploy included, before this fix added
-// prepareUploadMetadata — against a script the fake already has at
+// prepareUploadMetadata, against a script the fake already has at
 // migration tag "v1" (seeded the same way a first successful deploy would
 // leave it). The fake must reject it with the exact field-reported error:
 // HTTP 412, Cloudflare code 10079, message "Actor migration tag

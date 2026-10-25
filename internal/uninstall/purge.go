@@ -61,19 +61,19 @@ type PurgeResult struct {
 
 // PurgeHomeDir removes root (the ~/.moltnet home directory, or a
 // MOLTNET_HOME install-state override) entirely, deleting every network's
-// config, message history, and credentials — unless root is itself a
+// config, message history, and credentials, unless root is itself a
 // symlink. In that case only the link is removed; the resolved target is
 // left untouched, since following an operator-controlled symlink to delete
 // whatever it happens to point at is too dangerous to do unconditionally.
-// Callers must have already confirmed this with the operator — PLAN.md
+// Callers must have already confirmed this with the operator; PLAN.md
 // phase 5 item 2 requires --purge to always be confirmed, always listing
 // the networks that will be destroyed, before this runs. A missing root is
 // not an error: the returned PurgeResult.Existed is simply false.
 //
 // Before touching anything, PurgeHomeDir refuses to run at all when root
-// resolves to something far broader than a moltnet install directory —
+// resolves to something far broader than a moltnet install directory:
 // the user's actual $HOME, an ancestor of $HOME (such as / or /Users), or
-// the filesystem root — since a misresolved MOLTNET_HOME (e.g. accidentally
+// the filesystem root, since a misresolved MOLTNET_HOME (e.g. accidentally
 // set to $HOME or /) combined with --purge --yes would otherwise silently
 // os.RemoveAll the operator's entire home directory. This check lives here
 // rather than in the CLI layer so every caller of PurgeHomeDir, present and
@@ -108,7 +108,7 @@ func PurgeHomeDir(root string) (PurgeResult, error) {
 }
 
 // dangerousPurgeReason reports, in one human-readable sentence, why root is
-// too broad to hand to os.RemoveAll — or "" when root looks like an
+// too broad to hand to os.RemoveAll, or "" when root looks like an
 // ordinary moltnet install directory. It never touches the filesystem
 // beyond os.UserHomeDir(): every other check here is pure path arithmetic,
 // so it is safe to call before root is known to exist.
@@ -137,7 +137,7 @@ func dangerousPurgeReason(root string) string {
 	return ""
 }
 
-// isFilesystemRoot reports whether path is its own parent — true only for
+// isFilesystemRoot reports whether path is its own parent; true only for
 // "/" on darwin/linux, the two platforms internal/service (and therefore
 // `moltnet uninstall`) supports.
 func isFilesystemRoot(path string) bool {

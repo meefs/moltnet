@@ -77,7 +77,7 @@ type AuthTokenWriteback struct {
 // When roomIDs is non-empty, each named room is created in rooms[] if
 // absent, and its federation is extended to allow pairing.ID: an absent or
 // "none" federation becomes a list naming just this pairing, an existing
-// list gets this pairing appended (idempotently — re-running never
+// list gets this pairing appended (idempotently: re-running never
 // duplicates the entry), and an existing "all" federation is left alone.
 // This is the same single atomic write and post-write reload check as the
 // pairing/auth-token writeback, so a room upsert never lands without the

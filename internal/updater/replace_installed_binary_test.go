@@ -114,7 +114,7 @@ func TestReplaceInstalledBinaryPreservesInstalledModeNotBuiltMode(t *testing.T) 
 // TestReplaceInstalledBinaryLeavesInstallPathIntactWhenBackupFails is the
 // regression test for P2-8: the old rename(install->.previous) then
 // rename(staged->install) sequence unlinked installPath as its very first
-// mutating step, so any failure afterward — including a crash — left
+// mutating step, so any failure afterward, including a crash, left
 // nothing runnable there. The fixed version copies installPath to the
 // backup location instead (installPath itself is never renamed away, only
 // ever replaced by one final atomic rename), so a failure at the backup
@@ -134,7 +134,7 @@ func TestReplaceInstalledBinaryLeavesInstallPathIntactWhenBackupFails(t *testing
 	}
 
 	// Pre-create the backup destination as read-only, so copyRegularFile's
-	// O_WRONLY open of it fails — simulating a backup-step failure without
+	// O_WRONLY open of it fails, simulating a backup-step failure without
 	// needing to inject a crash mid-function.
 	backupPath := installPath + ".previous"
 	if err := os.WriteFile(backupPath, []byte("stale"), 0o400); err != nil {

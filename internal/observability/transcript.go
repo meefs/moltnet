@@ -5,7 +5,7 @@
 // THIS CHANGES THAT VOLUME'S CONTRACT, DELIBERATELY. It previously held only
 // hashes: the causal log records content_sha256, never message text and never
 // a sender. It now also holds message bodies. That is not an incidental
-// widening — agent speech is the research data the memetics programme exists
+// widening: agent speech is the research data the memetics programme exists
 // to study, and a run record that cannot show who said what to whom cannot
 // support the claim that agents held a conversation.
 //
@@ -19,8 +19,8 @@
 //   - Attribution is stated, never assumed. `from` is what the SENDER claimed
 //     and a sender can claim anything; the authenticated identity is the causal
 //     event's principal_id, which causalPrincipal() derives from auth claims
-//     alone. The attestation block therefore reports three states and not two —
-//     attested, violated, and unattested — because a network running
+//     alone. The attestation block therefore reports three states and not two:
+//     attested, violated, and unattested, because a network running
 //     auth.mode: none stamps system:moltnet.anonymous and there is then nothing
 //     to compare against. Unattested must never be read as passed.
 package observability

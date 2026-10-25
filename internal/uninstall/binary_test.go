@@ -42,7 +42,7 @@ func TestRemoveBinaryPermissionDenied(t *testing.T) {
 	writeExecutable(t, path)
 
 	// Removing a file requires write permission on its parent directory,
-	// not the file itself, so lock down dir to read+execute only —
+	// not the file itself, so lock down dir to read+execute only,
 	// simulating a root-owned install directory such as /usr/local/bin.
 	if err := os.Chmod(dir, 0o555); err != nil {
 		t.Fatalf("chmod %q: %v", dir, err)

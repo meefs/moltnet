@@ -69,7 +69,7 @@ func TestSessionCompletionWinsOverCancel(t *testing.T) {
 	// and emitTerminal claims the terminal before writing it. Gating on the
 	// executor instead (its old behavior) released the cancel while the handler
 	// was still running, so the cancel could legitimately claim the terminal
-	// first and this test failed under -race — asserting an ordering its own
+	// first and this test failed under -race, asserting an ordering its own
 	// setup never established. The registry itself is not racy: claimTerminal
 	// and claimCancel contend for one mutex and exactly one of them wins.
 	out := newTerminalWriteSignal()

@@ -18,7 +18,7 @@ import (
 // TestSkillWithAgentTokenDoesNotExposePrivateMemberRooms
 // (discovery_public_policy_test.go): internal/rooms/access_policy.go's
 // canReadRoom grants read access to a private room by membership alone,
-// independent of the token's scopes — even a write+attach-only agent token
+// independent of the token's scopes, even a write+attach-only agent token
 // (pre-PLAN.md-phase-6a-review P2-2) already saw a private room it was a
 // member of; adding `observe` (P2-2) does not change that, and must not
 // additionally leak rooms the agent is *not* a member of (covered by the

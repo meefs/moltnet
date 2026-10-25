@@ -142,7 +142,7 @@ func TestResolveConfigPathIDIgnoresCwd(t *testing.T) {
 
 // TestResolveConfigPathIDIgnoresCwdWhenGlobalAbsent is the "absent global"
 // half of the same case: with --id given, a cwd Moltnet must never be used
-// as a substitute even when ~/.moltnet/<id>/ does not exist — the error
+// as a substitute even when ~/.moltnet/<id>/ does not exist; the error
 // must name the missing global path, not silently fall back to cwd.
 func TestResolveConfigPathIDIgnoresCwdWhenGlobalAbsent(t *testing.T) {
 	home := t.TempDir()
@@ -228,7 +228,7 @@ func TestResolveConfigPathSkipsBinaryShadowedCwdFallsToHome(t *testing.T) {
 // TestResolveConfigPathCwdBoundaryRuneResolvesCwdNotGlobal is the P0-1
 // resolution-level regression the reviewer live-confirmed: a valid cwd
 // config whose 512th byte splits a multibyte rune (€) must still win over a
-// sole global network under ~/.moltnet — not get misclassified as binary,
+// sole global network under ~/.moltnet, not get misclassified as binary,
 // skipped with a warning, and silently resolve the wrong (global) network.
 func TestResolveNodeConfigPathFindsSoleHomeNetwork(t *testing.T) {
 	home := t.TempDir()

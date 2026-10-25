@@ -7,8 +7,8 @@ client and deploy orchestration for the relay Worker embedded from `relay/`.
 
 - Cloudflare REST API client (token verify, account resolution, module
   worker upload with the `RelayRoom` Durable Object migration, secret
-  management, workers.dev route enablement, subdomain resolution and claim)
-  — stdlib `net/http` only.
+  management, workers.dev route enablement, subdomain resolution and claim),
+  stdlib `net/http` only.
 - Deploy orchestration: idempotent re-deploy semantics (keep the existing
   `RELAY_TOKEN` unless a new one is supplied), post-deploy DNS verification.
 - Local relay credential storage (`.moltnet/relay.json`) so `pair invite` can
@@ -23,9 +23,9 @@ client and deploy orchestration for the relay Worker embedded from `relay/`.
 
 - No OAuth; token comes from `CLOUDFLARE_API_TOKEN` or the per-network stored
   token file (see PLAN.md).
-- No relay protocol logic — this package only deploys the Worker, it never
+- No relay protocol logic: this package only deploys the Worker, it never
   dials it. `internal/pairings/relay` is the runtime relay client.
-- No CLI flag parsing or output formatting — that lives in `cmd/moltnet`.
+- No CLI flag parsing or output formatting: that lives in `cmd/moltnet`.
 
 ## Rules
 

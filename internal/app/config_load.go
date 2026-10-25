@@ -310,7 +310,7 @@ func DiscoverPath(explicit string) (string, bool, error) {
 }
 
 // discoverExplicitConfigPath resolves an explicitly named Moltnet config
-// path — either passed directly (--config) or via the MOLTNET_CONFIG
+// path, either passed directly (--config) or via the MOLTNET_CONFIG
 // environment variable. hasExplicit is false only when neither source named
 // a path, letting the caller fall through to autodiscovery; when true, the
 // caller returns (path, found, err) as-is, since an explicit source always
@@ -329,8 +329,8 @@ func discoverExplicitConfigPath(explicit string) (path string, found bool, hasEx
 
 // discoverCwdConfigPath scans DefaultDiscoveryOrder in the current
 // directory. A candidate that stats successfully but fails the text sniff
-// (looksLikeTextConfig) — most plausibly a compiled binary shadowing the
-// config filename on a case-insensitive filesystem — is skipped with a
+// (looksLikeTextConfig), most plausibly a compiled binary shadowing the
+// config filename on a case-insensitive filesystem, is skipped with a
 // stderr warning and treated as though it were never there, so discovery
 // keeps looking rather than handing a Mach-O/ELF binary to the YAML/JSON
 // decoder.

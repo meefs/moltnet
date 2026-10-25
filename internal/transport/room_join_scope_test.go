@@ -12,7 +12,7 @@ import (
 
 // TestJoinRoomScopesAdvertiseWriteOnly is PLAN.md 7A.3's "advertised-scope
 // fix" gate: the route used to advertise [write, pair], which was
-// misleading — handleJoinRoom's own authorization (join.go's
+// misleading: handleJoinRoom's own authorization (join.go's
 // joinActorAuthorized) requires a local agent-restricted agent token no
 // matter what the route advertises, and a pair-scoped token (minted for a
 // peer network) is never agent-restricted, so it could never actually join
@@ -25,8 +25,8 @@ func TestJoinRoomScopesAdvertiseWriteOnly(t *testing.T) {
 }
 
 // TestJoinRoomRefusesPairScopedToken is the behavioral half of the same
-// fix: a pair-scoped token — the credential a peer network is handed at
-// `pair invite`/`pair <code>` time, never agent-restricted — must never be
+// fix: a pair-scoped token, the credential a peer network is handed at
+// `pair invite`/`pair <code>` time, never agent-restricted, must never be
 // able to join a room, whether or not the route itself would have let the
 // request through under the old, broader advertised scope set.
 func TestJoinRoomRefusesPairScopedToken(t *testing.T) {

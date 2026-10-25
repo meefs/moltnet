@@ -45,7 +45,7 @@ func newTestService() *Service {
 // newTestServiceWithPairings is newTestService plus configured pairings, for
 // tests that also send through a pair-scoped credential and need it to
 // resolve against a real pairing under federation_access.go's enforcement
-// (see pairingForPairScopedContext's doc comment) — most callers are testing
+// (see pairingForPairScopedContext's doc comment), most callers are testing
 // unrelated sender-identity or relay logic, so they also give the room under
 // test protocol.RoomFederationAll to keep the federation gate itself out of
 // scope.

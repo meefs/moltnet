@@ -46,7 +46,7 @@ const (
 	controlErrorTransient
 	// controlErrorPermanent means retrying is very unlikely to help
 	// (4xx other than 429, a malformed control response, or a local
-	// request-shape error) — skip straight to a terminal wake failure.
+	// request-shape error), skip straight to a terminal wake failure.
 	controlErrorPermanent
 )
 
@@ -83,7 +83,7 @@ func classifyControlError(ctx context.Context, err error) controlErrorClass {
 		return controlErrorPermanent
 	default:
 		// Network-level failures ("request control url ...": connection
-		// refused, timeout, DNS, EOF) — treat as transient so a flaky
+		// refused, timeout, DNS, EOF), treat as transient so a flaky
 		// runtime endpoint gets a bounded number of retries before the
 		// event is skipped.
 		return controlErrorTransient
@@ -126,7 +126,7 @@ type controlDeliveryState struct {
 
 // controlDeliveryTracker is created once per RunControlLoop call (outside
 // its reconnect loop) and threaded into every connection's handle closure,
-// so a permanently-failed event.ID stays known across reconnects — the
+// so a permanently-failed event.ID stays known across reconnects, the
 // structural fix for "every reconnect restarts retry at 0". It is not
 // persisted across process restarts; that is acceptable because a fresh
 // process re-attaches with whatever cursor it last durably advanced past,

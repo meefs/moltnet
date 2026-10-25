@@ -52,7 +52,7 @@ func NewClient(token string) *Client {
 // fields directly) can exercise a real end-to-end Deploy call against a
 // net/http/httptest fake Cloudflare server. Production code never calls
 // this; only NewClient does. baseURL's host must be loopback
-// (127.0.0.1/::1/localhost, as net/http/httptest.Server always is) — this
+// (127.0.0.1/::1/localhost, as net/http/httptest.Server always is); this
 // panics otherwise, so a baseURL pointed at a real host (production misuse,
 // or a typo'd test) fails immediately instead of silently working.
 func NewClientForTesting(token, baseURL string, httpClient *http.Client) *Client {
@@ -275,7 +275,7 @@ func (c *Client) EnableWorkersDevRoute(ctx context.Context, accountID, scriptNam
 // ScriptMigrationTag returns scriptName's current Durable Object migration
 // tag, via Cloudflare's per-script Get Service Metadata operation (GET
 // /accounts/{account_id}/workers/services/{script_name}), reading
-// result.default_environment.script.migration_tag — the same call and
+// result.default_environment.script.migration_tag; the same call and
 // field wrangler itself reads to compute old_tag before an upload (see
 // deploy.go's prepareUploadMetadata, which this backs). Unlike the
 // account-wide "List Workers" endpoint this used to call, this is a
@@ -283,7 +283,7 @@ func (c *Client) EnableWorkersDevRoute(ctx context.Context, accountID, scriptNam
 //
 // found is false when no script named scriptName exists yet: Cloudflare
 // reports that as a failed envelope carrying error code 10007, 10090, or
-// 10092 (script/service/environment not found — wrangler's own
+// 10092 (script/service/environment not found, wrangler's own
 // suppressNotFoundError treats the same three as equivalent for this
 // call), all mapped here to found=false. Any other failure surfaces as a
 // *CloudflareAPIError. tag == "" with found true means the script exists
@@ -315,7 +315,7 @@ func (c *Client) ScriptMigrationTag(ctx context.Context, accountID, scriptName s
 }
 
 // isServiceNotFoundEnvelope reports whether envelope's errors carry
-// Cloudflare error code 10007, 10090, or 10092 — the not-found codes
+// Cloudflare error code 10007, 10090, or 10092; the not-found codes
 // ScriptMigrationTag maps to found=false.
 func isServiceNotFoundEnvelope(envelope cloudflareEnvelope) bool {
 	for _, message := range envelope.Errors {
@@ -361,7 +361,7 @@ func (c *Client) WorkersDevSubdomain(ctx context.Context, accountID string) (sub
 
 // ClaimWorkersDevSubdomain registers subdomain as accountID's account-level
 // workers.dev subdomain (PUT /accounts/{account_id}/workers/subdomain,
-// Cloudflare's "Create Subdomain" operation) — the one-time claim
+// Cloudflare's "Create Subdomain" operation); the one-time claim
 // WorkersDevSubdomain above reads back afterward. It is the API call the
 // interactive claim prompt (cmd/moltnet's `relay deploy`) makes after an
 // operator types a name in response to ErrWorkersDevSubdomainUnclaimed;
@@ -371,11 +371,11 @@ func (c *Client) WorkersDevSubdomain(ctx context.Context, accountID string) (sub
 //
 // Cloudflare documents two error codes this call can return that callers
 // should branch on rather than treat identically: 10031 ("subdomain already
-// exists" — the name is taken by some account, this one included) is
+// exists"; the name is taken by some account, this one included) is
 // retryable with a different name; 10036 ("account already has a
-// subdomain", HTTP 409 — this account has already claimed one, and
-// Cloudflare allows exactly one per account, ever) is not a failure at all
-// — the caller should re-read the existing claim via WorkersDevSubdomain
+// subdomain", HTTP 409; this account has already claimed one, and
+// Cloudflare allows exactly one per account, ever) is not a failure at all;
+// the caller should re-read the existing claim via WorkersDevSubdomain
 // and continue as already claimed (cmd/moltnet's interactive claim prompt
 // does both). Any other rejection surfaces as a *CloudflareAPIError
 // carrying whatever message Cloudflare returned, shown verbatim.

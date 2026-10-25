@@ -17,7 +17,7 @@ import (
 // resuming ones. A single mutex guards nextID, history, AND subscribers so
 // that Publish and subscribeFrom are strictly serialized: an event is either
 // captured in a new subscriber's replay snapshot (published before the
-// subscribe critical section) or fanned out to it (published after) — never
+// subscribe critical section) or fanned out to it (published after), never
 // both (which would double-deliver and break the client's per-frame ACK) and
 // never neither (the delivery gap this collapse closes). Do not reintroduce a
 // second lock: the fan-out below runs inside the critical section and relies

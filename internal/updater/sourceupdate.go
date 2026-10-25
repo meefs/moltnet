@@ -16,8 +16,8 @@ import (
 const sourceInstallRefusalMessage = "self-update is not available for source or development builds; install a release tarball with curl -fsSL https://moltnet.dev/install.sh | sh"
 
 // SourceUpdatePlan reports what a source install's `moltnet update` found
-// or did: the git status it inspected, and — only once a mutation actually
-// ran — the steps it took, in order.
+// or did: the git status it inspected, and (only once a mutation actually
+// ran) the steps it took, in order.
 type SourceUpdatePlan struct {
 	Branch         string
 	Checkout       string
@@ -67,7 +67,7 @@ func runSourceUpdate(ctx context.Context, options Options, install Install, resu
 	// inspectGitCheckout below) only reflects whatever the last unrelated
 	// fetch happened to leave behind, so a real upstream change can be
 	// invisible to both --check and a real run indefinitely. A fetch
-	// failure (offline, unreachable remote) does not abort the command —
+	// failure (offline, unreachable remote) does not abort the command,
 	// it downgrades the comparison to "as of the last successful fetch"
 	// and, on a real run, disables the "nothing to pull" shortcut below so
 	// `git pull --ff-only` itself gets the final say instead of stale data.
@@ -118,7 +118,7 @@ func runSourceUpdate(ctx context.Context, options Options, install Install, resu
 	if fetchErr == nil && status.UpstreamKnown && !plan.RebuildNeeded {
 		// Nothing new to pull and the tree is already clean: no-op, same
 		// spirit as the release path's "already at the requested version".
-		// Only taken when the fetch above actually succeeded — otherwise
+		// Only taken when the fetch above actually succeeded; otherwise
 		// this data could be stale and `git pull --ff-only` below, which
 		// re-fetches on its own, is the one allowed to decide.
 		return result, nil
@@ -190,13 +190,13 @@ func performSourceUpdate(ctx context.Context, options Options, install Install, 
 
 	// Deliberately does not call writeInstallMetadata: install.json is
 	// global (one file per MOLTNET_HOME, not per install path), and a
-	// source build has never needed it — DetectInstall recognizes a source
+	// source build has never needed it; DetectInstall recognizes a source
 	// install from IsDevelopmentVersion(currentVersion) before it ever
 	// looks at install.json. Writing it here would overwrite a co-resident
 	// release install's own metadata with this source install's `install_
 	// method: source` and a mismatched `install_path`, which then makes
 	// DetectInstall unable to match the release binary's own path against
-	// it — degrading that install to InstallMethodUnknown and silently
+	// it, degrading that install to InstallMethodUnknown and silently
 	// disabling ITS self-update. Two installs sharing one MOLTNET_HOME must
 	// never be able to disable each other this way.
 

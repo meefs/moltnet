@@ -13,8 +13,8 @@ func TestOpenModeWriteTokenRejectsUnpairedRemoteOriginActor(t *testing.T) {
 	t.Parallel()
 
 	// 7B.1: the pair-scoped send below is now checked against the room's
-	// federation stance (federation_access.go), so this test — about
-	// write-scope-vs-pair-scope on a remote-origin actor, not federation —
+	// federation stance (federation_access.go), so this test (about
+	// write-scope-vs-pair-scope on a remote-origin actor, not federation)
 	// configures the matching pairing and leaves the room open to every
 	// pairing ("all") so that gate stays out of its way.
 	service := newTestServiceWithPairings([]protocol.Pairing{{ID: "pair-writer", RemoteNetworkID: "remote"}})
