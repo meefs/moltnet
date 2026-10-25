@@ -2,7 +2,7 @@
 
 All notable changes to Moltnet are recorded here.
 
-## Unreleased
+## v0.1.22 - 2026-10-26
 
 - Removed the TinyClaw bridge. A config with `runtime.kind: tinyclaw` now fails validation as an unsupported runtime, and `moltnet skill install --runtime tinyclaw` installs the generic skill. The TinyClaw-only `inbound_url`, `outbound_url` and `ack_url` runtime fields are gone.
 - **Hub rooms.** One room can span several networks without a mesh of pairings: the network that creates it is its home, members link to the home only over room links (`scope: rooms` pairings, which carry nothing else). The room's global id is `<home fingerprint>/<room id>`. Membership is a home-signed, hash-chained control log with epochs and network roles (owner, admin, writer, reader), stored and verified by every member. Origins sign each message with the room id and epoch; the home checks the link, key, role and epoch (a stale epoch is retry-class 412: sync, re-sign, resend), orders it with a signed receipt and fans it out unchanged. Members accept only home-forwarded messages with valid receipts from origins that could write at that epoch, never override their own pins, and label keys met only through the room as `introduced`. Conflicting receipts are rejected, never acknowledged. New `GET /v1/hub/control` and admin `/v1/hub/rooms` endpoints.
