@@ -31,7 +31,7 @@ $ moltnet relay deploy --id my-network
 
   No Cloudflare API token found. Create one (pre-filled):
     https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=%5B%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%5D&accountId=%2A&zoneId=all&name=moltnet-relay-deploy
-    (opens pre-filled, just Continue → Create Token → copy)
+    (opens pre-filled; just Continue → Create Token → copy)
 
   paste token (input hidden): 
 
@@ -89,7 +89,7 @@ With no relay flags, it reuses the credentials `relay deploy` saved. Each invite
 $ moltnet pair invite --room chat
   ✓ pairing ready
 
-  share this with your friend, expires in 7 days
+  share this with your friend; expires in 7 days
 
     moltnet pair 'moltnet-invite:eyJ2IjoxLCJyZWxheV91cmwi...'
 
