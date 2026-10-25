@@ -38,7 +38,8 @@ type Pin struct {
 	NetworkID   string `json:"network_id"`
 	Fingerprint string `json:"fingerprint"`
 	PublicKey   string `json:"public_key,omitempty"`
-	// Trust is protocol.KeyTrustVerified or protocol.KeyTrustIntroduced.
+	// Trust is protocol.KeyTrustVerified, KeyTrustIntroduced or
+	// KeyTrustUnconfirmed.
 	Trust string `json:"trust"`
 	// Source records how the pin was learned: invite, pairing, operator.
 	Source string `json:"source"`
@@ -102,27 +103,38 @@ func (s *PinStore) List() ([]Pin, error) {
 }
 
 // PinKey records pin unless the network is already pinned. Pinning the same
-// fingerprint again returns the stored pin, upgrading introduced to verified
-// when the new pin is verified. A different fingerprint is ErrPinConflict.
+// fingerprint again returns the stored pin, upgrading it to verified when
+// the new pin is verified. A different fingerprint is ErrPinConflict, except
+// that a verified pin replaces an unconfirmed one.
 func (s *PinStore) PinKey(pin Pin) (Pin, error) {
+	result, _, err := s.PinKeyCreated(pin)
+	return result, err
+}
+
+// PinKeyCreated is PinKey that also reports whether this call stored a new
+// pin or replaced a different key, so a caller whose own write then fails
+// can undo exactly its pin (ForgetExact) and nothing else.
+func (s *PinStore) PinKeyCreated(pin Pin) (Pin, bool, error) {
 	pin.NetworkID = strings.TrimSpace(pin.NetworkID)
 	fingerprint, err := protocol.NormalizeFingerprint(pin.Fingerprint)
 	if err != nil {
-		return Pin{}, err
+		return Pin{}, false, err
 	}
 	pin.Fingerprint = fingerprint
 	if err := validatePin(pin); err != nil {
-		return Pin{}, err
+		return Pin{}, false, err
 	}
 	if pin.PinnedAt.IsZero() {
 		pin.PinnedAt = s.now().UTC()
 	}
 
 	var result Pin
+	created := false
 	err = s.update(func(pins map[string]Pin) (bool, error) {
 		existing, ok := pins[pin.NetworkID]
-		if !ok {
-			pins[pin.NetworkID], result = pin, pin
+		if !ok || existing.Fingerprint != pin.Fingerprint &&
+			existing.Trust == protocol.KeyTrustUnconfirmed && pin.Trust == protocol.KeyTrustVerified {
+			pins[pin.NetworkID], result, created = pin, pin, true
 			return true, nil
 		}
 		if existing.Fingerprint != pin.Fingerprint {
@@ -140,7 +152,21 @@ func (s *PinStore) PinKey(pin Pin) (Pin, error) {
 		pins[pin.NetworkID], result = existing, existing
 		return changed, nil
 	})
-	return result, err
+	return result, created, err
+}
+
+// ForgetExact removes networkID's pin only if it is still exactly pin (same
+// key, trust, source and time), undoing one PinKeyCreated and nothing newer.
+func (s *PinStore) ForgetExact(pin Pin) error {
+	return s.update(func(pins map[string]Pin) (bool, error) {
+		existing, ok := pins[pin.NetworkID]
+		if !ok || existing.Fingerprint != pin.Fingerprint || existing.Trust != pin.Trust ||
+			existing.SourceID != pin.SourceID || !existing.PinnedAt.Equal(pin.PinnedAt) {
+			return false, nil
+		}
+		delete(pins, pin.NetworkID)
+		return true, nil
+	})
 }
 
 // PairingNetworks returns the network ids pinned through pairing
@@ -287,6 +313,10 @@ func validatePin(pin Pin) error {
 	case protocol.KeyTrustIntroduced:
 		if pin.IntroducedBy == "" {
 			return errors.New("an introduced pin must name the room home that introduced it")
+		}
+	case protocol.KeyTrustUnconfirmed:
+		if pin.Source != PinSourcePairing || pin.IntroducedBy != "" {
+			return errors.New("an unconfirmed pin comes only from first contact over a pairing")
 		}
 	default:
 		return fmt.Errorf("unsupported pin trust %q", pin.Trust)

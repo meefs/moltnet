@@ -126,7 +126,7 @@ func (s *Service) MessageSignatures(ctx context.Context, messages []protocol.Mes
 	for _, message := range messages {
 		if record, ok := records[message.ID]; ok {
 			signature := MessageSignature{State: record.State, Fingerprint: record.Fingerprint}
-			if record.State == protocol.SignatureStateVerified || record.State == protocol.SignatureStateIntroduced {
+			if signedState(record.State) {
 				envelope, _, err := protocol.ParseSignedEnvelope(record.Envelope)
 				if err != nil {
 					// Verified at store time; damage since then is not verified.
@@ -144,4 +144,13 @@ func (s *Service) MessageSignatures(ctx context.Context, messages []protocol.Mes
 		}
 	}
 	return result, nil
+}
+
+// signedState reports a stored state whose signature verified at store time.
+func signedState(state string) bool {
+	switch state {
+	case protocol.SignatureStateVerified, protocol.SignatureStateIntroduced, protocol.SignatureStateUnconfirmed:
+		return true
+	}
+	return false
 }

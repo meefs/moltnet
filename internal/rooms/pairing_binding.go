@@ -72,6 +72,15 @@ func (s *Service) pairCredentialMatchesOrigin(ctx context.Context, claims authn.
 		return false
 	}
 
+	// An unbound credential may not claim a network another pairing is
+	// config-bound to, nor one other than the id its own peer reported in
+	// authenticated discovery (persisted as the delivery destination).
+	if reason := s.unboundOriginConflict(ctx, originNetworkID); reason != "" {
+		observability.Logger(ctx, "rooms.pairing", "origin_network_id", originNetworkID).
+			Warn("rejecting inbound pair-scoped message: " + reason)
+		return false
+	}
+
 	// A key pinned through this pairing durably records which network the
 	// credential speaks for. It outlives the process-local learned binding
 	// below, so a restart cannot reopen first contact for a different,
@@ -127,6 +136,25 @@ func (s *Service) bindOrMatchPairNetwork(credentialKey, originNetworkID string) 
 	}
 	s.learnedPairNetworks[credentialKey] = originNetworkID
 	return true, true
+}
+
+// unboundOriginConflict explains why an unbound credential may not claim
+// originNetworkID, or returns "".
+func (s *Service) unboundOriginConflict(ctx context.Context, originNetworkID string) string {
+	pairing, ok := s.pairingForPairScopedContext(ctx)
+	if !ok {
+		return ""
+	}
+	if other, err := s.findPairingByRemoteNetwork(originNetworkID); err == nil && other.ID != pairing.ID {
+		return "origin network is config-bound to a different pairing"
+	}
+	if s.pairingDeliveries != nil {
+		if state, err := s.pairingDeliveries.PairingDeliveryStateContext(ctx, pairing.ID); err == nil &&
+			state.RemoteNetworkID != "" && state.RemoteNetworkID != originNetworkID {
+			return "origin network differs from the network this pairing's peer reported in discovery"
+		}
+	}
+	return ""
 }
 
 // pinnedPairingNetworks reports the networks whose keys were pinned through

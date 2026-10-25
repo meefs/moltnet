@@ -17,19 +17,25 @@ const NetworkKeyAlgorithmEd25519 = "ed25519"
 const FingerprintPrefix = "sha256:"
 
 // Key trust levels. A verified key was pinned independently by this
-// operator (a direct pairing handshake or `moltnet keys trust`). An
-// introduced key was vouched for by a room home only (chunk B); its
-// signatures check out but the network identity behind it is not proven.
+// operator: an invite, a pairing credential config binds to the network, or
+// `moltnet keys trust`. An introduced key was vouched for by a room home
+// only; its signatures check out but the network identity behind it is not
+// proven. An unconfirmed key was learned on first contact over a pairing
+// credential config never bound to a network (the inviting side): it holds
+// the network id against other keys, but any verified pin replaces it, so a
+// peer cannot squat another network's name by claiming it first.
 const (
-	KeyTrustVerified   = "verified"
-	KeyTrustIntroduced = "introduced"
+	KeyTrustVerified    = "verified"
+	KeyTrustIntroduced  = "introduced"
+	KeyTrustUnconfirmed = "unconfirmed"
 )
 
 // Origin signature states exposed on the HTTP message API. They are never
 // part of the machine v1 projection.
 const (
 	SignatureStateVerified   = "verified"
-	SignatureStateIntroduced = "introduced"
+	SignatureStateIntroduced  = "introduced"
+	SignatureStateUnconfirmed = "unconfirmed"
 	SignatureStateInvalid    = "invalid"
 	SignatureStateUnsigned   = "unsigned"
 )

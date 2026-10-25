@@ -30,9 +30,6 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 	if err != nil {
 		return protocol.MessageAccepted{}, err
 	}
-	if inboundEnvelope != nil {
-		ctx = store.WithMessageEnvelope(ctx, *inboundEnvelope)
-	}
 
 	now, err := s.now()
 	if err != nil {
@@ -75,6 +72,16 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 		return protocol.MessageAccepted{}, err
 	}
 
+	// Authorized: only now may first contact pin the origin's key, and the
+	// pin is undone below unless the message is durably stored.
+	undoPin, err := s.commitFirstContactPin(ctx, inboundEnvelope)
+	if err != nil {
+		return protocol.MessageAccepted{}, err
+	}
+	if inboundEnvelope != nil {
+		ctx = store.WithMessageEnvelope(ctx, inboundEnvelope.record)
+	}
+
 	target := s.normalizeTarget(request.Target, from)
 	origin := s.normalizeOrigin(ctx, request.Origin, messageID)
 	message := protocol.Message{
@@ -97,6 +104,9 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 	}
 
 	lifecycle, err := s.appendAndPublishMessage(ctx, request, message, event)
+	if err != nil && !errors.Is(err, store.ErrDuplicateMessage) {
+		undoPin()
+	}
 	if err != nil {
 		if errors.Is(err, store.ErrDuplicateMessage) {
 			var duplicate *store.DuplicateMessageError
