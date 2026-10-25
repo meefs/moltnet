@@ -222,18 +222,21 @@ func TestOriginIDWhitespaceVariantsCannotReplayASignedMessage(t *testing.T) {
 			if status, body := deliveryPost(t, peer.pairURL, "pair-secret", first); status != http.StatusAccepted {
 				t.Fatalf("first: %d %s", status, body)
 			}
+			var accepted protocol.MessageAccepted
 			for index, variant := range []string{" msg-1", "msg-1 ", "\tmsg-1"} {
 				replay := first
 				replay.ID = fmt.Sprintf("replay-%d", index)
 				replay.Origin.MessageID = variant
-				if status, body := deliveryPost(t, peer.pairURL, "pair-secret", replay); status != http.StatusUnprocessableEntity {
-					t.Fatalf("whitespace variant %q: %d %s", variant, status, body)
+				replay.Origin.NetworkID = " origin\t"
+				status, body := deliveryPost(t, peer.pairURL, "pair-secret", replay)
+				if status != http.StatusAccepted || json.Unmarshal([]byte(body), &accepted) != nil || accepted.MessageID != "msg-1" {
+					t.Fatalf("whitespace variant %q must be the same message: %d %s", variant, status, body)
 				}
-				network := first
-				network.ID = fmt.Sprintf("replay-net-%d", index)
-				network.Origin.NetworkID = "origin "
-				if status, body := deliveryPost(t, peer.pairURL, "pair-secret", network); status < 400 {
-					t.Fatalf("whitespace network variant accepted: %d %s", status, body)
+				fork := signedRequest(t, originKey, "msg-1", "forked")
+				fork.ID = fmt.Sprintf("fork-%d", index)
+				fork.Origin.MessageID = variant
+				if status, body := deliveryPost(t, peer.pairURL, "pair-secret", fork); status != http.StatusConflict {
+					t.Fatalf("whitespace fork %q not detected as a conflict: %d %s", variant, status, body)
 				}
 			}
 			assertDeliveryTexts(t, peer.service, "only once")

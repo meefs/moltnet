@@ -22,9 +22,7 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 	if request.From.Type == "human" && !s.allowHumanIngress {
 		return protocol.MessageAccepted{}, humanIngressDisabledError()
 	}
-	if err := validateExactOriginIDs(request.Origin); err != nil {
-		return protocol.MessageAccepted{}, err
-	}
+	request.Origin = canonicalOriginIDs(request.Origin)
 	if err := s.validateSenderIdentity(ctx, request.From, request.Origin); err != nil {
 		return protocol.MessageAccepted{}, err
 	}
@@ -237,12 +235,12 @@ func (s *Service) Subscribe(ctx context.Context) <-chan protocol.Event {
 	return s.filterEvents(ctx, s.broker.Subscribe(ctx))
 }
 
-// validateExactOriginIDs refuses origin ids with surrounding whitespace.
-// Origin ids key dedupe and envelope-conflict receipts byte for byte, so
-// " msg-1" and "msg-1" must never be two spellings of one signed message.
-func validateExactOriginIDs(origin protocol.MessageOrigin) error {
-	if origin.NetworkID != strings.TrimSpace(origin.NetworkID) || origin.MessageID != strings.TrimSpace(origin.MessageID) {
-		return invalidMessageRequestError("origin.network_id and origin.message_id must not have surrounding whitespace")
-	}
-	return nil
+// canonicalOriginIDs trims the origin ids once, before verification,
+// dedupe and persistence all read them. Origin ids key receive receipts and
+// envelope-conflict checks byte for byte, so " msg-1" and "msg-1" must be
+// one spelling of one signed message everywhere, never two.
+func canonicalOriginIDs(origin protocol.MessageOrigin) protocol.MessageOrigin {
+	origin.NetworkID = strings.TrimSpace(origin.NetworkID)
+	origin.MessageID = strings.TrimSpace(origin.MessageID)
+	return origin
 }
