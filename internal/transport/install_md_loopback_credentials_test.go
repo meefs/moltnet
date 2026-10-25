@@ -14,8 +14,8 @@ import (
 // test (PLAN.md phase 6c review): installMarkdownRoute's loopback carve-out
 // (discovery.go) used to take the anonymous branch unconditionally on any
 // direct-loopback request, so an operator token presented on loopback
-// rendered "Readable rooms: none declared" — the same rendering an
-// unauthenticated caller got — while the identical token routed through a
+// rendered "Readable rooms: none declared", the same rendering an
+// unauthenticated caller got, while the identical token routed through a
 // reverse proxy (the non-loopback `gated` path) rendered the full room
 // list. That's fail-closed but clearly unintended: a same-machine operator
 // with a real credential should see at least what a proxied caller with the
@@ -58,7 +58,7 @@ func TestInstallMarkdownLoopbackHonorsValidCredentials(t *testing.T) {
 	}
 
 	// The same token, presented on a direct-loopback request, must render
-	// the same room list — not the anonymous "none declared" fallback.
+	// the same room list, not the anonymous "none declared" fallback.
 	loopback := loopbackRequest("/install.md")
 	loopback.Header.Set("Authorization", "Bearer operator-secret")
 	loopbackResponse := httptest.NewRecorder()
@@ -80,7 +80,7 @@ func TestInstallMarkdownLoopbackHonorsValidCredentials(t *testing.T) {
 // TestInstallMarkdownLoopbackFallsBackOnInvalidCredentials covers the other
 // half of the P2 fix: a direct-loopback request carrying a bearer token
 // that does not match any configured credential must still fall back to
-// the anonymous render (same as no credentials at all), not 401 — the
+// the anonymous render (same as no credentials at all), not 401; the
 // carve-out's whole point is that a same-machine caller need not
 // authenticate, so a garbled or stale token should degrade gracefully
 // rather than lock the caller out of the join guide entirely.

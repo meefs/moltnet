@@ -1,5 +1,5 @@
-// Package service generates and manages an OS service definition — a
-// launchd LaunchAgent on macOS, a systemd user unit on Linux — that keeps
+// Package service generates and manages an OS service definition (a
+// launchd LaunchAgent on macOS, a systemd user unit on Linux) that keeps
 // one Moltnet network's server running across reboots and restarts it on
 // crash. It backs `moltnet service install|uninstall|start|stop|status`
 // (PLAN.md phase 4, item 2).

@@ -11,7 +11,7 @@ import (
 // precondition 2): supplying a workers.dev subdomain name non-interactively
 // instead of the interactive prompt in relay_deploy_subdomain_claim.go,
 // which has no non-interactive path at all. Every test here deliberately
-// leaves stdin/stdout non-interactive (the test binary's default — no
+// leaves stdin/stdout non-interactive (the test binary's default, no
 // withInteractiveOutput/withPromptAnswers) so the flag is proven to bypass
 // the prompt entirely, not merely to work alongside it.
 
@@ -187,7 +187,7 @@ func TestRunRelayDeploySubdomainFlagConflictRefusesWithClearMessage(t *testing.T
 // non-flag counterpart proving nothing regressed for the plain non-TTY path
 // once --subdomain exists: with no claim and no flag, the printed guidance
 // now names --subdomain as the fix (rather than only the dashboard steps),
-// before any upload — mirroring
+// before any upload, mirroring
 // TestRunRelayDeployNonInteractiveWorkersDevSubdomainUnclaimedNeverPrompts's
 // no-prompt assertion, but pinned here as the "what to pass instead" half of
 // this flag's own test coverage.

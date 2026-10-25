@@ -98,7 +98,7 @@ func TestRunUninstallCommandPurgePromptNoLeavesHomeDirIntact(t *testing.T) {
 	if !strings.Contains(output, "--purge aborted") {
 		t.Fatalf("output = %q, want a purge-aborted note", output)
 	}
-	// Services and the binary follow the main-prompt "yes" — unaffected by
+	// Services and the binary follow the main-prompt "yes", unaffected by
 	// the later purge-prompt "no".
 	if _, err := os.Stat(binaryPath); !os.IsNotExist(err) {
 		t.Fatalf("expected binary to be removed after a 'yes' main prompt, stat err = %v", err)
@@ -120,8 +120,8 @@ func TestRunUninstallCommandPurgePromptNoLeavesHomeDirIntact(t *testing.T) {
 // spacing regression test: with zero installed services, the unconditional
 // blank line printed right after "Proceed? [y/N]" (runUninstallCommand) and
 // the leading blank line runUninstallPurge used to print unconditionally
-// before its own warning prompt used to collide with nothing in between —
-// two Fprintln(stdout) calls back to back — producing a doubled blank line
+// before its own warning prompt used to collide with nothing in between,
+// two Fprintln(stdout) calls back to back, producing a doubled blank line
 // once a real terminal's own echoed newline is added on top (visible as
 // "\n\n\n" between the answered prompt and the purge warning). With services
 // installed, the ✓ line(s) printed by the uninstall loop sit between those
@@ -160,7 +160,7 @@ func TestRunUninstallCommandPurgePromptNoServicesHasSingleBlankLine(t *testing.T
 		t.Fatalf("output between the main prompt and purge warning = %q, want no doubled blank line (no \"\\n\\n\\n\")", between)
 	}
 	// Stronger pin: in this zero-services case the two sections are adjacent
-	// with no blank line at all between them — any blank line here at all
+	// with no blank line at all between them, any blank line here at all
 	// would mean the redundant Fprintln crept back in.
 	if strings.Contains(between, "\n\n") {
 		t.Fatalf("output between the main prompt and purge warning = %q, want no blank line at all when no services were printed", between)

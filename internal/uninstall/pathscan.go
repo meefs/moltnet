@@ -22,7 +22,7 @@ const binaryName = "moltnet"
 // OtherCopies tolerates being called after currentBinary has already been
 // removed from disk: a candidate that resolves back to that now-deleted
 // path simply fails os.Stat and is silently skipped, the same as any other
-// nonexistent PATH entry — see DanglingSymlinks for the complementary scan
+// nonexistent PATH entry; see DanglingSymlinks for the complementary scan
 // that catches that specific case instead of dropping it.
 func OtherCopies(pathEnv string, currentBinary string) []string {
 	resolvedCurrent := resolveIfPossible(currentBinary)
@@ -55,12 +55,12 @@ func OtherCopies(pathEnv string, currentBinary string) []string {
 }
 
 // DanglingSymlinks scans pathEnv for a "moltnet" symlink that no longer
-// resolves — most commonly a PATH entry such as ~/.local/bin/moltnet that
+// resolves, most commonly a PATH entry such as ~/.local/bin/moltnet that
 // pointed at removedBinary, the moltnet binary `moltnet uninstall` just
 // deleted. Call this AFTER removing the binary, not before: OtherCopies
 // resolves through os.Stat, which fails on a now-dangling symlink exactly
 // like it fails on "nothing here", so a symlink to the deleted binary
-// silently disappears from OtherCopies' results instead of being reported —
+// silently disappears from OtherCopies' results instead of being reported,
 // this function exists to catch that case and warn about it explicitly. A
 // candidate counts as dangling when EvalSymlinks fails to resolve it (the
 // usual case: the target file is simply gone) or, defensively, when it

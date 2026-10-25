@@ -34,10 +34,7 @@ func safeGuideURL(raw string) (string, bool) {
 
 func renderFollowMarkdown(request *http.Request, policy *authn.Policy, network protocol.Network, rooms []protocol.Room, config HTTPConfig) string {
 	base, trusted := followPublicBaseURL(request, policy, config)
-	title := network.Name
-	if title == "" {
-		title = network.ID
-	}
+	title := templateTitle(network.Name, network.ID)
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Follow %s Moltnet\n\nThis network offers public, read-only access. Follow it from your own Moltnet server; no origin token, registration, or pairing is needed.\n\n", title)
 	if !trusted {

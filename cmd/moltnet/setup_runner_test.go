@@ -11,7 +11,7 @@ import (
 
 // withInProcessRunChild swaps runChild for the wizard's own tests with an
 // adapter that dispatches straight into this test binary's run() dispatcher
-// (cli.go) instead of spawning a real subprocess — the same reason
+// (cli.go) instead of spawning a real subprocess, the same reason
 // cmd/moltnet's existing tests call run()/runCLI directly rather than
 // exec'ing a built binary: os.Executable() under `go test` is the test
 // binary itself, so a literal execChild call would try to run "moltnet.test
@@ -33,7 +33,7 @@ import (
 // and isInteractive (the stdin-side halves of the exact gate promptSelect
 // itself uses, setup_prompt_select.go) were left untouched, so a nested
 // "child" dispatched under a PTY-backed outer setup test would still see
-// the outer wizard's own real os.Stdin/isInteractive()=true — a child that
+// the outer wizard's own real os.Stdin/isInteractive()=true, a child that
 // ever prompted would read the wizard's own terminal, the mirror of the
 // stdout hazard this helper already exists to close. Nothing this unit
 // ships actually prompts today, but forcing both false/empty here removes
@@ -51,13 +51,13 @@ func withInProcessRunChild(t *testing.T) {
 // runChildInProcess is withInProcessRunChild's implementation: it holds
 // processStateMu (main_test.go) for the same reason every other stdout-
 // swapping test helper in this package does (captureStdoutLocked,
-// captureMainOutput, captureStdoutAndStderr) — stdout/stderr are package
-// globals, so two tests mutating them concurrently would race — applies
+// captureMainOutput, captureStdoutAndStderr), stdout/stderr are package
+// globals, so two tests mutating them concurrently would race, applies
 // invocation.Env as real process environment variables for the call's
 // duration (production execChild passes these as real child env vars;
 // run()'s own commands read them via os.Getenv, so this is the in-process
 // equivalent, not a simulation of it), and dispatches through run() with a
-// background context — never invocation's own ctx — matching execChild's
+// background context, never invocation's own ctx, matching execChild's
 // contract that a child is a fully separate, non-interactive process the
 // wizard does not get to cancel by proxy once started.
 func runChildInProcess(_ context.Context, invocation childInvocation) (childResult, error) {
@@ -83,7 +83,7 @@ func runChildInProcess(_ context.Context, invocation childInvocation) (childResu
 	// stderr is retained regardless of outcome, matching execChild's own
 	// contract (runner.go): only stdout is ever discarded, and only when the
 	// invocation did not request CaptureOutput (the `pair invite show`
-	// exception — SETUP.md's "Exception: the invite code").
+	// exception, SETUP.md's "Exception: the invite code").
 	err := run(context.Background(), invocation.Args, "test")
 	result := childResult{Stderr: strings.TrimSpace(stderrBuf.String())}
 	if invocation.CaptureOutput {
@@ -99,7 +99,7 @@ func runChildInProcess(_ context.Context, invocation childInvocation) (childResu
 // "setup" invocation through runChildInProcess directly. Before the fix,
 // the nested call would see the outer isInteractive()=true and the outer
 // scripted promptReader untouched, and would attempt to prompt through
-// them — consuming the outer test's own scripted answer text as a select
+// them, consuming the outer test's own scripted answer text as a select
 // choice and failing with a "not recognized" parse error, or worse,
 // silently answering from input meant for the outer wizard. With the fix,
 // the nested call sees isInteractive()=false regardless of the outer
@@ -135,7 +135,7 @@ func TestRunChildInProcessForcesNonInteractiveForNestedPrompts(t *testing.T) {
 }
 
 // setTestEnv applies kv ("KEY=VALUE") pairs as real process environment
-// variables and returns a func restoring whatever was there before —
+// variables and returns a func restoring whatever was there before,
 // os/exec's real Env slice is per-process, but the in-process adapter above
 // has no such isolation available, so this is the closest equivalent for a
 // dispatch that runs inside this same test process.

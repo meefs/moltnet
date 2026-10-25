@@ -107,7 +107,7 @@ func TestDeployExistingTokenOverridesPriorToken(t *testing.T) {
 // TestDeployWorkersDevSubdomainUnclaimedFailsBeforeAnyUpload covers the
 // bug fix: claim state is resolved before any remote mutation, so a deploy
 // that fails on an unclaimed subdomain (no Options.Subdomain given) must
-// never have uploaded a Worker or set a secret in the first place — unlike
+// never have uploaded a Worker or set a secret in the first place, unlike
 // the old order, which called UploadWorkerModule and SetSecret first and
 // only then checked WorkersDevSubdomain, leaving partial external state
 // behind on exactly this failure.
@@ -122,7 +122,7 @@ func TestDeployWorkersDevSubdomainUnclaimedFailsBeforeAnyUpload(t *testing.T) {
 	// P1 regression: this is the *primary* detection path (WorkersDevSubdomain
 	// itself reports unclaimed, not a belt-and-braces 10007/10063 rejection
 	// from another step), so Result's doc comment's guarantee that AccountID
-	// stays populated on this sentinel must hold here specifically — a
+	// stays populated on this sentinel must hold here specifically; a
 	// caller driving the interactive claim (cmd/moltnet's
 	// attemptInteractiveWorkersDevSubdomainClaim) reuses exactly this value
 	// instead of resolving the account a second time, and a zeroed AccountID
@@ -174,7 +174,7 @@ func TestDeployWorkersDevSubdomainUnclaimedViaUpload10063(t *testing.T) {
 	// the account is claimed ("acme", so the check adopts it and Deploy
 	// proceeds), but the upload call itself still fails with Cloudflare
 	// error code 10063 ("You need a workers.dev subdomain in order to
-	// proceed.") — e.g. a minimal-scope token whose write path independently
+	// proceed."), e.g. a minimal-scope token whose write path independently
 	// rejects, a race the check above cannot observe. The raw 403/10063
 	// error must not leak past Deploy; it must map to the same
 	// ErrWorkersDevSubdomainUnclaimed sentinel as the 10007 path.
@@ -201,7 +201,7 @@ func TestDeployWorkersDevSubdomainUnclaimedViaUpload10063(t *testing.T) {
 // each: TestDeployWorkersDevSubdomainUnclaimedViaUpload10063 and
 // TestDeployWorkersDevSubdomainUnclaimedViaEnableRoute10007 already cover
 // two of those call sites end to end, and SetSecret's own check is the same
-// three lines as UploadWorkerModule's — this is what actually backs all of
+// three lines as UploadWorkerModule's; this is what actually backs all of
 // them.
 func TestIsUnclaimedWorkersDevSubdomainErrorMatchesBothCodes(t *testing.T) {
 	t.Parallel()
@@ -273,7 +273,7 @@ func TestDeployAuthFailureWithoutStoredTokenPathIsUnwrapped(t *testing.T) {
 
 	// Options.StoredTokenPath empty (the common case: env/--token-env
 	// supplied the token) must leave the error exactly as the unwrapped
-	// deploy would have returned it — no stored-file guidance appended.
+	// deploy would have returned it; no stored-file guidance appended.
 	fake := newFakeCloudflareServer(t, fakeCloudflareConfig{authOK: false, authStatus: 403})
 	_, err := Deploy(context.Background(), fake.client(), Options{})
 	if err == nil {

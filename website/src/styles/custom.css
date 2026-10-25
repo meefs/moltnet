@@ -1,36 +1,55 @@
-/* Force dark mode — no theme toggle */
-:root {
-  color-scheme: dark;
-}
+/* Starlight docs in the Noopolis identity: dark green-on-black, Geist / Geist Mono.
+   Dark is the only theme (see components/ThemeProvider.astro). */
+@import './tokens.css';
 
-::selection {
-  background: #3ddc84;
-  color: #0b0b0b;
-}
-::-moz-selection {
-  background: #3ddc84;
-  color: #0b0b0b;
-}
-
-/* Canonical Moltnet docs theme */
-:root {
+:root,
+:root[data-theme='dark'] {
   --sl-color-accent-low: #0f2a1c;
   --sl-color-accent: #3ddc84;
   --sl-color-accent-high: #6ef5a7;
-  --sl-color-white: #f3eee7;
-  --sl-color-gray-1: #d1c7b8;
-  --sl-color-gray-2: #a59d94;
-  --sl-color-gray-3: #6b6560;
-  --sl-color-gray-4: #3a3632;
-  --sl-color-gray-5: #1a1a1a;
-  --sl-color-gray-6: #111;
-  --sl-color-black: #0b0b0b;
+  --sl-color-white: #eef3ef;
+  --sl-color-gray-1: #d6ddd8;
+  --sl-color-gray-2: #b4beb7;
+  --sl-color-gray-3: #8a958d;
+  --sl-color-gray-4: #3a463d;
+  --sl-color-gray-5: #1d231f;
+  --sl-color-gray-6: #0d100e;
+  --sl-color-black: #070908;
+  --sl-color-bg-nav: #070908;
+  --sl-color-bg-sidebar: #070908;
+  --sl-color-hairline: #1d231f;
+  --sl-color-hairline-light: #2a322c;
+  --sl-color-hairline-shade: #1d231f;
+  --sl-color-text-accent: #3ddc84;
+  --sl-font: var(--sans);
+  --sl-font-mono: var(--mono);
 }
 
-:root {
-  --sl-font: 'DM Sans', system-ui, sans-serif;
-  --sl-font-mono: 'JetBrains Mono', monospace;
-}
+body { -webkit-font-smoothing: antialiased; }
+
+/* Headlines: heavy, tight, like the landing. */
+.sl-markdown-content :is(h1, h2, h3),
+h1#_top { letter-spacing: -0.03em; font-weight: 750; }
+h1#_top { font-weight: 800; letter-spacing: -0.04em; }
+
+/* Links: green, underline on hover only. */
+.sl-markdown-content a:not(:where(.not-content *)) { color: var(--green); text-decoration-color: color-mix(in srgb, var(--green) 40%, transparent); text-underline-offset: 3px; }
+.sl-markdown-content a:not(:where(.not-content *)):hover { color: var(--green-hi); text-decoration-color: currentColor; }
+
+/* Inline code reads as something an agent wrote. */
+.sl-markdown-content :not(pre) > code { background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 0.1em 0.35em; color: var(--ink); }
+
+/* Tables on panels. */
+.sl-markdown-content table th { font-family: var(--mono); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--green); background: var(--panel); }
+.sl-markdown-content table :is(th, td) { border-color: var(--line); }
+
+/* Sidebar: mono group labels, green current page. */
+nav.sidebar .group-label .large { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--green); }
+nav.sidebar a[aria-current='page'],
+nav.sidebar a[aria-current='page']:hover { background: var(--sl-color-accent-low); color: var(--green-hi); font-weight: 600; }
+
+/* Header hairline. */
+header.header { border-bottom-color: var(--line); }
 
 /* Mermaid diagrams */
 pre.mermaid {
@@ -40,19 +59,11 @@ pre.mermaid {
   margin: 1.75rem 0;
   overflow: visible;
   text-align: center;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--sans);
   color: var(--sl-color-gray-3);
 }
-
-pre.mermaid svg {
-  max-width: 100%;
-  height: auto;
-  margin: 0 auto;
-}
-
+pre.mermaid svg { max-width: 100%; height: auto; margin: 0 auto; }
 pre.mermaid svg text,
 pre.mermaid svg .label text,
 pre.mermaid svg .nodeLabel,
-pre.mermaid svg .edgeLabel {
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif !important;
-}
+pre.mermaid svg .edgeLabel { font-family: var(--sans) !important; }

@@ -35,12 +35,12 @@ const (
 	setupConnectHaveCode
 )
 
-// setupAnswers is the fully resolved result of walking the question tree —
+// setupAnswers is the fully resolved result of walking the question tree,
 // everything setup_plan.go needs to build the child commands that realize
 // it. listenAddr is filled in after Q4 by the port preflight (setup_port.go),
 // not by the question itself: Q4 only decides the *interface family*
 // ("this machine only" vs "all network interfaces"), never a port (SETUP.md's
-// "Port selection — decided, not asked").
+// "Port selection: decided, not asked").
 type setupAnswers struct {
 	scope      setupScope
 	id         string
@@ -50,7 +50,7 @@ type setupAnswers struct {
 	service    bool
 	connect    setupConnectChoice
 	// pairing carries Q7's resolved plan when connect is setupConnectOpenUp
-	// or setupConnectHaveCode (setup_pair.go's planSetupPairing) — zero
+	// or setupConnectHaveCode (setup_pair.go's planSetupPairing), zero
 	// value for setupConnectNotNow, which needs nothing extra.
 	pairing setupPairResolution
 	// configPath is resolveSetupConfigPath(scope, id) -- the exact Moltnet
@@ -119,8 +119,8 @@ func askSetupScope(ctx context.Context, preset *setupScope) (setupScope, error) 
 // askSetupNetworkID implements Q2: a typed name, validated against the
 // canonical id grammar, defaulting to defaultID on an empty answer (the
 // "Enter-through-everything" rule). Unlike the multiple-choice questions,
-// this reads through promptLineCtx rather than promptSelect — there is
-// nothing to arrow through when the answer is free text — but still needs
+// this reads through promptLineCtx rather than promptSelect, there is
+// nothing to arrow through when the answer is free text, but still needs
 // the same ctx-aware interruptibility every select question already has
 // (P1-2: promptLineCtx's own doc comment, setup_prompt_line_ctx.go).
 func askSetupNetworkID(ctx context.Context, defaultID string) (string, error) {
@@ -140,7 +140,7 @@ func askSetupNetworkID(ctx context.Context, defaultID string) (string, error) {
 }
 
 // askSetupWideBind implements Q4. defaultWide is true only when adopting an
-// existing network that is already bound non-loopback — the wizard's
+// existing network that is already bound non-loopback, the wizard's
 // default always nudges toward whatever the existing network already is,
 // never silently proposing to widen or narrow it.
 func askSetupWideBind(ctx context.Context, defaultWide bool) (bool, error) {
@@ -160,11 +160,11 @@ func askSetupWideBind(ctx context.Context, defaultWide bool) (bool, error) {
 }
 
 // setupWideBindFromIndex maps Q4's chosen option index to the wideBind
-// answer askSetupWideBind returns. Pulled out to a named func — the one
-// place this mapping is defined — rather than left inline, so
+// answer askSetupWideBind returns. Pulled out to a named func, the one
+// place this mapping is defined, rather than left inline, so
 // refuseSetupNonInteractive's Enter-through default (setupWideBindFromIndex(0))
 // shares it instead of a second, hand-maintained `false` literal that can
-// silently drift from Q4's own option order (P2-5: mutation-proven —
+// silently drift from Q4's own option order (P2-5: mutation-proven,
 // flipping the refusal's hardcoded wideBind to true left the suite green).
 func setupWideBindFromIndex(index int) bool {
 	return index == 1
@@ -181,7 +181,7 @@ func setupDefaultRooms() []string {
 }
 
 // askSetupRooms implements Q5 for a fresh network (never called when
-// adopting an existing one — see printExistingRoomsReadOnly instead, which
+// adopting an existing one, see printExistingRoomsReadOnly instead, which
 // SETUP.md's adoption table requires be read-only there). "rename" and "add
 // more" both read one further typed line, since SETUP.md's question table
 // treats them as this question's own sub-choices, not separate numbered
@@ -256,7 +256,7 @@ func printExistingRoomsReadOnly(roomIDs []string) {
 }
 
 // askSetupService implements Q6, never called at all when scope is project
-// (runSetup's caller skips straight to answers.service = false — see
+// (runSetup's caller skips straight to answers.service = false, see
 // SETUP.md's table: "skipped entirely when Q1 = in this folder").
 func askSetupService(ctx context.Context) (bool, error) {
 	options := []selectOption{

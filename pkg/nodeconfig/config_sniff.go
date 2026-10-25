@@ -16,7 +16,7 @@ var configWarnWriter io.Writer = os.Stderr
 // looksLikeTextConfig reports whether path's first 512 bytes read as plain
 // text: valid UTF-8 with no embedded NUL byte. It exists so MoltnetNode
 // discovery can tell a genuine YAML/JSON config file apart from a stray
-// compiled binary that happens to share the config filename — most
+// compiled binary that happens to share the config filename; most
 // plausibly ./moltnet-node (a build output) matching a config filename on
 // a case-insensitive filesystem such as APFS. Only the sample is read
 // (io.ReadFull into a fixed 512-byte buffer), not the whole file: a short
@@ -54,7 +54,7 @@ func textSniffContents(contents []byte) bool {
 	if utf8.Valid(sample) {
 		return true
 	}
-	// sample may have been cut off mid-rune — either by the truncation
+	// sample may have been cut off mid-rune: either by the truncation
 	// above, or because the caller (looksLikeTextConfig) already read only
 	// a fixed-size prefix of the file. A multibyte UTF-8 rune whose bytes
 	// straddle that cutoff would otherwise make an entirely valid text file

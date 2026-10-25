@@ -107,7 +107,7 @@ func (h *controlRetryTestHarness) config() bridgeconfig.Config {
 		Runtime: bridgeconfig.RuntimeConfig{ControlURL: h.controlServer.URL},
 		// WakeMentions, not WakeAll: WakeAll (bridgeutil.ShouldBootstrap)
 		// triggers a bootstrap control POST on READY, which would also
-		// hit — and fail against — the always-failing control server
+		// hit, and fail against, the always-failing control server
 		// below and confound these tests with an unrelated bootstrap
 		// failure. TestRunControlLoopReconnectsAfterAttachFailure uses
 		// the same WakeMentions choice for the same reason.
@@ -203,7 +203,7 @@ func sendEventAndExpectAck(t *testing.T, connection *websocket.Conn, event *prot
 // answers 400 (an unclassified error used to be conflated with a transport
 // failure, unwinding the stream with no ACK and no cursor advance, so
 // RunControlLoop reconnected and identify() replayed the exact same event
-// forever — 29x observed in the field).
+// forever, 29x observed in the field).
 //
 // Pre-fix, this test would hang: the fake attach handler always waits for
 // an ACK of the event it just sent before closing, and a bare
@@ -215,14 +215,14 @@ func sendEventAndExpectAck(t *testing.T, connection *websocket.Conn, event *prot
 // Post-fix, classifyControlError recognizes "control url returned 400" as
 // permanent, deliverControlMessage reports exactly one agent.wake.failed
 // and returns nil, and moltnet.go's existing success path (unchanged) ACKs
-// result.frame.Cursor and advances past it — in a single connection, no
+// result.frame.Cursor and advances past it, in a single connection, no
 // reconnect required at all.
 func TestRunControlLoopSkipsPermanentlyFailingWake(t *testing.T) {
 	t.Parallel()
 
 	harness := newControlRetryTestHarness(t, http.StatusBadRequest, func(t *testing.T, connection *websocket.Conn, attempt int) {
 		if attempt > 1 {
-			t.Fatalf("expected a single attach connection, got a reconnect (attempt %d) — the retry storm is back", attempt)
+			t.Fatalf("expected a single attach connection, got a reconnect (attempt %d): the retry storm is back", attempt)
 		}
 		attachHandshake(t, connection)
 		sendEventAndExpectAck(t, connection, permanentlyFailingEvent("evt_1"))
@@ -285,7 +285,7 @@ func TestDurableAcceptanceFailureRemainsUnacknowledged(t *testing.T) {
 // TestRunControlLoopSkipsExhaustedTransientFailingWake covers the other
 // classification branch: a control server that looks transient (500) on
 // every attempt. deliverControlMessage retries under budget before
-// reporting agent.wake.failed as retry_exhausted and skipping — it must
+// reporting agent.wake.failed as retry_exhausted and skipping; it must
 // still converge, not retry forever, once the budget above
 // maxControlDeliveryAttempts is spent.
 func TestRunControlLoopSkipsExhaustedTransientFailingWake(t *testing.T) {
@@ -302,7 +302,7 @@ func TestRunControlLoopSkipsExhaustedTransientFailingWake(t *testing.T) {
 
 	harness := newControlRetryTestHarness(t, http.StatusServiceUnavailable, func(t *testing.T, connection *websocket.Conn, attempt int) {
 		if attempt > 1 {
-			t.Fatalf("expected a single attach connection, got a reconnect (attempt %d) — the retry storm is back", attempt)
+			t.Fatalf("expected a single attach connection, got a reconnect (attempt %d): the retry storm is back", attempt)
 		}
 		attachHandshake(t, connection)
 		sendEventAndExpectAck(t, connection, permanentlyFailingEvent("evt_1"))
@@ -339,7 +339,7 @@ func TestRunControlLoopSkipsExhaustedTransientFailingWake(t *testing.T) {
 // cursor ages out of the server's replay history, the server resends an
 // evt_gap_ plus full history and the same already-failed wake can arrive
 // again. The bridge must not re-storm the control endpoint for a wake it
-// already knows is permanently failing — it should recognize the
+// already knows is permanently failing; it should recognize the
 // redelivered event.ID and skip straight to another cheap, idempotent
 // terminal report.
 func TestRunControlLoopRedeliveredPermanentWakeSkipsRetryStorm(t *testing.T) {
@@ -347,7 +347,7 @@ func TestRunControlLoopRedeliveredPermanentWakeSkipsRetryStorm(t *testing.T) {
 
 	harness := newControlRetryTestHarness(t, http.StatusBadRequest, func(t *testing.T, connection *websocket.Conn, attempt int) {
 		if attempt > 2 {
-			t.Fatalf("expected at most two attach connections, got a third (attempt %d) — the retry storm is back", attempt)
+			t.Fatalf("expected at most two attach connections, got a third (attempt %d): the retry storm is back", attempt)
 		}
 		attachHandshake(t, connection)
 		// Both connections replay the exact same event.ID, as a
@@ -379,7 +379,7 @@ func TestRunControlLoopRedeliveredPermanentWakeSkipsRetryStorm(t *testing.T) {
 	}
 	if controlRequests != 1 {
 		t.Fatalf(
-			"expected exactly one control POST total — the redelivered event.ID must skip straight to a report, not re-storm the control endpoint — got %d",
+			"expected exactly one control POST total: the redelivered event.ID must skip straight to a report, not re-storm the control endpoint: got %d",
 			controlRequests,
 		)
 	}

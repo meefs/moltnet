@@ -53,12 +53,12 @@ type Options struct {
 	// Subdomain, when non-empty, is a workers.dev subdomain name to claim
 	// for this Cloudflare account non-interactively (the CLI's --subdomain
 	// flag) instead of erroring with ErrWorkersDevSubdomainUnclaimed. It is
-	// resolved and validated before any remote mutation — see deploy's own
+	// resolved and validated before any remote mutation, see deploy's own
 	// doc comment for the adopt/claim/conflict/fail decision table. Ignored
 	// (no claim attempted) when the account already has a claim matching
 	// this name; ErrWorkersDevSubdomainConflict when it has a different
 	// one. Passing this is the caller's explicit confirmation that claiming
-	// a workers.dev subdomain is permanent for the account — see
+	// a workers.dev subdomain is permanent for the account, see
 	// NormalizeWorkersDevSubdomainName / ValidateWorkersDevSubdomainName for
 	// the rules it is checked against.
 	Subdomain string
@@ -69,7 +69,7 @@ type Options struct {
 	ResolveHostname func(ctx context.Context, hostname string) bool
 	// StoredTokenPath, when non-empty, names the per-network stored
 	// Cloudflare API token file (CloudflareTokenPath) that supplied the
-	// token this deploy is using. It carries no auth behavior of its own —
+	// token this deploy is using. It carries no auth behavior of its own;
 	// it only lets Deploy recognize a rejected/insufficiently-scoped token
 	// (CloudflareAPIError.Unauthorized()) as coming from that stored file,
 	// so the returned error can name it and suggest --forget-token or the
@@ -91,7 +91,7 @@ type Result struct {
 	AccountID  string
 	Token      string
 	// Subdomain is the account's workers.dev subdomain name (e.g. "acme" in
-	// "acme.workers.dev") that this deploy resolved — whether it was
+	// "acme.workers.dev") that this deploy resolved, whether it was
 	// already claimed, adopted from an existing claim matching
 	// opts.Subdomain, or freshly claimed via opts.Subdomain. Left empty on
 	// both ErrWorkersDevSubdomainUnclaimed (there is, by definition, none
@@ -156,7 +156,7 @@ func wrapStoredTokenError(err error, storedTokenPath string) error {
 // deploy is Deploy's unwrapped implementation.
 //
 // Claim state is resolved and validated before any remote mutation
-// (UploadWorkerModule, SetSecret, EnableWorkersDevRoute) — the fix for a bug
+// (UploadWorkerModule, SetSecret, EnableWorkersDevRoute); the fix for a bug
 // where those three ran first and only then checked the workers.dev
 // subdomain claim, so a deploy that failed on an unclaimed subdomain had
 // already uploaded a Worker and set a secret it could not roll back.
@@ -203,7 +203,7 @@ func deploy(ctx context.Context, client *Client, opts Options) (Result, error) {
 		// the upload itself with error code 10063 ("You need a workers.dev
 		// subdomain in order to proceed") even though
 		// resolveWorkersDevSubdomainClaim above just reported the account as
-		// claimed — a race between that check and this call. Field-observed;
+		// claimed; a race between that check and this call. Field-observed;
 		// see isUnclaimedWorkersDevSubdomainError's doc comment.
 		if isUnclaimedWorkersDevSubdomainError(err) {
 			return Result{AccountID: accountID}, ErrWorkersDevSubdomainUnclaimed
@@ -260,7 +260,7 @@ func deploy(ctx context.Context, client *Client, opts Options) (Result, error) {
 
 // cloudflareAccountAlreadyHasSubdomainCode is Cloudflare's documented error
 // code for PUT .../workers/subdomain when this account has already claimed
-// a subdomain (10036, HTTP 409) — see Client.ClaimWorkersDevSubdomain's doc
+// a subdomain (10036, HTTP 409), see Client.ClaimWorkersDevSubdomain's doc
 // comment. resolveWorkersDevSubdomainClaim's own claim attempt treats it as
 // a race to recover from (re-read and adopt), not a failure, mirroring
 // cmd/moltnet's interactive claim prompt
@@ -280,7 +280,7 @@ const cloudflareSubdomainNameTakenCode = 10031
 // cloudflareErrorHasCode reports whether err is a *CloudflareAPIError
 // carrying code among its messages. A Cloudflare error envelope can carry
 // more than one message, so every one of them is checked rather than
-// assuming the code of interest is first — mirroring cmd/moltnet's own
+// assuming the code of interest is first, mirroring cmd/moltnet's own
 // cloudflareAPIErrorHasCode helper for the same reason (a separate copy: the
 // two packages do not import each other's unexported helpers).
 func cloudflareErrorHasCode(err error, code int) bool {
@@ -297,13 +297,13 @@ func cloudflareErrorHasCode(err error, code int) bool {
 }
 
 // resolveWorkersDevSubdomainClaim resolves and validates this account's
-// workers.dev subdomain claim state — deploy's own doc comment has the
+// workers.dev subdomain claim state; deploy's own doc comment has the
 // decision table this implements. requested is opts.Subdomain, normalized
 // and validated here (callers do not need to pre-normalize); empty means no
 // non-interactive claim was requested. Returns the account's resulting
 // subdomain name, and whether this call is the one that just performed a
 // brand-new, permanent claim (false on every already-claimed/adopted path,
-// including the 10036 race-adoption branch below — nothing new was
+// including the 10036 race-adoption branch below; nothing new was
 // committed there, an earlier caller's claim already had been).
 //
 // requested's shape is validated before the WorkersDevSubdomain GET, not
@@ -343,7 +343,7 @@ func resolveWorkersDevSubdomainClaim(ctx context.Context, client *Client, accoun
 			// failure -- nothing new was claimed by this call either way.
 			existing, ok, readErr := client.WorkersDevSubdomain(ctx, accountID)
 			if readErr != nil || !ok {
-				return "", false, fmt.Errorf("claim workers.dev subdomain %q: account already has one, but Cloudflare has not reported it back yet — retry shortly: %w", requested, err)
+				return "", false, fmt.Errorf("claim workers.dev subdomain %q: account already has one, but Cloudflare has not reported it back yet (retry shortly): %w", requested, err)
 			}
 			if requested != existing {
 				return "", false, fmt.Errorf("%w: requested %q, this account already has %q", ErrWorkersDevSubdomainConflict, requested, existing)

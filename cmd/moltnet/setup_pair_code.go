@@ -14,8 +14,8 @@ import (
 // pre-mutation refusal (P2-1): `pair` itself refuses an invite whose
 // NetworkID collides with the local network id (pair_join.go), but only
 // after `init` has already written the config to disk. Checking the same
-// collision here — before planSetupPairHaveCode ever returns, which is
-// before runSetupInteractive builds or executes any invocation at all — lets
+// collision here, before planSetupPairHaveCode ever returns, which is
+// before runSetupInteractive builds or executes any invocation at all, lets
 // this land pre-mutation like every other Q7 refusal.
 var errSetupPairNetworkIDCollision = errors.New("setup: invite network id collides with the local network id")
 
@@ -33,14 +33,14 @@ type setupPairHaveCodePlan struct {
 }
 
 // planSetupPairHaveCode implements Q7 = "I have an invite code": prompts
-// for the code (a plain, echoed paste — SETUP.md: "not a secret in the
+// for the code (a plain, echoed paste, SETUP.md: "not a secret in the
 // credential sense, but it is long"), then decodes and validates it locally
 // via protocol.DecodeInvite before ever building a child invocation, so a
 // malformed or expired code produces protocol's own clear message
 // ("invite expired at ...", "invite code must start with ...") instead of
 // whatever raw error `pair '<code>'` would otherwise surface from deeper in
-// the config-write path. id is Q2's own answer — the local network id this
-// invite would be paired into — checked against the invite's own NetworkID
+// the config-write path. id is Q2's own answer, the local network id this
+// invite would be paired into, checked against the invite's own NetworkID
 // (P2-1, errSetupPairNetworkIDCollision above) before this ever returns.
 func planSetupPairHaveCode(ctx context.Context, id string) (setupPairHaveCodePlan, error) {
 	code, err := setupPromptLineCtx(ctx, "  paste your invite code: ")
@@ -49,7 +49,7 @@ func planSetupPairHaveCode(ctx context.Context, id string) (setupPairHaveCodePla
 	}
 	code = strings.TrimSpace(code)
 	if code == "" {
-		return setupPairHaveCodePlan{}, errors.New(`"I have an invite code" needs one — paste the code your friend sent you`)
+		return setupPairHaveCodePlan{}, errors.New(`"I have an invite code" needs one: paste the code your friend sent you`)
 	}
 
 	invite, err := protocol.DecodeInvite(code)

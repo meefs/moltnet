@@ -24,7 +24,7 @@ import (
 // Unlike disableTerminalEcho, this installs no SIGINT/SIGTERM handling of
 // its own: there is no secret at risk here that demands the fail-closed,
 // signal-safe restoration promptHidden's contract requires
-// (errTerminalEchoUnavailable's doc comment) — arrow-key selection is not
+// (errTerminalEchoUnavailable's doc comment), arrow-key selection is not
 // reading a credential, and ISIG is deliberately left untouched below, so a
 // real Ctrl-C during selection still raises SIGINT the normal way and is
 // handled by runCLI's signal.NotifyContext cancelling ctx (see
@@ -36,7 +36,7 @@ import (
 // (signals.Default(), signals.go): SIGHUP and SIGTSTP are not in that set
 // (P2-3), so without a handler of its own here a terminal-closing SIGHUP or
 // a Ctrl-Z SIGTSTP mid-select would leave the real terminal in raw mode
-// indefinitely — worse than promptHidden's own ECHO-only exposure, since
+// indefinitely, worse than promptHidden's own ECHO-only exposure, since
 // this also clears ICANON. This function does install a handler for those
 // two, below, reusing disableTerminalEcho's restore-then-exit shape but
 // without its SIGTSTP re-raise dance (prompt_hidden_echo_unix.go): there is
@@ -46,8 +46,8 @@ import (
 // stop/resume cycle the way promptHidden's does.
 //
 // It is a no-op success (a no-op restore func, ok=true) whenever
-// promptReader is not the real os.Stdin or stdin is not interactive — the
-// same test-seam gate disableTerminalEcho uses — and fails open in the
+// promptReader is not the real os.Stdin or stdin is not interactive, the
+// same test-seam gate disableTerminalEcho uses, and fails open in the
 // caller's favor (ok=false, so promptSelect falls back to
 // promptSelectPlain) rather than fail-closed like disableTerminalEcho: a
 // select prompt that cannot get raw mode is not a security problem the way
@@ -79,13 +79,13 @@ func enableRawSelectMode() (restore func(), ok bool) {
 	restoreTermios := func() {
 		once.Do(func() {
 			// The immediate variant, not ioctlWriteTermios (the flush
-			// variant) — see ioctlWriteTermiosImmediate's own doc comment
+			// variant), see ioctlWriteTermiosImmediate's own doc comment
 			// (setup_prompt_select_termios_darwin.go/_linux.go) for the
 			// full measurement. In short: the flush variant's hazard here
 			// is not a pending read on the fd (that returns immediately)
 			// but that it also flushes queued output, blocking until a far
-			// end that stopped reading — a demand-driven test pty reader,
-			// or real XOFF/Ctrl-S flow control — actually reads it. The
+			// end that stopped reading, a demand-driven test pty reader,
+			// or real XOFF/Ctrl-S flow control, actually reads it. The
 			// immediate variant is safe to use instead because the read
 			// loop above already drains the input queue before this
 			// restore ever runs, so there is nothing queued left to leak

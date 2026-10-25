@@ -7,15 +7,15 @@ import (
 	"testing"
 )
 
-// These tests cover Options.Subdomain — the non-interactive workers.dev
+// These tests cover Options.Subdomain: the non-interactive workers.dev
 // subdomain claim path `moltnet relay deploy --subdomain` (cmd/moltnet)
-// plumbs through resolveWorkersDevSubdomainClaim (deploy.go) — and the
+// plumbs through resolveWorkersDevSubdomainClaim (deploy.go), and the
 // claim-state-before-any-mutation ordering it shares with the plain
 // ErrWorkersDevSubdomainUnclaimed path covered in deploy_test.go.
 
 // containsCall reports whether calls includes an exact "METHOD /path" entry,
 // so a test can assert a specific Cloudflare endpoint was, or was not, ever
-// hit — not just that some number of calls happened.
+// hit; not just that some number of calls happened.
 func containsCall(calls []string, methodAndPath string) bool {
 	for _, call := range calls {
 		if call == methodAndPath {
@@ -55,7 +55,7 @@ func TestDeployOptionsSubdomainClaimsWhenUnclaimed(t *testing.T) {
 	if !containsCall(fake.calls, "PUT /accounts/acct-claim-flag/workers/subdomain") {
 		t.Fatalf("expected the claim PUT to have been made, calls = %v", fake.calls)
 	}
-	// The claim PUT must precede the upload PUT — the whole point of the
+	// The claim PUT must precede the upload PUT; the whole point of the
 	// reorder this flag depends on.
 	claimIndex, uploadIndex := -1, -1
 	for i, call := range fake.calls {
@@ -102,7 +102,7 @@ func TestDeployOptionsSubdomainNormalizesCase(t *testing.T) {
 // public library entry point other callers can use directly): an invalid
 // name is rejected locally, without ever attempting the claim PUT. The
 // account-state GET (WorkersDevSubdomain) still runs first regardless of
-// opts.Subdomain — it is what determines whether a claim is even needed —
+// opts.Subdomain, it is what determines whether a claim is even needed,
 // so this only asserts the mutating PUT never happens, not that the GET
 // endpoint is untouched.
 func TestDeployOptionsSubdomainInvalidNameRejectedBeforeAnyClaimAttempt(t *testing.T) {
@@ -225,7 +225,7 @@ func TestDeployOptionsSubdomainSetsClaimedOnlyForAFreshClaim(t *testing.T) {
 // TestDeployOptionsSubdomainAdoptsExistingMatchingClaimWithoutReclaiming
 // covers the "existing account claim → adopt it, proceed" branch: passing
 // --subdomain naming the account's own already-claimed subdomain must not
-// re-claim it (no PUT at all — ClaimWorkersDevSubdomain is a one-time
+// re-claim it (no PUT at all; ClaimWorkersDevSubdomain is a one-time
 // operation).
 func TestDeployOptionsSubdomainAdoptsExistingMatchingClaimWithoutReclaiming(t *testing.T) {
 	t.Parallel()
@@ -273,7 +273,7 @@ func TestDeployAdoptsExistingClaimWithNoSubdomainOptionEither(t *testing.T) {
 
 // TestDeployOptionsSubdomainConflictsWithExistingClaim covers "a requested
 // name that conflicts with a different existing claim → refuse": Deploy
-// must return ErrWorkersDevSubdomainConflict before any remote mutation —
+// must return ErrWorkersDevSubdomainConflict before any remote mutation;
 // no claim PUT, and (this being the whole point of the reorder) no worker
 // upload either.
 func TestDeployOptionsSubdomainConflictsWithExistingClaim(t *testing.T) {

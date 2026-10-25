@@ -19,7 +19,7 @@ const maxWorkersDevSubdomainNameLength = 63
 // publishes no official naming rules for the account-level workers.dev
 // subdomain; this mirrors wrangler-core's own SUBDOMAIN_REGEXP (workers-sdk,
 // packages/wrangler/src/deploy/subdomain.ts:157 at the time of writing),
-// the closest thing to a documented contract. It is lowercase-only —
+// the closest thing to a documented contract. It is lowercase-only;
 // callers must run a user-typed name through NormalizeWorkersDevSubdomainName
 // first, matching wrangler's own lowercase-before-validate behavior.
 var workersDevSubdomainNamePattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
@@ -50,7 +50,7 @@ func ValidateWorkersDevSubdomainName(name string) error {
 // case-insensitive in practice (it becomes a DNS label, and DNS labels
 // are case-insensitive), but workersDevSubdomainNamePattern's rule is
 // lowercase-only, matching wrangler's own lowercase-before-validate
-// behavior — so callers must call this before
+// behavior, so callers must call this before
 // ValidateWorkersDevSubdomainName and before sending the name to
 // Client.ClaimWorkersDevSubdomain, not after.
 func NormalizeWorkersDevSubdomainName(name string) string {

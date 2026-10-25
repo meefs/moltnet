@@ -46,13 +46,13 @@ func New(attachment clientconfig.AttachmentConfig) (*Client, error) {
 }
 
 // NewLoopbackOnly is New's variant for callers whose documented invariant is
-// that a request never leaves the local machine — the zero-setup operator
+// that a request never leaves the local machine, the zero-setup operator
 // fallback (resolveOperatorClient, cmd/moltnet/client_operator_fallback.go),
 // which only ever dials a loopback address it derived itself. Without this,
 // the standard library's default redirect policy still follows a same- or
 // cross-host 307/308 the local server issues: Go strips the Authorization
-// header on a cross-host hop, but the request body — a message's text, for
-// a send — still goes wherever the redirect points. refuseCrossHostRedirect
+// header on a cross-host hop, but the request body (a message's text, for
+// a send) still goes wherever the redirect points. refuseCrossHostRedirect
 // makes that impossible instead of merely "usually fine because nothing
 // redirects today".
 func NewLoopbackOnly(attachment clientconfig.AttachmentConfig) (*Client, error) {
@@ -74,13 +74,13 @@ func newClient(attachment clientconfig.AttachmentConfig, checkRedirect func(*htt
 
 // refuseCrossHostRedirect is NewLoopbackOnly's http.Client.CheckRedirect: it
 // allows a redirect back to the same host the original request dialed
-// (via[0] is always that original request), and refuses — with a clear,
-// named error instead of silently following it — any redirect elsewhere.
+// (via[0] is always that original request), and refuses (with a clear,
+// named error instead of silently following it) any redirect elsewhere.
 // "Same host" compares URL.Host (host:port, not just hostname): two
 // services on the same loopback IP but different ports are still two
 // different destinations for this invariant, and the operator fallback
 // this backs (resolveOperatorClient) already derived one specific
-// host:port from server.listen_addr — nothing else is "the local machine"
+// host:port from server.listen_addr; nothing else is "the local machine"
 // as far as it is concerned.
 func refuseCrossHostRedirect(request *http.Request, via []*http.Request) error {
 	if len(via) == 0 {
@@ -206,7 +206,7 @@ func (c *Client) JoinRoom(
 // outboundJoinRoomRequest mirrors outboundApplyConfigRequest's own reason for
 // existing: protocol.SecretString's MarshalJSON always serializes as
 // "[REDACTED]" (secret.go), which is exactly right for every *response* this
-// client decodes but wrong for this one outbound *request* body — a join
+// client decodes but wrong for this one outbound *request* body, a join
 // call whose credential field always marshaled as the literal string
 // "[REDACTED]" could never actually join anything. joinRoomRequestWire
 // carries the plaintext value instead, the same trick createRoomRequestWire
@@ -232,7 +232,7 @@ func (c *Client) ListRoomMessages(ctx context.Context, roomID string, page proto
 	return messages, nil
 }
 
-// GetThread resolves a thread's own record — most importantly its RoomID,
+// GetThread resolves a thread's own record, most importantly its RoomID,
 // since a thread carries no membership or write-policy of its own and every
 // authorization decision about it (local or server-side) is really a
 // decision about the room it lives in. See cmd/moltnet's

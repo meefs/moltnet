@@ -18,7 +18,7 @@ import (
 var installMarkdownTemplate string
 
 // installMarkdownHandler is the shared GET /install.md body. It is only
-// ever wrapped differently by loopback-ness (attachDiscoveryRoutes) — the
+// ever wrapped differently by loopback-ness (attachDiscoveryRoutes); the
 // join guide it renders already adapts its content to auth mode, public
 // read, and registration policy regardless of whether the caller reaching
 // it authenticated.
@@ -34,7 +34,7 @@ func installMarkdownHandler(policy *authn.Policy, service Service, configs ...HT
 }
 
 // installMarkdownRoute wraps next (installMarkdownHandler) so GET
-// /install.md — the join guide, no secrets — is readable without a token
+// /install.md (the join guide, no secrets) is readable without a token
 // from a caller that reached this process directly from this machine, with
 // no reverse proxy in between (requestIsDirectLoopback), regardless of auth
 // mode; every other caller goes through the same publicInOpen gate every
@@ -43,8 +43,8 @@ func installMarkdownHandler(policy *authn.Policy, service Service, configs ...HT
 // Both branches route the request through requestWithAuthMode before
 // calling next. This matters even on the anonymous branch: an earlier
 // version of this carve-out registered the raw handler directly, which left
-// authn.ModeFromContext defaulting to ModeNone for the whole render —
-// including the downstream room-listing call the renderer makes — so the
+// authn.ModeFromContext defaulting to ModeNone for the whole render,
+// including the downstream room-listing call the renderer makes, so the
 // renderer treated every anonymous loopback caller as being on a fully
 // unauthenticated network. On a bearer-protected network that meant a
 // private room (e.g. "secret-ops") showed up in the anonymous install.md
@@ -52,7 +52,7 @@ func installMarkdownHandler(policy *authn.Policy, service Service, configs ...HT
 // Carrying the real auth mode/public-read/registration through the context
 // makes the renderer apply the network's actual room-visibility rules
 // (internal/rooms/access_policy.go's canReadRoom) to this caller exactly as
-// it would to any other unauthenticated one — see
+// it would to any other unauthenticated one; see
 // TestInstallMarkdownAnonymousLoopbackNeverLeaksPrivateRooms.
 func installMarkdownRoute(policy *authn.Policy, service Service, next http.HandlerFunc) http.HandlerFunc {
 	guideScopes := append(append([]authn.Scope(nil), readScopes...), authn.ScopeAttach)
@@ -99,13 +99,13 @@ func loopbackClaims(policy *authn.Policy, verifier agentTokenVerifier, request *
 // this repo's own guides (guides/public-open-networks.md,
 // guides/securing-remote-agents.md) tell operators to bind loopback and put
 // a reverse proxy in front for exactly that reason. Under that topology
-// every request the app process sees genuinely does come from 127.0.0.1 —
+// every request the app process sees genuinely does come from 127.0.0.1,
 // from the proxy, on behalf of the entire internet. A carve-out keyed on
 // "the bind is loopback" would serve this join guide to anyone the proxy
 // forwards for, with no warning. So this checks the request itself: the
 // immediate peer must be loopback, it must carry no X-Forwarded-For or
 // X-Real-IP (the standard signals a proxy sat in front of this request),
-// and the operator must not have set server.trust_forwarded_proto — that
+// and the operator must not have set server.trust_forwarded_proto, that
 // flag is the operator's own declaration that a proxy is in the path, so
 // its presence in config means this request could be proxied even when
 // this particular hop happens to carry neither header.
@@ -127,7 +127,7 @@ func requestIsDirectLoopback(policy *authn.Policy, request *http.Request) bool {
 
 // isLoopbackRemoteAddr reports whether remoteAddr (an http.Request.RemoteAddr
 // value, "host:port") names a loopback address. An unparseable or empty
-// value is treated as non-loopback — the conservative default, since this
+// value is treated as non-loopback, the conservative default, since this
 // function only ever gates an anonymous-access carve-out.
 func isLoopbackRemoteAddr(remoteAddr string) bool {
 	host, _, err := net.SplitHostPort(strings.TrimSpace(remoteAddr))
@@ -163,10 +163,7 @@ func writeMarkdown(response http.ResponseWriter, body string) {
 
 func renderLLMsText(request *http.Request, network protocol.Network) string {
 	baseURL := requestBaseURL(request)
-	title := network.Name
-	if strings.TrimSpace(title) == "" {
-		title = network.ID
-	}
+	title := templateTitle(network.Name, network.ID)
 	var builder strings.Builder
 	fmt.Fprintf(&builder, "# %s Moltnet\n\n", title)
 	writeDiscoveryLine(&builder, "Agent join guide", baseURL+"/install.md")
@@ -202,10 +199,7 @@ func renderInstallMarkdown(request *http.Request, policy *authn.Policy, network 
 		authMode = authn.ModeNone
 	}
 
-	title := strings.TrimSpace(network.Name)
-	if title == "" {
-		title = networkID
-	}
+	title := templateTitle(network.Name, networkID)
 	roomInfos := roomInfosForRequest(request, authMode, publicRead, registration, rooms)
 	roomIDs := roomIDsReadable(roomInfos)
 	writableAfterConnectIDs := roomIDsWithConnectWrite(roomInfos)
@@ -356,4 +350,20 @@ func dmsYAML(enabled bool) string {
 		return "    dms:\n      enabled: false"
 	}
 	return "    dms:\n      enabled: true\n      wake: all"
+}
+
+// templateTitle is the network name for templates that append " Moltnet"
+// themselves ("# Join {{.Title}} Moltnet"). `moltnet init` names networks
+// "<Name> Moltnet", so that suffix is dropped to avoid "Demo Moltnet Moltnet".
+func templateTitle(name string, networkID string) string {
+	title := strings.TrimSpace(name)
+	if lower := strings.ToLower(title); lower == "moltnet" {
+		title = ""
+	} else if strings.HasSuffix(lower, " moltnet") {
+		title = strings.TrimSpace(title[:len(title)-len(" moltnet")])
+	}
+	if title == "" {
+		title = networkID
+	}
+	return title
 }

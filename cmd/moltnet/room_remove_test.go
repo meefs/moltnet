@@ -68,13 +68,13 @@ func TestRoomRemoveMatchesDeprecatedAdminAlias(t *testing.T) {
 }
 
 // TestRoomRemoveNeverPrintsDeprecationNote asserts the new, non-deprecated
-// "moltnet room remove" entry point never prints the deprecation note —
+// "moltnet room remove" entry point never prints the deprecation note,
 // only the deprecated admin-namespaced spelling should. It no longer
 // asserts stderr is entirely empty: P0-1's fix (room_remove_writeback.go)
 // makes removeRoomCommand warn on stderr whenever it did not resolve a
-// local server config to clean up rooms[] in — exactly this test's own
+// local server config to clean up rooms[] in, exactly this test's own
 // shape, an explicit --base-url with no local config anywhere for
-// "stale-room" — and that warning is required behavior, not a regression.
+// "stale-room", and that warning is required behavior, not a regression.
 func TestRoomRemoveNeverPrintsDeprecationNote(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		_ = json.NewEncoder(response).Encode(protocol.RemoveResult{Removed: true, Kind: "room", ID: "stale-room", Mode: "soft"})

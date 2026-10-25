@@ -16,10 +16,10 @@ import (
 // This file's tests are a manual-verification gate for this fix round, not
 // a permanent regression suite: they drive `relay deploy`'s real,
 // unmodified fresh-flow and DNS-not-resolving paths (relay_deploy.go,
-// relay_deploy_token.go) over a genuine pseudo-terminal — proving
+// relay_deploy_token.go) over a genuine pseudo-terminal, proving
 // isOutputTerminal/isInteractive's real isatty checks actually turn on
 // color and the interactive paste prompt, not just the isOutputTerminal
-// seam override every other test in this package uses — following the same
+// seam override every other test in this package uses, following the same
 // re-exec pattern prompt_hidden_pty_test.go uses for the same reason (see
 // its own doc comment): this test binary re-execs itself with an env var
 // set, its stdin/stdout dup'd to a real pty's slave side.
@@ -39,7 +39,7 @@ const (
 )
 
 // TestRelayDeployPTYHelperProcess is never meaningfully run by `go test`
-// itself — the driving tests below re-exec this same test binary with
+// itself, the driving tests below re-exec this same test binary with
 // -test.run scoped to just this function and relayDeployPTYHelperEnv set,
 // so it runs as its own separate process with its real os.Stdin/os.Stdout
 // dup'd to a pty's slave side. Deliberately never overrides
@@ -76,7 +76,7 @@ func TestRelayDeployPTYHelperProcess(t *testing.T) {
 
 // startRelayDeployPTYHelper re-execs this test binary as a fresh process
 // running TestRelayDeployPTYHelperProcess under scenario, with its stdin
-// and stdout dup'd to slave (a real pty's slave side — see requireTestPTY,
+// and stdout dup'd to slave (a real pty's slave side, see requireTestPTY,
 // openpty_test.go), mirroring startPromptHiddenHelper
 // (prompt_hidden_pty_test.go) exactly, one level down in this same package.
 func startRelayDeployPTYHelper(t *testing.T, scenario, cloudflareURL, configPath string, slave *os.File) *exec.Cmd {
@@ -106,7 +106,7 @@ func startRelayDeployPTYHelper(t *testing.T, scenario, cloudflareURL, configPath
 // fresh-flow half of this fix round's pty-capture gate: over a genuine
 // terminal, with no CLOUDFLARE_API_TOKEN and nothing stored, `relay deploy`
 // must print the token-creation guidance, a blank line (P3 restored gap),
-// then the paste prompt — read from the real master side of the pty, not
+// then the paste prompt, read from the real master side of the pty, not
 // this package's usual swapped-io.Reader test seam.
 func TestRelayDeployPTYFreshFlowShowsGuidanceAndPromptsOverRealTerminal(t *testing.T) {
 	directory := t.TempDir()
@@ -125,7 +125,7 @@ func TestRelayDeployPTYFreshFlowShowsGuidanceAndPromptsOverRealTerminal(t *testi
 	// restored between the dim hint and the prompt shows up as "\r\n\r\n"
 	// here for that reason. Real color is on over this real terminal, so
 	// the dim hint carries its own trailing reset escape (\x1b[0m) right
-	// before that "\r\n\r\n" — checked for loosely (Contains, not an exact
+	// before that "\r\n\r\n", checked for loosely (Contains, not an exact
 	// span) since the assertion itself runs un-colored in the parent test
 	// process.
 	if !strings.Contains(got, "Create Token → copy)") || !strings.Contains(got, "\r\n\r\n  paste token (input hidden): ") {
@@ -150,7 +150,7 @@ func TestRelayDeployPTYDNSNoteNamesHostnameOverRealTerminal(t *testing.T) {
 
 	got := readMasterUntil(t, master, "is not resolving yet", 5*time.Second)
 	// Real color is on over this real terminal, so "note:" carries its own
-	// ANSI escapes here (unlike this package's usual non-TTY test output) —
+	// ANSI escapes here (unlike this package's usual non-TTY test output),
 	// checked loosely rather than against yellow("note:"), since that
 	// helper would render plain in this assertion's own (non-pty) process.
 	if !strings.Contains(got, "note:") || !strings.Contains(got, "moltnet-relay.acme.workers.dev is not resolving yet") {

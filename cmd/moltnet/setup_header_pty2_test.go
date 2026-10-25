@@ -21,7 +21,7 @@ import (
 // one-off manual edit: it calls promptSelect directly (bypassing
 // setupPromptSelect's Suspend/Resume entirely, simulating "the suspension
 // code deleted") and proves the ticker keeps right on ticking through a
-// blocked read when nothing suspends it — the exact corruption hazard
+// blocked read when nothing suspends it, the exact corruption hazard
 // TestSetupHeaderTickerSuspendedDuringPromptRead exists to catch. If this
 // test ever failed to detect that (i.e. passed with the index unchanged
 // even with no suspension), it would mean the real property is being
@@ -38,7 +38,7 @@ func TestSetupHeaderSuspendResumeMutationCheck(t *testing.T) {
 	promptReader = slave
 	t.Cleanup(func() { promptReader = previousReader })
 
-	// Continuous drain from before the header's first paint — see the
+	// Continuous drain from before the header's first paint, see the
 	// identical comment in TestSetupHeaderTickerSuspendedDuringPromptRead
 	// for why this must not be a one-shot readMasterUntil here.
 	buf := drainMasterInBackground(master)
@@ -134,8 +134,8 @@ func TestSetupHeaderSIGWINCHMarksAccountingStaleAndSkipsRepaint(t *testing.T) {
 
 // TestSetupHeaderRedrawSkipsWhileAccountingStale is P2-1's own latch test,
 // direct and white-box: redraw must refuse to paint anything at all while
-// accountingStale is set — not just avoid onResize's own particular call
-// site — and it must clear the latch and resume painting once bodyLines
+// accountingStale is set, not just avoid onResize's own particular call
+// site, and it must clear the latch and resume painting once bodyLines
 // genuinely returns to 0, the same "checked at the top, cleared by an
 // explicit condition" shape scrolledOff (P1-2) already uses.
 func TestSetupHeaderRedrawSkipsWhileAccountingStale(t *testing.T) {
@@ -195,7 +195,7 @@ func TestSetupHeaderRedrawSkipsWhileAccountingStale(t *testing.T) {
 // Without stopWatchingResize's <-done wait, `go test -race` catches this as
 // a real data race; with it, Stop() cannot proceed until any in-flight
 // onResize has actually returned. The assertion is just that Stop()
-// returns at all (no hang) — -race is what actually verifies the property,
+// returns at all (no hang), -race is what actually verifies the property,
 // so this test only earns its keep run with -race.
 func TestSetupHeaderStopRacesSIGWINCHUnderRace(t *testing.T) {
 	master, _ := prepareSetupHeaderPTYTest(t, 80)
@@ -239,7 +239,7 @@ func TestSetupHeaderStopRacesSIGWINCHUnderRace(t *testing.T) {
 // TestSetupHeaderNeverEmitsAltScreenOrCursorHide is the header's own version
 // of TestPlayBannerAnimatesOverRealPTY's forbidden-escape check: over
 // several real redraws, the header must never touch the alternate screen or
-// hide the cursor (SETUP.md constraint 3 — "Ctrl-C must need no cleanup").
+// hide the cursor (SETUP.md constraint 3, "Ctrl-C must need no cleanup").
 // There is nothing signal-specific to test here: these sequences either
 // appear in the header's output or they don't, regardless of what
 // eventually interrupts the process.
@@ -267,7 +267,7 @@ func TestSetupHeaderNeverEmitsAltScreenOrCursorHide(t *testing.T) {
 
 // TestSetupHeaderCtrlCMidAnimationLeavesTerminalUsable drives the real
 // wizard (runCLI, exactly like TestSetupPTYSIGINTRestoresRawModeAtSelectPrompt
-// but with the animated header actually eligible this time — a wide,
+// but with the animated header actually eligible this time, a wide,
 // color-capable pty) and confirms a SIGINT delivered while the header is
 // live leaves the terminal exactly as usable as it was before: raw select
 // mode restored, no alternate-screen/cursor-hide escapes anywhere in the
@@ -332,14 +332,14 @@ func TestSetupHeaderCtrlCMidAnimationLeavesTerminalUsable(t *testing.T) {
 // a select prompt cancelled via ctx.Done() (the same path a real SIGINT
 // mid-keypress hits, TestSetupHeaderCtrlCMidAnimationLeavesTerminalUsable
 // above) never reaches promptSelectInteractive's confirm/EOF Fprintln, so
-// its trailing blank line is never actually printed on screen —
+// its trailing blank line is never actually printed on screen,
 // reconcileSelectBodyLines must not add a row for it anyway. This is the
 // row-placement assertion escape-grepping alone (the Ctrl-C test above)
 // could never catch: a wrong bodyLines value produces no forbidden escape
 // sequence of its own, just a header that repaints one row off the very
-// next time anything redraws it. Deliberately standalone — its own
+// next time anything redraws it. Deliberately standalone, its own
 // options, driven directly through setupPromptSelect rather than the real
-// wizard's Q1 — so this stays correct regardless of what
+// wizard's Q1, so this stays correct regardless of what
 // setup_questions.go's own option text says.
 func TestSetupHeaderCancelledSelectExcludesTrailingBlankRow(t *testing.T) {
 	master, slave := prepareSetupHeaderPTYTest(t, 80)

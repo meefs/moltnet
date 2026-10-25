@@ -21,7 +21,7 @@ stamped checkout path.
 - `git.go`: the injectable `CommandRunner` (git/make/fetch), read-only git
   checkout inspection, and the generated-`web/dist` exclusion pathspec a
   source update needs
-- `sourceupdate.go`: source-install update orchestration — fetch, refuse
+- `sourceupdate.go`: source-install update orchestration, fetch, refuse
   conditions, `git pull --ff-only`, `make build`, binary replacement
 - `update.go`: high-level update orchestration; branches to `sourceupdate.go`
   for `InstallMethodSource`, otherwise runs the release-tarball path
@@ -41,11 +41,11 @@ stamped checkout path.
   refusal `ensureMutationAllowed` has always returned.
 - `--check`/`--dry-run` AND a real run both run `git fetch` first (updates
   remote-tracking refs only, never the working tree) before comparing
-  local/upstream commits — comparing against a stale `@{u}` left over from
+  local/upstream commits, comparing against a stale `@{u}` left over from
   whatever last happened to fetch was a real bug (an available update could
   stay invisible indefinitely). If the fetch itself fails, the comparison is
   reported as "as of the last successful fetch" and a real run does not
-  trust a stale "nothing to pull" reading to skip `git pull --ff-only` —
+  trust a stale "nothing to pull" reading to skip `git pull --ff-only`,
   pull gets the final say instead.
 - A real run refuses outright (no auto-stash, no auto-checkout) on a dirty
   working tree or a detached HEAD, naming exactly what to fix; `--check`/
@@ -60,7 +60,7 @@ stamped checkout path.
   --ff-only`, `make build` (reusing the Makefile, never reimplementing the
   build), verify the freshly built binary reports a version, then replace
   the installed binary. Every failure before the final replace leaves the
-  installed binary untouched — including a failure during the replace
+  installed binary untouched, including a failure during the replace
   itself: `replaceInstalledBinary` copies (never renames away) the current
   installed binary to its `.previous` backup, so the one rename that swaps
   the new binary in is the only mutating step ever applied to the install
@@ -82,6 +82,6 @@ stamped checkout path.
 - Refuse mutation unless the install is known to be self-updateable.
 - Keep filesystem replacement small and testable with temp install roots.
 - Route every external command (`git`, `make`) through `CommandRunner`,
-  never `exec.Command` directly, outside of `defaultCommandRunner` — tests
+  never `exec.Command` directly, outside of `defaultCommandRunner`, tests
   must never invoke a real `git`/`make` against this repository's own
   checkout.

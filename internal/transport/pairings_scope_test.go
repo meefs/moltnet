@@ -28,7 +28,7 @@ var pairingsRoutes = []string{
 // TestPairingsRoutesRejectAgentTokens is the P2-1 regression test (PLAN.md
 // phase 6c review): before this fix, every /v1/pairings* route was gated on
 // readScopes alone, and P2-2 (same review) added `observe` to
-// NewAgentTokenClaims — so a self-registered agent's own token, without
+// NewAgentTokenClaims, so a self-registered agent's own token, without
 // admin or pair, could list every remote network this operator is paired
 // with (ids, names, base URLs). Tokens themselves stay redacted (no
 // credential leak), but it is real topology disclosure the stated fix
@@ -91,11 +91,11 @@ func TestPairingsRoutesRejectAgentTokens(t *testing.T) {
 // TestPairingsRoutesAllowConsoleObserveToken is the other half of the P2-1
 // fix criterion: the exclusion above must not also catch the console's own
 // session credential, an ordinary static token scoped to exactly [observe]
-// (cmd/moltnet's consoleTokenScopes) with no agent restriction at all — the
+// (cmd/moltnet's consoleTokenScopes) with no agent restriction at all; the
 // PAIRINGS sidebar tab (web/src/hooks/usePairings.ts, PairingView.tsx) calls
 // all four of these routes and must keep working. This uses fakeService,
 // like the rest of this package's scope tests, since it succeeds for any
-// pairingID regardless of whether a pairing actually exists — the point
+// pairingID regardless of whether a pairing actually exists; the point
 // here is purely the authorization decision, not pairing lookup behavior.
 func TestPairingsRoutesAllowConsoleObserveToken(t *testing.T) {
 	t.Parallel()

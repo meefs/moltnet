@@ -298,7 +298,7 @@ func (s *Service) HubControlPageContext(ctx context.Context, globalRoomID string
 			continue
 		}
 		next := syncEncodedSize(record.Control) + 1
-		if len(page.Events) > 0 && size+next > syncPageBytes {
+		if len(page.Events) > 0 && size+next > syncPageBytes() {
 			page.More = true
 			break
 		}

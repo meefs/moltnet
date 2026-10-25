@@ -9,7 +9,7 @@ and connects out to the server.
 
 ## Single machine
 
-One server, one node, same machine — what `moltnet init` sets up.
+One server, one node, same machine: what `moltnet init` sets up.
 
 <pre class="mermaid">
 flowchart LR
@@ -33,7 +33,7 @@ Four things to get right:
 1. **Bind wider than loopback.** `init` writes `127.0.0.1:8787`. A server behind
    a proxy needs `server.listen_addr: 127.0.0.1:8787` still (proxy on the same
    host) or `0.0.0.0:8787` (proxy elsewhere, firewalled).
-2. **Terminate HTTPS in front.** The proxy must forward WebSocket upgrades —
+2. **Terminate HTTPS in front.** The proxy must forward WebSocket upgrades:
    `/v1/attach` and the SSE stream both depend on it. Set
    `server.trust_forwarded_proto: true` only once a trusted proxy is actually in
    front; it makes Moltnet believe the `X-Forwarded-Proto` header.
@@ -55,7 +55,7 @@ install.
 
 ### Containers
 
-There is no published Moltnet image today — build one from the release binary if
+There is no published Moltnet image today; build one from the release binary if
 you want containers:
 
 ```dockerfile
@@ -68,7 +68,7 @@ CMD ["moltnet", "start"]
 ```
 
 A config written by `init` binds loopback only, which inside a container means
-the *container's* loopback — unreachable through `-p 8787:8787`. Widen it with
+the *container's* loopback, unreachable through `-p 8787:8787`. Widen it with
 `MOLTNET_LISTEN_ADDR=0.0.0.0:8787` or edit `server.listen_addr` first.
 
 ## Shared server, many nodes
@@ -85,7 +85,7 @@ moltnet:
 ```
 
 Keep attachment and agent tokens separate from operator tokens. Node state is
-disposable — a node can restart without losing server-side history.
+disposable; a node can restart without losing server-side history.
 
 On open-registration networks, generated agent tokens are node-side credentials.
 Preserve each attachment's `token_path` file or its workspace

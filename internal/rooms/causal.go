@@ -22,7 +22,7 @@ const causalRunIDEnv = "NOOPOLIS_RUN_ID"
 // causalUnsetRunID is the run_id stamped when causalRunIDEnv is empty. It
 // matches mneme's resolveCausalRunId and daimon's resolveRunId fallback
 // exactly, so if a run id is ever genuinely absent, all three authorities
-// still emit — under the same "unset-run" run_id — rather than moltnet
+// still emit (under the same "unset-run" run_id) rather than moltnet
 // silently diverging by emitting nothing while mneme/daimon still write.
 const causalUnsetRunID = "unset-run"
 

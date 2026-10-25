@@ -14,7 +14,7 @@ import (
 // non-default network id: `pair invite` refuses outright against the
 // default network id (pair_invite.go), and planSetupPairOpenUp now refuses
 // even earlier, before ever contacting Cloudflare (P1,
-// errSetupPairDefaultNetworkID) — so every test in this file that actually
+// errSetupPairDefaultNetworkID), so every test in this file that actually
 // runs the "open it up" branch, for real or under --print-commands, must
 // type a distinct one at Q2.
 // TestSetupQ7OpenUpDefaultNetworkIDRefusesBeforeMutation below is the one
@@ -26,7 +26,7 @@ func writtenSetupConfigPathFor(home, id string) string {
 // TestSetupQ7OpenUpUnclaimedEndToEnd is Unit 5's headline case: "open it up"
 // against a Cloudflare account with no existing workers.dev claim, and a
 // real local network (init, relay deploy, pair invite, pair invite show all
-// run for real, in-process, against a real temp-dir config — only
+// run for real, in-process, against a real temp-dir config, only
 // Cloudflare is faked). It proves the invite is displayed and that it came
 // from `pair invite show`, not from `pair invite`'s own (suppressed)
 // stdout.
@@ -67,7 +67,7 @@ func TestSetupQ7OpenUpUnclaimedEndToEnd(t *testing.T) {
 	}
 
 	// The displayed code must be the exact one `pair invite show` returns
-	// for this pairing id, not some other value the wizard reconstructed —
+	// for this pairing id, not some other value the wizard reconstructed,
 	// pull it out of the summary line and cross-check against the receipt
 	// `pair invite` itself wrote to disk (app.LoadInviteReceipt), byte for
 	// byte. A truncated or otherwise mangled display would still pass a bare
@@ -91,7 +91,7 @@ func TestSetupQ7OpenUpUnclaimedEndToEnd(t *testing.T) {
 	// agent id as a placeholder (SETUP.md point 6: `pair show` cannot be
 	// called against a peer that has not answered the invite yet). Only
 	// pair_aftercare_test.go / pair_restart_test.go cover this placeholder
-	// today, and only for `pair invite`'s own aftercare — not the setup
+	// today, and only for `pair invite`'s own aftercare, not the setup
 	// wizard's completion screen, which renders it through a separate code
 	// path (printSetupPairingSummary, setup_pair_summary.go).
 	if !strings.Contains(output, "<their-agent-id>") {
@@ -102,7 +102,7 @@ func TestSetupQ7OpenUpUnclaimedEndToEnd(t *testing.T) {
 // TestSetupQ7OpenUpDefaultNetworkIDRefusesBeforeMutation is P1's headline
 // regression test: Enter through Q1/Q2 (leaving the network id at its
 // default), Q6 = no service, Q7 = "open it up", a workers.dev subdomain
-// name, and the permanence confirm "y" — the exact live-verified repro that
+// name, and the permanence confirm "y", the exact live-verified repro that
 // used to print "✓ relay deployed", permanently burn the Cloudflare
 // account's one-ever workers.dev claim, write relay.json, and only then fail
 // on `pair invite`'s own default-network-id refusal (pair_invite.go). It
@@ -119,7 +119,7 @@ func TestSetupQ7OpenUpDefaultNetworkIDRefusesBeforeMutation(t *testing.T) {
 	withRelayDeployFakeCloudflare(t, fake)
 
 	// Identical to TestSetupQ7OpenUpUnclaimedEndToEnd's own answers, except
-	// Q2 is left blank instead of typed as "acme-net" — the one dodge this
+	// Q2 is left blank instead of typed as "acme-net", the one dodge this
 	// test exists to stop making.
 	withPromptAnswers(t, "", "", "", "", "2", "2", "acme", "y")
 
@@ -137,7 +137,7 @@ func TestSetupQ7OpenUpDefaultNetworkIDRefusesBeforeMutation(t *testing.T) {
 		t.Fatalf("expected the refusal to land before `relay deploy` ever ran, got %q", output)
 	}
 	if got := fake.claimAttemptCount(); got != 0 {
-		t.Fatalf("claimAttemptCount() = %d, want 0 — the permanent claim must never be attempted", got)
+		t.Fatalf("claimAttemptCount() = %d, want 0; the permanent claim must never be attempted", got)
 	}
 	if _, err := app.LoadFile(writtenSetupConfigPath(home), ""); err == nil {
 		t.Fatal("expected no config to have been written before the refusal")
@@ -181,8 +181,8 @@ func TestSetupQ7OpenUpAdoptsExistingClaimSilently(t *testing.T) {
 }
 
 // TestSetupQ7OpenUpAsksShareRoomOnlyWithMultipleRooms covers Q7.1: it must
-// be asked only when Q5 produced more than one room, and the chosen room —
-// not the first one by default — is what `pair invite --room` names.
+// be asked only when Q5 produced more than one room, and the chosen room,
+// not the first one by default, is what `pair invite --room` names.
 func TestSetupQ7OpenUpAsksShareRoomOnlyWithMultipleRooms(t *testing.T) {
 	withInProcessRunChild(t)
 	withTestDefaultPort(t)
@@ -258,7 +258,7 @@ func TestSetupPairOpenUpPrintCommandsNeverLeaksToken(t *testing.T) {
 	withRelayDeployFakeCloudflare(t, fake)
 
 	// Q2 must be a distinct id: planSetupPairOpenUp now refuses the default
-	// id even under --print-commands (P1) — this test's own subject is the
+	// id even under --print-commands (P1), this test's own subject is the
 	// token-redaction rule, not that refusal, so it types "acme-net" like
 	// every other real "open it up" test in this file.
 	withPromptAnswers(t, "", "acme-net", "", "", "2", "2")
@@ -284,7 +284,7 @@ func TestSetupPairOpenUpPrintCommandsNeverLeaksToken(t *testing.T) {
 	if got := fake.claimAttemptCount(); got != 0 {
 		t.Fatalf("claimAttemptCount() = %d, want 0 (--print-commands must never contact Cloudflare)", got)
 	}
-	// claimAttemptCount only ever sees PUT /workers/subdomain — the
+	// claimAttemptCount only ever sees PUT /workers/subdomain, the
 	// VerifyToken/ResolveAccountID/WorkersDevSubdomain GETs
 	// checkSetupWorkersDevClaimed would issue are otherwise invisible to
 	// this test, so a regression that started making those calls under
@@ -298,7 +298,7 @@ func TestSetupPairOpenUpPrintCommandsNeverLeaksToken(t *testing.T) {
 	// The already-claimed case's own known --print-commands inaccuracy
 	// (setupPairOpenUpPlaceholderSubdomain always substitutes "<name>" for
 	// --subdomain, but a real run against this same already-claimed account
-	// would omit the flag — buildRelayDeployInvocation) must carry a visible
+	// would omit the flag, buildRelayDeployInvocation) must carry a visible
 	// caveat directly under the printed block, not silently mislead a reader
 	// who pastes the block verbatim.
 	if !strings.Contains(output, "--subdomain is only needed if this Cloudflare account has never claimed a workers.dev subdomain") {
@@ -309,7 +309,7 @@ func TestSetupPairOpenUpPrintCommandsNeverLeaksToken(t *testing.T) {
 // TestSetupPairOpenUpPrintCommandsNeverPromptsWithoutToken covers
 // "--print-commands must never contact Cloudflare or demand a secret" for
 // the specific case that used to slip past every other test in this file:
-// with no CLOUDFLARE_API_TOKEN in the environment (and nothing stored — a
+// with no CLOUDFLARE_API_TOKEN in the environment (and nothing stored, a
 // fresh HOME), a real "open it up" run would have to prompt for one
 // (resolveSetupCloudflareToken); --print-commands must skip that prompt
 // entirely rather than block on stdin for a secret the preview has no way

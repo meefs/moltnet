@@ -171,7 +171,7 @@ func TestRunInitWithoutBearerShowsOpenAuthAndBearerTip(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	// --verbose: "auth: open" (PLAN.md phase 6a's new non-bearer default —
+	// --verbose: "auth: open" (PLAN.md phase 6a's new non-bearer default,
 	// templates.go's defaultMoltnetConfig now writes auth.mode: open) and the
 	// --bearer tip are --verbose-only detail under the quiet-by-default
 	// redesign.
@@ -198,7 +198,7 @@ func TestRunInitWithoutBearerShowsOpenAuthAndBearerTip(t *testing.T) {
 // MoltnetNode written but the command exiting non-zero with nothing printed
 // to explain why), and it must never write through the symlink. It should
 // instead degrade the same way the "auth.tokens already has entries" case
-// does — skip adding the token, still print the full aftercare summary.
+// does, skip adding the token, still print the full aftercare summary.
 func TestRunInitBearerOnSymlinkedConfigDegradesGracefully(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -229,7 +229,7 @@ func TestRunInitBearerOnSymlinkedConfigDegradesGracefully(t *testing.T) {
 		}
 	})
 
-	// The bearerAddErr note is a real, actionable failure — it prints
+	// The bearerAddErr note is a real, actionable failure, it prints
 	// unconditionally, quiet or --verbose (init_summary.go).
 	if !strings.Contains(output, "is a symlink") {
 		t.Fatalf("expected a note about the symlinked config, got %q", output)

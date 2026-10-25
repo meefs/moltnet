@@ -13,7 +13,7 @@ import (
 // folder") from a subdirectory of an existing git checkout must refuse,
 // since prefixedGitignoreCredentialEntries (init_checkout.go) still cannot
 // correctly anchor its entries for a relative --dir target in that
-// combination — verified empirically (filepath.Rel(absoluteGitRoot, ".")
+// combination, verified empirically (filepath.Rel(absoluteGitRoot, ".")
 // always errors on the abs-vs-relative mismatch, so the prefix silently
 // stays empty).
 func TestSetupProjectGitCheckoutGateRefusesNestedSubdirectory(t *testing.T) {
@@ -36,7 +36,7 @@ func TestSetupProjectGitCheckoutGateRefusesNestedSubdirectory(t *testing.T) {
 
 // TestSetupProjectGitCheckoutGateAllowsCheckoutRootItself: the one case
 // where the same filepath.Rel mismatch happens to produce the *correct*
-// (empty) prefix already — cwd already is the checkout root — must not be
+// (empty) prefix already, cwd already is the checkout root, must not be
 // refused.
 func TestSetupProjectGitCheckoutGateAllowsCheckoutRootItself(t *testing.T) {
 	repoRoot := t.TempDir()
@@ -53,7 +53,7 @@ func TestSetupProjectGitCheckoutGateAllowsCheckoutRootItself(t *testing.T) {
 
 // TestSetupProjectGitCheckoutGateAllowsNoCheckoutAtAll: the common case (no
 // git checkout anywhere in cwd's ancestry) is never affected by the
-// underlying gap at all — gitCheckoutRoot itself returns ok=false, and
+// underlying gap at all, gitCheckoutRoot itself returns ok=false, and
 // offerGitignoreCredentialEntries/prefixedGitignoreCredentialEntries are
 // never even reached (init.go's own `if gitRoot, ok := gitCheckoutRoot(root);
 // ok` guard).
@@ -88,7 +88,7 @@ func TestSetupInteractiveProjectScopeRefusesInsideNestedGitCheckout(t *testing.T
 	// ever reaches setupPlanInvocations/execChild. If the gate is ever
 	// mutated away, execChild would re-exec this very `go test` binary as
 	// "moltnet init --dir .", which recurses (the child hits `go test`'s own
-	// argv, not "init"'s) into a fork bomb instead of failing this test —
+	// argv, not "init"'s) into a fork bomb instead of failing this test,
 	// see setup_runner_test.go's withInProcessRunChild doc comment. Routing
 	// through runChildInProcess makes a gate regression fail fast instead.
 	withInProcessRunChild(t)

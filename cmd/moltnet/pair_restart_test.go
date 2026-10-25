@@ -14,7 +14,7 @@ import (
 
 // failingRestartServiceRunner behaves exactly like fakeServiceRunner
 // (service_test.go) for every command except a systemd/launchd restart
-// invocation, which it fails — simulating a *real* restart failure on an
+// invocation, which it fails; simulating a *real* restart failure on an
 // installed service, as opposed to service.ErrNotInstalled's "no service at
 // all" case (fakeServiceRunner plus no pre-install covers that one). It
 // backs TestRunPairInviteRestartFailurePrintsCodeThenErrors, the P0
@@ -97,8 +97,8 @@ func TestRunPairJoinPrintsMembershipCommandWithRealRemoteNetworkID(t *testing.T)
 // failed convenience flag. The pairing is already written to disk by the
 // time --restart is even attempted, so a missing service alone is now a
 // warning plus the ordinary manual-restart reminder, not a command error:
-// the command still exits 0, and every remaining aftercare line —
-// including the membership-command guidance — still prints in full.
+// the command still exits 0, and every remaining aftercare line,
+// including the membership-command guidance; still prints in full.
 func TestRunPairJoinRestartWithoutManagedServiceWarnsInsteadOfErroring(t *testing.T) {
 	t.Setenv("TEST_RELAY_TOKEN", "relay-secret-value")
 	t.Setenv("HOME", t.TempDir())
@@ -156,8 +156,8 @@ func TestRunPairJoinRestartWithoutManagedServiceWarnsInsteadOfErroring(t *testin
 // case covered by TestRunPairJoinRestartWithoutManagedServiceWarnsInsteadOfErroring):
 // the network *does* have an installed service, but the restart command
 // itself fails (failingRestartServiceRunner). The invite code must still
-// print — the pairing was already written to disk before the restart was
-// ever attempted — and the restart failure must still surface as the
+// print, the pairing was already written to disk before the restart was
+// ever attempted, and the restart failure must still surface as the
 // command's exit error, but only after the rest of aftercare, including the
 // code, has already printed.
 func TestRunPairInviteRestartFailurePrintsCodeThenErrors(t *testing.T) {
@@ -273,13 +273,13 @@ func TestRunPairJoinRestartSucceedsWithManagedService(t *testing.T) {
 
 // TestRunPairInviteRestartPrintsCodeAndRestartConfirmation is the P0
 // regression test: `pair invite --restart` must still print the
-// moltnet-invite: code — the entire point of the command — as its own,
+// moltnet-invite: code, the entire point of the command, as its own,
 // unmissable paragraph (a blank line on both sides, nothing else sharing
 // its line), after the restart confirmation. The bug report this guards
 // against was a field paste where --restart appeared to have swallowed the
 // code; investigation found the code was in fact always printed
 // unconditionally as part of the aftercare block (runPairInvite always
-// calls printPairInviteAftercare, which never skips it) — the real defect
+// calls printPairInviteAftercare, which never skips it); the real defect
 // was that the old output ran the "wrote pairing" line, the bare code, and
 // the restart confirmation together with no blank lines between them, so a
 // long unbroken base64 code was easy to mistake for line noise. This pins
@@ -329,7 +329,7 @@ func TestRunPairInviteRestartPrintsCodeAndRestartConfirmation(t *testing.T) {
 	}
 
 	// The invite command must stand alone on its own line, with a blank
-	// line immediately before and after it — never run together with the
+	// line immediately before and after it; never run together with the
 	// status lines or the next: guidance, which is what made a bare code
 	// easy to miss in the field report this test originally guarded
 	// against; rule 4 of the quiet-by-default redesign folded the code

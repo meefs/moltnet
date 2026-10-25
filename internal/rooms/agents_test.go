@@ -58,7 +58,7 @@ func TestRegisteredSenderCredentialIsEnforced(t *testing.T) {
 	// 7B.1: the final assertion below sends through a pair-scoped credential
 	// claiming a remote origin, which federation_access.go now enforces
 	// against the room's federation stance (see pairingForPairScopedContext's
-	// doc comment) — this test is about sender-identity conflicts, not
+	// doc comment); this test is about sender-identity conflicts, not
 	// federation, so the pairing id used by authContextForScope("pair", ...)
 	// below is configured here and the room is left open to every pairing
 	// ("all") precisely so the federation gate stays out of this test's way.

@@ -13,7 +13,7 @@ import (
 // read through the plain, non-ctx-aware promptLine, so a SIGINT while
 // genuinely blocked waiting for the typed answer (runCLI's own
 // signal.NotifyContext cancelling ctx, cli.go) had no effect at all until
-// the operator pressed Enter — the process stayed blocked in ReadString
+// the operator pressed Enter, the process stayed blocked in ReadString
 // regardless of ctx. This drives Q1 to completion over a real pty (so Q2's
 // prompt is genuinely blocked on a read, not a scripted reader), sends a
 // real SIGINT with no Enter ever following it, and asserts the wizard
@@ -52,6 +52,6 @@ func TestSetupPTYSIGINTDuringNetworkIDPromptAbortsWithoutEnter(t *testing.T) {
 			t.Fatalf("runCLI() took %v to return after SIGINT with no Enter ever sent, want it to abort promptly rather than wait on a keypress that never comes", elapsed)
 		}
 	case <-time.After(3 * time.Second):
-		t.Fatal("setup did not return within 3s of SIGINT at the typed Q2 prompt (no Enter was ever sent) — promptLineCtx did not honor ctx cancellation")
+		t.Fatal("setup did not return within 3s of SIGINT at the typed Q2 prompt (no Enter was ever sent): promptLineCtx did not honor ctx cancellation")
 	}
 }

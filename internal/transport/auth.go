@@ -56,7 +56,7 @@ func authorizedAnyWithVerifier(
 // authorizedAnyWithVerifier, then excludes agent tokens (P2-1, PLAN.md phase
 // 6c review): NewAgentTokenClaims now grants `observe` (P2-2) so a
 // self-registered agent can read its own message history, but that same
-// scope must not let it enumerate /v1/pairings* — remote network ids,
+// scope must not let it enumerate /v1/pairings*: remote network ids,
 // names, and base URLs are operator/observer topology, not something every
 // self-registered agent should see. Static tokens (console's exactly-
 // [observe] token included) are unaffected: only claims.AgentToken() is

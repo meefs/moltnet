@@ -64,7 +64,7 @@ func addOperatorTokenWithRollback(path string, operatorToken app.AuthTokenWriteb
 // untouched and add only the console token plus flip the mode
 // (app.AddOperatorToken's PLAN.md phase 7.0 upgrade case, triggered once
 // plain `init` started minting its own operator token). A read failure
-// here conservatively answers false rather than erroring — the write
+// here conservatively answers false rather than erroring; the write
 // immediately following it will hit and report the same underlying
 // failure, so this never affects a refusal or rollback decision, only
 // which sentence a successful add gets described with.

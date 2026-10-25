@@ -128,7 +128,7 @@ func TestNonLoopbackAnonymousWriteWarningFiresForOpenRegistration(t *testing.T) 
 
 // TestNonLoopbackAnonymousWriteWarningFiresForModeNone covers PLAN.md phase
 // 6a review, P2-3: the original check keyed only on agent_registration, so
-// a non-loopback bind with auth.mode: none (the pre-phase-6a default —
+// a non-loopback bind with auth.mode: none (the pre-phase-6a default:
 // every write and admin route anonymous, with no registration step needed
 // at all) stayed silent, while the strictly safer "bearer + open
 // registration" shape correctly warned. mode: none on a non-loopback bind
@@ -253,8 +253,8 @@ func TestNonLoopbackAnonymousWriteWarningOmitsReadClauseWithoutPublicRoom(t *tes
 
 // TestNonLoopbackAnonymousWriteWarningSilent covers the negative space:
 // loopback binds never warn regardless of auth posture, and non-loopback
-// binds never warn when auth.mode is not none and registration is not open
-// — including the exact "bearer + agent_registration: disabled" shape from
+// binds never warn when auth.mode is not none and registration is not open,
+// including the exact "bearer + agent_registration: disabled" shape from
 // the phase 6a field report, which must stay silent (that combination is
 // refused differently, by requiring a pre-existing admin token, not by this
 // exposure warning).

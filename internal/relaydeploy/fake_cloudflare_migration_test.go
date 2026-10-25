@@ -46,12 +46,12 @@ func parseUploadMigrations(metadata []byte) (migrations uploadMigrations, presen
 // checkMigrationPrecondition mirrors Cloudflare's real Script Upload API
 // precondition check on an embedded Durable Object migration: when the
 // upload metadata carries a "migrations" key, its old_tag (defaulting to
-// "" when omitted) must match scriptName's actual current migration tag —
+// "" when omitted) must match scriptName's actual current migration tag,
 // otherwise the upload is rejected, exactly the field failure this whole
 // fix exists for (`moltnet relay deploy` used to send the embedded
 // migration unconditionally, so a redeploy over an already-migrated script
 // always sent old_tag "" against a script actually at tag "v1"). No
-// "migrations" key at all skips the check entirely — the fix's
+// "migrations" key at all skips the check entirely, the fix's
 // redeploy-over-an-already-migrated-script path.
 func (f *fakeCloudflareServer) checkMigrationPrecondition(scriptName string, metadata []byte) error {
 	migrations, present, err := parseUploadMigrations(metadata)
@@ -91,7 +91,7 @@ func (f *fakeCloudflareServer) applyMigrationLocked(scriptName string, metadata 
 // API's response shape exactly. A script this fake has never seen an
 // upload for (not a key in scriptMigrationTags) is reported as not-found
 // via Cloudflare's documented error code 10092
-// ("workers.api.error.environment_not_found") — see
+// ("workers.api.error.environment_not_found"); see
 // isServiceNotFoundEnvelope's doc comment in client.go for why 10092
 // specifically, among the several codes that operation can return.
 func (f *fakeCloudflareServer) handleGetService(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +134,7 @@ type fakeServiceMetadataScript struct {
 }
 
 // seedScriptMigrationTag pre-registers scriptName as already existing with
-// the given migration tag, without driving an actual upload — used to test
+// the given migration tag, without driving an actual upload, used to test
 // prepareUploadMetadata's unrecognized-tag error branch, which (being a
 // single migration step) has no legitimate real-upload path to reach it
 // from.

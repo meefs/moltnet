@@ -17,7 +17,7 @@ import (
 // 7A.2/7A.federation (the starter room's federation:none stance) end to
 // end, against real `runInit` output and, where it matters, a real
 // internal/app.App on a real loopback listener (startRealMoltnetServer,
-// console_e2e_test.go) rather than a hand-built fixture — the point of
+// console_e2e_test.go) rather than a hand-built fixture, the point of
 // these five is to prove the actual `moltnet init` path, not a
 // representative approximation of it.
 

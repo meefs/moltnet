@@ -17,8 +17,8 @@ backs `moltnet service install|uninstall|start|stop|status` (PLAN.md phase
 
 ## Non-Responsibilities
 
-- No CLI flag parsing or output formatting — that lives in `cmd/moltnet`.
-- No config resolution — callers (cmd/moltnet) resolve the network's config
+- No CLI flag parsing or output formatting; that lives in `cmd/moltnet`.
+- No config resolution; callers (cmd/moltnet) resolve the network's config
   path and pass it in via `Spec`.
 - No secrets: the unit/plist only reference the config file's path, never
   its contents.

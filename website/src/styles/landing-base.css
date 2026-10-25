@@ -1,0 +1,65 @@
+/* Noopolis page shell: nav, headline, buttons, rules, steps, footer, toast. */
+*, *::before, *::after { box-sizing: border-box; margin: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; }
+code, pre { font-family: var(--mono); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+nav.top { max-width: 1240px; margin: 0 auto; height: 60px; padding: 0 24px; display: flex; align-items: center; gap: 26px; font: 14px var(--mono); }
+.logo { font: 600 16px var(--mono); color: var(--ink); white-space: nowrap; }
+.logo b { color: var(--accent); font-weight: 600; }
+nav.top .links { display: flex; gap: 20px; color: var(--sub); }
+nav.top .links a:hover { color: var(--accent); }
+nav.top .grow { flex: 1; }
+.gh { color: var(--sub); white-space: nowrap; }
+.gh:hover { color: var(--ink); }
+.gh span { color: var(--accent); }
+
+h1 { font-weight: 800; letter-spacing: -.045em; line-height: .98; }
+h1 em, h2 em { font-style: normal; color: var(--accent); }
+h1 s { color: var(--faint); }
+.sub { color: var(--sub); font-size: 20px; }
+
+.btn { display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 22px; border-radius: 10px; font: 600 16px var(--sans); border: 0; cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--on-accent); box-shadow: 0 0 40px -8px color-mix(in srgb, var(--accent) 60%, transparent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line-2); font-family: var(--mono); font-weight: 500; font-size: 15px; }
+.btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn small { font-weight: 500; opacity: .7; font-size: 13px; }
+
+/* box-drawn section label */
+.rule { display: flex; align-items: center; gap: 12px; font: 12px var(--mono); color: var(--accent); letter-spacing: .08em; text-transform: uppercase; }
+.rule::before, .rule::after { content: ""; flex: 1; border-top: 1px solid var(--line-2); }
+
+.steps { max-width: 1100px; margin: 0 auto; padding: 90px 24px 50px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.step { border: 1px solid var(--line-2); border-radius: 12px; padding: 22px; background: var(--panel); }
+.step b { display: block; font: 13px var(--mono); color: var(--accent); margin-bottom: 8px; }
+.step h3 { font-size: 20px; letter-spacing: -.02em; }
+.step p { color: var(--sub); margin-top: 6px; font-size: 15px; }
+.step code { color: var(--ink); font-size: .9em; }
+
+footer.site { max-width: 1100px; margin: 0 auto; padding: 26px 24px 46px; color: var(--mute); font: 13px var(--mono); display: flex; gap: 20px; flex-wrap: wrap; border-top: 1px solid var(--line); }
+footer.site b { color: var(--accent); font-weight: 500; }
+footer.site .grow { flex: 1; }
+footer.site a:hover { color: var(--accent); }
+footer.site nav { display: flex; gap: 20px; flex-wrap: wrap; }
+
+.toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 14px; opacity: 0; transition: .2s; pointer-events: none; z-index: 50; max-width: calc(100vw - 32px); text-align: center; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+/* hand-drawn scratch over the struck word, drawn once on load */
+h1 s { text-decoration: none; position: relative; display: inline-block; }
+h1 s svg.ink { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+h1 s svg.ink > path { fill: var(--scratch); }
+h1 s .reveal { fill: none; stroke: #fff; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: scratch .9s .6s cubic-bezier(.3,.1,.6,1) forwards; }
+h1 s.drawn .reveal { animation: none; stroke-dashoffset: 0; }
+@keyframes scratch { to { stroke-dashoffset: 0; } }
+/* Without JS the word still reads as struck. */
+html:not(.js) h1 s { text-decoration: line-through; text-decoration-color: var(--scratch); text-decoration-thickness: .08em; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  h1 s .reveal { animation: none; stroke-dashoffset: 0; }
+}

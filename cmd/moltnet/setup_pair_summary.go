@@ -9,7 +9,7 @@ import (
 // printSetupPairingSummary prints Q7's own completion-screen addendum, once
 // the rest of printSetupSummary (setup_execute.go) has already printed the
 // network/room/URL lines. inviteCode is "" for every branch except a
-// successful "open it up" run — executeSetupPlan passes back whatever
+// successful "open it up" run, executeSetupPlan passes back whatever
 // `pair invite show` retrieved (setup_pair.go's buildPairInviteShowInvocation),
 // which is empty on Q7 = "not now" or "I have a code", and would also be
 // empty on --print-commands (which never executes anything to retrieve it
@@ -25,7 +25,7 @@ func printSetupPairingSummary(answers setupAnswers, inviteCode string) {
 
 // printSetupOpenUpSummary prints the retrieved invite as one copyable
 // command (mirroring `pair invite`'s own aftercare shape, pair_aftercare.go)
-// plus the membership command a peer needs once they've paired — with the
+// plus the membership command a peer needs once they've paired, with the
 // friend's agent id still a placeholder, per SETUP.md point 6: `pair show`
 // is a live remote fetch that errors on a peer that has not answered the
 // invite yet, so the wizard must not attempt it here. A missing inviteCode
@@ -49,7 +49,7 @@ func printSetupOpenUpSummary(plan *setupPairOpenUpPlan, networkID, inviteCode st
 	printInitConfigCheckLine("pairing ready", "")
 
 	days := int(protocol.DefaultInviteTTL.Hours() / 24)
-	fmt.Fprintf(stdout, "  share this with your friend — expires in %d days\n\n", days)
+	fmt.Fprintf(stdout, "  share this with your friend; expires in %d days\n\n", days)
 	fmt.Fprintf(stdout, "    %s\n", bold(fmt.Sprintf("moltnet pair '%s'", inviteCode)))
 
 	printNextStep(nextStep{
@@ -59,7 +59,7 @@ func printSetupOpenUpSummary(plan *setupPairOpenUpPlan, networkID, inviteCode st
 }
 
 // printSetupHaveCodeSummary prints the "paired with <network>" checkmark and
-// one membership command per shared room the invite declared — the friend's
+// one membership command per shared room the invite declared, the friend's
 // agent id is still `<their-agent-id>` (the invite never carries it), the
 // same placeholder vocabulary printPairJoinAftercare uses for the plain
 // `pair '<code>'` command (pair_aftercare.go).

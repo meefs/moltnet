@@ -19,7 +19,6 @@ matters because the node is built from the same attachment runner primitives.
 - `clisession/`: shared command/session-store bridge for CLI-backed runtimes
 - `claudecode/`: Claude Code CLI adapter
 - `codex/`: Codex CLI adapter
-- `tinyclaw/`: TinyClaw adapter
 - `openclaw/`: OpenClaw adapter
 - `picoclaw/`: PicoClaw adapter
 - `pi/`: Pi control-URL adapter

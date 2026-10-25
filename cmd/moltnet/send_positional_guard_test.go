@@ -58,7 +58,7 @@ func TestSendPositionalArgsRejectsStrayTargetLikePositionalWhenTargetFlagSet(t *
 	}
 
 	// A non-target-shaped positional is still treated as the message, not
-	// refused — the guard only fires on room:/dm: shaped stray positionals.
+	// refused, the guard only fires on room:/dm: shaped stray positionals.
 	target, text, err := resolveSendPositionalArgs([]string{"hola"}, "room:a", "")
 	if err != nil {
 		t.Fatalf("resolveSendPositionalArgs() error = %v, want nil for a plain message word", err)

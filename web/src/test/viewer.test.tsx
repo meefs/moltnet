@@ -150,7 +150,7 @@ describe("pairings failures", () => {
   });
   it("shows not found after a successful empty response", async () => {
     mount(<PairingView />, "/console/pairing/remote");
-    expect(await screen.findByText("pairing not found — remote.")).toBeTruthy();
+    expect(await screen.findByText("pairing not found: remote.")).toBeTruthy();
   });
 });
 

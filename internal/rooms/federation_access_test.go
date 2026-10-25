@@ -60,7 +60,7 @@ func TestPairScopedThreadWriteUsesStoredRoomFederation(t *testing.T) {
 // TestPairScopedWriteWithUnboundNetworkIsRejected is 7B.1's required
 // regression: it fails against pre-fix main. The credential here has the
 // exact shape `pair invite` writes into auth.tokens[] for a peer that has
-// never yet contacted this network back — pair scope, no bound network —
+// never yet contacted this network back, pair scope, no bound network,
 // while the pairing it belongs to (matched by TokenID, per
 // pairingForPairScopedContext's doc comment) is already known locally. Pre-fix,
 // the empty-network early return let this write through regardless of the

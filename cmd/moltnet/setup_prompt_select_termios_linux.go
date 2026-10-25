@@ -13,7 +13,7 @@ import "golang.org/x/sys/unix"
 // isolated probe shows the flush ioctl returns immediately against a
 // pending non-canonical read with no queued output) but that it also
 // flushes queued *output*, blocking until a far end that has stopped
-// reading actually reads it — exactly what a test harness's demand-driven
+// reading actually reads it, exactly what a test harness's demand-driven
 // pty reader does once it stops looking for more input (readMasterUntil,
 // see prompt_hidden_pty_test.go:201-217 and drainBackgroundMaster), and
 // what a real terminal under XOFF/Ctrl-S flow control or a stalled emulator
@@ -24,7 +24,7 @@ import "golang.org/x/sys/unix"
 // input queue at restore time while TCSETSF discards it. That distinction
 // does not matter for this call site because enableRawSelectMode's own
 // read loop (a bufio reader) already drains the input queue before restore
-// ever runs — measured queuedBeforeRestore=0 for both a small keypress
-// burst and a 6 KB paste — so there is nothing left in the queue for
+// ever runs, measured queuedBeforeRestore=0 for both a small keypress
+// burst and a 6 KB paste, so there is nothing left in the queue for
 // TCSETS's non-discarding restore to leak.
 const ioctlWriteTermiosImmediate = unix.TCSETS

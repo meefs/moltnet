@@ -33,7 +33,7 @@ This package contains the core communication model.
   only `authn.Claims` on the context: `agent:<agentId>` for agent tokens,
   `operator:<credentialKey>` for static/operator credentials, and
   `system:moltnet.anonymous` when there are no claims at all. It never
-  reads `request.From`, message parts, or any other caller-supplied field —
+  reads `request.From`, message parts, or any other caller-supplied field;
   those are claimed display identities, not authenticated ones.
 - A `canWriteRoom` denial must always produce exactly one `message.denied`
   record before the caller's error is returned: deny paths are

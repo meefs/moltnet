@@ -15,25 +15,25 @@ import (
 var ErrAuthTokensExist = errors.New("auth.tokens already has entries")
 
 // AddOperatorToken sets auth.mode to bearer and appends operatorToken, plus
-// any extra tokens (in one atomic write — never a second, separate write
+// any extra tokens (in one atomic write, never a second, separate write
 // that could land only one of them), into the Moltnet config file at path,
 // reusing the same plaintext-preserving writeback machinery as WritePairing
 // (untyped map edit, atomic write, mode 0600, symlink-refusing target).
 //
 // It refuses with ErrAuthTokensExist when auth.tokens already has entries
-// it cannot safely upgrade — with one exception (PLAN.md phase 7.0's
+// it cannot safely upgrade, with one exception (PLAN.md phase 7.0's
 // "unblock the --bearer upgrade" fix, added once plain `init` started
 // minting its own operator token, below): when the config's *only* existing
 // token shares operatorToken.ID, canUpgradeOperatorOnlyOpenConfig treats it
 // as exactly the operator-only open config plain `init` writes, and this
-// function upgrades it in place — flipping auth.mode to bearer (via
+// function upgrades it in place, flipping auth.mode to bearer (via
 // writeAuthTokensToDoc, shared with AddConsoleToken) and writing only the
 // extra tokens, while leaving the existing operator entry completely
 // untouched. That is deliberate, not an oversight: re-writing it here would
 // silently rotate the operator's secret and could widen its scopes to
 // whatever the caller passed (bearerMoltnetConfig-shaped callers pass
 // operatorToken with the "pair" scope plain `init`'s operator token must
-// never carry — see defaultMoltnetConfig's doc comment, templates.go).
+// never carry; see defaultMoltnetConfig's doc comment, templates.go).
 // Every other existing-tokens shape (more than one token, or a single token
 // under a different id) still refuses outright, so `init --bearer` never
 // reshapes a config an operator set up by hand.
@@ -42,7 +42,7 @@ var ErrAuthTokensExist = errors.New("auth.tokens already has entries")
 // ([observe, write, admin], unchanged) and a second observe-only "console"
 // token as extra, so
 // a freshly bearer-enabled network always has a token `moltnet console` can
-// hand the browser — closing the gap where init minted a token the console
+// hand the browser, closing the gap where init minted a token the console
 // command was never allowed to use. On the upgrade path above, only that
 // console token actually lands; the operator token argument is discarded
 // once its id is confirmed to already exist.
@@ -180,13 +180,13 @@ func canUpgradeOperatorOnlyOpenConfig(doc map[string]any, operatorTokenID string
 }
 
 // ErrAuthModeNotOpen indicates AddOperatorTokenPreservingOpenMode was asked
-// to repair a Moltnet config whose auth.mode is not "open" — outside the one
+// to repair a Moltnet config whose auth.mode is not "open", outside the one
 // shape PLAN.md phase 7.0's repair path exists for, so it refuses rather
 // than guess what a non-open network wants.
 var ErrAuthModeNotOpen = errors.New("auth.mode is not open")
 
 // AddOperatorTokenPreservingOpenMode inserts operatorToken into an existing
-// Moltnet config's auth.tokens[] without ever touching auth.mode — unlike
+// Moltnet config's auth.tokens[] without ever touching auth.mode, unlike
 // writeAuthTokensToDoc (shared by AddOperatorToken and AddConsoleToken),
 // which always flips it to "bearer". It backs plain `init`'s PLAN.md phase
 // 7.0 repair path: a config written before phase 7.0 shipped has
@@ -198,11 +198,11 @@ var ErrAuthModeNotOpen = errors.New("auth.mode is not open")
 // It only ever writes when the config is genuinely that shape: auth.mode
 // already "open" and auth.tokens[] currently empty. Anything else refuses
 // rather than guess:
-//   - auth.mode not "open" returns ErrAuthModeNotOpen — outside this
+//   - auth.mode not "open" returns ErrAuthModeNotOpen, outside this
 //     repair's stated scope (a hand-edited bearer/none config), and not
 //     plain `init`'s concern either way, since it has never rewritten an
 //     existing config's auth.mode.
-//   - any existing auth.tokens[] entries return ErrAuthTokensExist —
+//   - any existing auth.tokens[] entries return ErrAuthTokensExist,
 //     PLAN.md phase 7.0 leaves such a config untouched rather than
 //     guessing whether adding a second admin-scoped credential next to
 //     whatever an operator already configured by hand is safe; the caller
@@ -233,7 +233,7 @@ func AddOperatorTokenPreservingOpenMode(path string, operatorToken AuthTokenWrit
 	}
 
 	upsertAuthToken(doc, operatorToken)
-	// auth.mode is left exactly as read ("open") — deliberately not routed
+	// auth.mode is left exactly as read ("open"), deliberately not routed
 	// through writeAuthTokensToDoc, which both AddOperatorToken and
 	// AddConsoleToken share and which always sets it to "bearer". Flipping
 	// it here would silently reverse phase 6a's local-first default for a
@@ -249,8 +249,8 @@ func AddOperatorTokenPreservingOpenMode(path string, operatorToken AuthTokenWrit
 
 // ErrConsoleTokenIDExists indicates AddConsoleToken's caller picked
 // token.ID against a config it read at some earlier point (nextConsoleTokenID,
-// cmd/moltnet/auth_token_writeback.go), but the config on disk — read again
-// here, immediately before writing — already has a token using that same
+// cmd/moltnet/auth_token_writeback.go), but the config on disk, read again
+// here, immediately before writing, already has a token using that same
 // id by the time this function actually runs. AddConsoleToken refuses
 // rather than silently overwrite it.
 var ErrConsoleTokenIDExists = errors.New("console token id already exists")
@@ -261,11 +261,11 @@ var ErrConsoleTokenIDExists = errors.New("console token id already exists")
 // because auth.tokens already has entries: it exists for `moltnet
 // console`'s self-heal path, which by definition only ever runs against a
 // config that already has at least one token (the operator's) but none
-// scoped to exactly [observe] — refusing on "tokens already exist" would
+// scoped to exactly [observe], refusing on "tokens already exist" would
 // make it useless for its one caller.
 //
 // It does set auth.mode to bearer, via the same writeAuthTokensToDoc body
-// AddOperatorToken shares — but for AddConsoleToken's one caller this is
+// AddOperatorToken shares, but for AddConsoleToken's one caller this is
 // never an enabling side effect: self-heal only ever runs against a config
 // that is already in bearer mode (that is its own precondition), so this
 // write leaves auth.mode exactly as it found it in practice. It is
@@ -274,7 +274,7 @@ var ErrConsoleTokenIDExists = errors.New("console token id already exists")
 //
 // The caller is responsible for first picking a non-colliding id (see the
 // id-collision handling token.ID goes through before AddConsoleToken is
-// called) — but that pick is made against a config read earlier, which can
+// called), but that pick is made against a config read earlier, which can
 // go stale by the time this function's own read happens (a concurrent
 // `moltnet console` invocation, or a hand edit, landing in between). This
 // function closes that TOCTOU itself: it checks the freshly re-decoded
@@ -310,7 +310,7 @@ func AddConsoleToken(path string, token AuthTokenWriteback) error {
 
 // writeAuthTokensToDoc is the shared body behind AddOperatorToken and
 // AddConsoleToken: set auth.mode to bearer, upsert every token in tokens
-// (by id — a rerun with the same id replaces rather than duplicates), and
+// (by id; a rerun with the same id replaces rather than duplicates), and
 // atomically write the encoded document back to path.
 //
 // P0-2 (confirmed live, round 2): the delete(auth, "agent_registration")

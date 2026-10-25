@@ -49,7 +49,7 @@ func (c *asyncShutdownCodec) WaitControlAsync() {
 // RunControlLoopWithCodec returning must mean every goroutine it started has
 // returned. Without the barrier the loop cancels the follower and returns
 // immediately, so a caller has no safe point to tear down the state that
-// follower is still writing — which is how `t.TempDir()` cleanup started
+// follower is still writing, which is how `t.TempDir()` cleanup started
 // racing the Daimon receipt store.
 func TestRunControlLoopWaitsForAsyncCodecBeforeReturning(t *testing.T) {
 	t.Parallel()

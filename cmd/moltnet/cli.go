@@ -25,7 +25,7 @@ func run(ctx context.Context, args []string, buildVersion string) error {
 		return nil
 	case "":
 		// PLAN 7A.5: bare `moltnet` used to start a foreground daemon here,
-		// but it is advertised nowhere — the help block lists `start` — so
+		// but it is advertised nowhere, the help block lists `start`, so
 		// someone typing the bare command to discover the tool got a
 		// blocked terminal with no explanation. Print help (plus a `next:`
 		// hint toward the command this used to run silently) instead; `rest`

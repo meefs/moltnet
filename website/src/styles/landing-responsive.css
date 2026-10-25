@@ -1,60 +1,29 @@
-/* === RESPONSIVE === */
+/* Single-column layouts below tablet width; 375px must not scroll sideways. */
 @media (max-width: 900px) {
-  .hero-illustration, .hero-illustration-placeholder { display: none; }
-  .proof-runtime-pills { display: none; }
-  .proof-bar { display: none; }
-
-  .proof-prologue {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.6rem;
-    padding: 0.85rem 1.1rem;
-    border-radius: 12px 12px 0 0;
-  }
-  .proof-prologue + .proof { border-radius: 0 0 12px 12px; }
-  .prologue-cmd { font-size: 0.78rem; }
-  .prologue-meta { font-size: 0.66rem; }
-
-  .nav-links { display: none; }
-  .nav-in { padding: 0.6rem 1.25rem; }
-
-  .hero { padding: 5rem 1.5rem 2.5rem; }
-  .hero-top { grid-template-columns: 1fr; margin-bottom: 1.5rem; }
-  .hero h1 { font-size: 2.6rem; max-width: none; }
-  br.mobile-break { display: inline; }
-  .hero-sub { font-size: 0.9rem; }
-  .hero-actions { gap: 0.5rem; }
-  .hero-actions .btn { font-size: 0.85rem; padding: 0.65rem 1.2rem; }
-
-  .proof { border-radius: 12px; }
-  .proof-row { grid-template-columns: 1fr; }
-  .proof-source { border-right: none; border-bottom: 1px solid var(--border); padding: 1.25rem; }
-  .proof-source pre { font-size: 0.85rem; }
-  .proof-arrow {
-    padding: 0.4rem 1.25rem;
-    align-items: flex-start;
-    justify-content: flex-start;
-    background: rgba(255, 255, 255, 0.015);
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-  }
-  .proof-cmd { font-size: 0.78rem; border: none; background: transparent; padding: 0.3rem 0; }
-  .proof-output { padding: 1.25rem; border-left: none; }
-
-  .section { padding: 4rem 1.5rem; }
-  .section h2 { font-size: 1.7rem; }
-  .section-desc { font-size: 0.95rem; }
-  .section-kicker { font-size: 0.72rem; }
-
-  .steps { grid-template-columns: 1fr; }
-  .step { padding: 1.25rem; }
-
-  .plat { font-size: 0.78rem; padding: 0.45rem 0.8rem; }
-
-  .cta-section h2 { font-size: 1.7rem; }
-  .cta-section p { font-size: 0.9rem; }
-  .cta-btns { flex-direction: column; align-items: center; }
-  .cta-btns .btn { width: 100%; max-width: 240px; text-align: center; }
-
-  footer { font-size: 0.82rem; flex-direction: column; gap: 0.75rem; align-items: center; text-align: center; }
+  .stage { grid-template-columns: minmax(0, 1fr); }
+  .wire { padding: 18px 0; }
+  .term .body { height: 220px; }
+  .cards { grid-template-columns: minmax(0, 1fr); }
+  .shell .row { grid-template-columns: minmax(0, 1fr); }
+  .shell .src, .shell .arrow { border-right: 0; border-bottom: 1px solid var(--line); }
+  .shell .arrow { padding: 12px 18px; justify-items: start; }
+  .shell .out { padding-top: 0; }
+  .matrix > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .matrix > div:first-child { display: none; }
+}
+@media (max-width: 860px) {
+  nav.top .links { display: none; }
+  .steps { grid-template-columns: minmax(0, 1fr); padding-top: 60px; }
+}
+@media (max-width: 520px) {
+  nav.top { padding: 0 16px; }
+  .hero, .section, .closing, .steps, footer.site { padding-left: 16px; padding-right: 16px; }
+  .hero { padding-top: 30px; }
+  .hero h1 { font-size: clamp(34px, 10.4vw, 42px); }
+  .hero .sub { font-size: 17px; }
+  .cta .btn { width: 100%; justify-content: center; }
+  .install { font-size: 12px; }
+  .term { font-size: 12.5px; }
+  .term .bar .owner { display: none; }
+  .section { padding-top: 50px; padding-bottom: 50px; }
 }

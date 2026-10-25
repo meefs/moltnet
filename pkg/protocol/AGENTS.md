@@ -35,9 +35,9 @@ This package is intended to remain usable by:
 (canonical schema lives in root `specs/`). Moltnet emits two event types,
 both stamped from `internal/rooms/causal.go`:
 
-- `EventTypeMessageAccepted` / `MessageAcceptedPayload` — a message durably
+- `EventTypeMessageAccepted` / `MessageAcceptedPayload`: a message durably
   landed and cleared write policy (`PolicyDecisionAccepted`).
-- `EventTypeMessageDenied` / `MessageDeniedPayload` — a message was
+- `EventTypeMessageDenied` / `MessageDeniedPayload`: a message was
   rejected by room write policy (`PolicyDecisionDenied`); carries `target`,
   `reason`, and `content_sha256` so deny paths stay ledger-visible instead
   of a silent drop.
@@ -48,43 +48,43 @@ both stamped from `internal/rooms/causal.go`:
 
 ## Causal Contract File Inventory
 
-- `causal.go` — native causal envelope types, stable public compatibility,
+- `causal.go`: native causal envelope types, stable public compatibility,
   and validation used by live Moltnet emitters.
-- `causal_test.go` — native envelope compatibility and validation tests.
-- `causal_canonical.go` — public canonical JSON entry points plus strict
+- `causal_test.go`: native envelope compatibility and validation tests.
+- `causal_canonical.go`: public canonical JSON entry points plus strict
   normalization and deterministic serialization.
-- `causal_canonical_parser.go` — strict canonical JSON parser state and token
+- `causal_canonical_parser.go`: strict canonical JSON parser state and token
   parsing, including duplicate-key and Unicode checks.
-- `causal_canonical_test.go` — canonical JSON unit tests for hostile native
+- `causal_canonical_test.go`: canonical JSON unit tests for hostile native
   values and serialization behavior.
-- `causal_contract.go` — event, stream-final, and digest-domain types and
+- `causal_contract.go`: event, stream-final, and digest-domain types and
   record-level contract validation.
-- `causal_contract_fields.go` — strict record/object/field and safe-integer
+- `causal_contract_fields.go`: strict record/object/field and safe-integer
   extraction helpers shared by contract validators.
-- `causal_contract_test.go` — direct contract and bundle validation tests.
-- `causal_bundle.go` — mixed JSONL preflight, structural tuple identity, and
+- `causal_contract_test.go`: direct contract and bundle validation tests.
+- `causal_bundle.go`: mixed JSONL preflight, structural tuple identity, and
   event/final association rules.
-- `causal_golden_test.go` — test-only reader for the pinned Stele causal corpus
+- `causal_golden_test.go`: test-only reader for the pinned Stele causal corpus
   snapshot and its canonical-byte/SHA-256 assertions.
-- `testdata/stele.causal-contract.v1.json` — immutable cross-language corpus
+- `testdata/stele.causal-contract.v1.json`: immutable cross-language corpus
   snapshot; `scripts/verify-stele-corpus.sh` checks it against the published
   `@noopolis/stele` package before CI and release.
 
 ## Network Identity and Signed Envelopes
 
-- `network_identity.go` — Ed25519 network key wire forms, `sha256:<hex>`
+- `network_identity.go`: Ed25519 network key wire forms, `sha256:<hex>`
   fingerprints, trust levels (`verified`, `unconfirmed`, `introduced`), and the HTTP-only
   signature states.
-- `envelope.go` / `envelope_canonical.go` — `moltnet.envelope.v1`: the
+- `envelope.go` / `envelope_canonical.go`: `moltnet.envelope.v1`, the
   origin-signed message statement, encoded as canonical-json.v1, digested and
   signed with domain separation, parsed strictly. `global_room_id`,
   `membership_epoch`, and per-room `origin_seq` are reserved optional fields
   for hub rooms. None of this enters the machine v1 contract.
-- `hub.go` / `hub_signing.go` — hub rooms: global room ids
+- `hub.go` / `hub_signing.go`: hub rooms, global room ids
   (`<home fingerprint>/<room id>`), the home-signed control log
   (`moltnet.room-control.v1`) and receipts (`moltnet.room-receipt.v1`),
   canonical, domain-separated and parsed strictly. `Pairing.Scope: rooms`
   marks a room link.
-- `hub_sync.go`, `hub_admission.go`, `hub_view.go` — catch-up pages
+- `hub_sync.go`, `hub_admission.go`, `hub_view.go`: catch-up pages
   (`RoomSyncPage`), signed room admissions (`moltnet.room-admission.v1`),
   room invites (`Invite.HubRoom`), and the HTTP shared-room views.

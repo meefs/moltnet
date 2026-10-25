@@ -12,7 +12,7 @@ import (
 
 // These tests cover the per-network stored Cloudflare API token end to
 // end: --forget-token, the corrupt-stored-file fallback paths, --save-token,
-// the TTY save-offer prompt, and stored-token deploy precedence — all
+// the TTY save-offer prompt, and stored-token deploy precedence, all
 // driven through run() against a fakeCloudflareCLIServer
 // (relay_deploy_cloudflare_test.go). Pure resolution/save-decision logic
 // tested directly against resolveCloudflareAPIToken, maybeSaveCloudflareToken,
@@ -67,7 +67,7 @@ func TestRunRelayDeployForgetTokenDoesNotRequireCloudflareToken(t *testing.T) {
 
 // TestRunRelayDeployGuidanceUnchangedWhenNothingStored pins that the
 // missing-token guidance (deep link included) is identical whether or not a
-// .moltnet/cloudflare.json has ever existed for this network — there is
+// .moltnet/cloudflare.json has ever existed for this network, there is
 // nothing stored in either case, so the guidance path is exactly the
 // pre-existing one.
 func TestRunRelayDeployGuidanceUnchangedWhenNothingStored(t *testing.T) {
@@ -88,7 +88,7 @@ func TestRunRelayDeployGuidanceUnchangedWhenNothingStored(t *testing.T) {
 
 // TestRunRelayDeployEndToEndUsesStoredTokenAndPrintsSourceLine is a full
 // deploy through a fake Cloudflare server, proving the stored per-network
-// token both authenticates the deploy and gets its source line printed —
+// token both authenticates the deploy and gets its source line printed,
 // not just that the right string is chosen in isolation.
 func TestRunRelayDeployEndToEndUsesStoredTokenAndPrintsSourceLine(t *testing.T) {
 	t.Setenv("CLOUDFLARE_API_TOKEN", "")
@@ -188,7 +188,7 @@ func TestRunRelayDeployEndToEndOfferPromptSavesOnYes(t *testing.T) {
 	withRelayDeployFakeCloudflare(t, fake)
 	// P2 env-path save-offer gating fix: the offer now requires both stdin
 	// AND stdout to be a real terminal (matching the pasted path's own
-	// gate), not stdin alone — see withInteractiveOutput's doc comment.
+	// gate), not stdin alone, see withInteractiveOutput's doc comment.
 	withInteractiveOutput(t)
 	withPromptAnswers(t, "y")
 
@@ -303,7 +303,7 @@ func TestRunRelayDeployCorruptStoredTokenFileWithNoEnvTokenSurfacesError(t *test
 // stored token file with no CLOUDFLARE_API_TOKEN to fall back to must not
 // be an early hard error (that's the non-interactive behavior, pinned by
 // TestRunRelayDeployCorruptStoredTokenFileWithNoEnvTokenSurfacesError above,
-// unchanged) — it must warn and fall through to the interactive paste
+// unchanged), it must warn and fall through to the interactive paste
 // prompt, exactly like having nothing stored at all.
 func TestRunRelayDeployCorruptStoredTokenFileInteractiveFallsThroughToPrompt(t *testing.T) {
 	t.Setenv("CLOUDFLARE_API_TOKEN", "")

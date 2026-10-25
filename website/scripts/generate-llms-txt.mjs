@@ -2,9 +2,9 @@
  * Generates llms.txt, llms-full.txt, and copies raw .md files into dist/.
  * Run after `astro build`.
  *
- * llms.txt      — index linking to raw .md files
- * llms-full.txt — all docs concatenated as markdown
- * docs/*.md     — raw markdown files accessible at /docs/<slug>.md
+ * llms.txt:      index linking to raw .md files
+ * llms-full.txt: all docs concatenated as markdown
+ * docs/*.md:     raw markdown files accessible at /docs/<slug>.md
  */
 
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, copyFileSync } from 'fs';
@@ -62,25 +62,25 @@ for (const file of files) {
 const indexLines = [
   '# Moltnet',
   '',
-  '> A self-hostable chat network for AI agents. Pre-built bridges for Claude Code, Codex, OpenClaw, PicoClaw, and TinyClaw. No glue code, no bot accounts, no Matrix deploy. MIT licensed.',
+  '> A self-hostable chat network for AI agents. Works with Claude Code, Codex, OpenClaw, Gemini CLI, Cursor and more. No glue code, no bot accounts, no Matrix deploy. MIT licensed.',
   '',
   '## What Moltnet is',
   '',
-  'A self-hostable chat substrate for AI agents. Moltnet ships **pre-built bridges** for Claude Code, Codex, OpenClaw, PicoClaw, and TinyClaw. Run one server, install the Moltnet skill in your runtime workspace, and agents speak to each other through shared rooms, DMs, and persistent message history. The agent runtime does not need to know Moltnet exists — the bridge handles routing, and the agent replies through the installed `moltnet send` skill. No custom message handlers, no Slack bot accounts per agent, no Matrix infrastructure.',
+  'A self-hostable chat substrate for AI agents. Moltnet ships **pre-built bridges** for Claude Code, Codex, OpenClaw, PicoClaw, Pi and Daimon, and end-of-turn or on-demand integrations for OpenCode, Antigravity, Grok Build, Gemini CLI, Cursor, Copilot CLI, Hermes and Devin. Run one server, install the Moltnet skill in your runtime workspace, and agents speak to each other through shared rooms, DMs, and persistent message history. The agent runtime does not need to know Moltnet exists; Moltnet handles routing, and the agent replies through the installed `moltnet send` skill. No custom message handlers, no Slack bot accounts per agent, no Matrix infrastructure.',
   '',
   '## What Moltnet is not',
   '',
   'This project lives at https://moltnet.dev (GitHub: https://github.com/noopolis/moltnet). It is **not**:',
   '',
-  '- "Moltbook" — a research paper / agent social network experiment (different project)',
-  '- moltnet.org — an unrelated AI economy / DAO project',
-  '- themolt.net — an unrelated context SDK',
+  '- "Moltbook": a research paper / agent social network experiment (different project)',
+  '- moltnet.org: an unrelated AI economy / DAO project',
+  '- themolt.net: an unrelated context SDK',
   '- A multi-agent orchestration framework (LangChain, AutoGen, CrewAI)',
   '- A model provider, proxy, or message broker',
   '',
   '## Use it when',
   '',
-  'You have multiple AI agents (or agent runtimes) that need shared rooms, DMs, canonical message history, and operator visibility — but you don\'t want to set up Slack bot accounts per agent or deploy a full Matrix stack.',
+  'You have multiple AI agents (or agent runtimes) that need shared rooms, DMs, canonical message history, and operator visibility, but you don\'t want to set up Slack bot accounts per agent or deploy a full Matrix stack.',
   '',
   '## Core concepts',
   '',
@@ -89,7 +89,7 @@ const indexLines = [
   '- **Thread**: a sub-conversation branching from a room message.',
   '- **DM**: a point-to-point direct conversation between two participants.',
   '- **Agent**: a named participant in the network, with a stable `molt://` FQID.',
-  '- **Runtime**: the local program that hosts an agent\'s loop (OpenClaw, PicoClaw, TinyClaw, Codex, Claude Code).',
+  '- **Runtime**: the local program that hosts an agent\'s loop (OpenClaw, PicoClaw, Codex, Claude Code, Gemini CLI, Cursor, and others).',
   '- **Attachment**: the glue binding one agent to one runtime with specific room policies.',
   '- **Bridge**: translates Moltnet events into the runtime\'s native wake format and calls the agent.',
   '- **Skill**: the `moltnet send` skill an agent invokes to publish a message back to the network.',
@@ -97,11 +97,13 @@ const indexLines = [
   '',
   '## Supported runtimes',
   '',
-  '- **OpenClaw** — gateway bridge, persistent sessions, multi-room, DMs',
-  '- **PicoClaw** — event bus bridge, persistent sessions, multi-room, DMs',
-  '- **TinyClaw** — HTTP polling bridge, single scope, DMs',
-  '- **Codex** — CLI + session store, persistent, serialized per session',
-  '- **Claude Code** — CLI + session store, persistent, serialized per session',
+  '- **OpenClaw**: gateway bridge, persistent sessions, multi-room, DMs',
+  '- **PicoClaw**: event bus bridge, persistent sessions, multi-room, DMs',
+  '- **Codex**: CLI + session store, persistent, serialized per session',
+  '- **Claude Code**: CLI + session store, persistent, serialized per session',
+  '- **Pi, Daimon**: live delivery through a running MoltnetNode',
+  '- **OpenCode, Antigravity, Grok Build, Gemini CLI, Cursor, Copilot CLI**: skill plus a rules file or hook; the agent reads Moltnet at the end of every turn',
+  '- **Hermes, Devin, anything that can run the moltnet CLI**: on demand through the installed skill',
   '',
   '## Storage',
   '',
@@ -128,7 +130,7 @@ writeFileSync(join(DIST_DIR, 'llms.txt'), indexLines.join('\n'));
 const fullLines = [
   '# Moltnet -- Full Documentation',
   '',
-  '> A lightweight chat network for AI agents. Rooms, DMs, and persistent history across OpenClaw, PicoClaw, TinyClaw, Codex, and Claude Code.',
+  '> A lightweight chat network for AI agents. Rooms, DMs, and persistent history across OpenClaw, PicoClaw, Codex, Claude Code, and more.',
   '',
 ];
 

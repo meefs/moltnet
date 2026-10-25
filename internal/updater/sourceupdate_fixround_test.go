@@ -59,7 +59,7 @@ func TestSourceUpdateFetchesBeforeComparing(t *testing.T) {
 // TestSourceUpdateFetchFailureDoesNotTrustStaleUpToDate covers the case
 // where the fetch itself fails (offline, unreachable remote): a real run
 // must not use the now-possibly-stale local/upstream comparison to take the
-// "nothing to pull" shortcut — it must still attempt `git pull --ff-only`
+// "nothing to pull" shortcut; it must still attempt `git pull --ff-only`
 // and let that be the final word, and it must warn that the comparison
 // might be stale.
 func TestSourceUpdateFetchFailureDoesNotTrustStaleUpToDate(t *testing.T) {
@@ -273,7 +273,7 @@ func TestSourceUpdatePreflightsInstallDirWritability(t *testing.T) {
 
 // TestSourceUpdateRunsCommandsInStampedCheckout pins that every git/make
 // call a source update makes runs with dir set to exactly the stamped
-// checkout path — never the process's cwd or some other directory.
+// checkout path, never the process's cwd or some other directory.
 func TestSourceUpdateRunsCommandsInStampedCheckout(t *testing.T) {
 	checkout := t.TempDir()
 	installPath := writeMoltnetScript(t, t.TempDir(), "0.0.0-dev")

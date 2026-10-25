@@ -16,7 +16,7 @@ import (
 // it carries, which agent ids (if any) it is restricted to, which remote
 // network (if any) it is bound to, and the credential key identifying it
 // for logging and comparison. Every gate in this codebase that decides
-// "can this caller do X" reads a Claims, never the raw token — see
+// "can this caller do X" reads a Claims, never the raw token, see
 // authn.ClaimsFromContext (context.go) for how one lands on a request
 // context.
 type Claims struct {
@@ -196,7 +196,7 @@ func NewAgentTokenClaims(agentID string, credentialKey string) Claims {
 	trimmedAgentID := strings.TrimSpace(agentID)
 	claims := Claims{
 		CredentialKey: strings.TrimSpace(credentialKey),
-		// P2-2: observe too, not just write+attach — without it this token
+		// P2-2: observe too, not just write+attach; without it this token
 		// can't read on a bearer network with public_read: false, so the
 		// join guide's own next command 403s. Still agent-scoped (agents
 		// below), never admin or pair: no room creation, no /metrics.

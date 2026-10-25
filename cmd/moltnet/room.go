@@ -11,8 +11,8 @@ import (
 // runRoomCommand dispatches `moltnet room create|list|remove|join`
 // (PLAN.md 7A.0's namespace decision (a)): room verbs live at this top-level
 // namespace now, not under `admin room`. `room remove` calls
-// removeRoomCommand (remove.go) directly — the same implementation the
-// deprecated `admin room remove` alias calls, minus its deprecation note —
+// removeRoomCommand (remove.go) directly, the same implementation the
+// deprecated `admin room remove` alias calls, minus its deprecation note,
 // one implementation, two entry points. `room list` is a thin alias over
 // the existing rooms listing (runRoomList, room_list.go); PLAN.md's Phase 7
 // "deliberately not built" list is explicit that a third listing command
@@ -57,8 +57,8 @@ func runRoomCommand(ctx context.Context, args []string) error {
 // ("moltnet room create <id> [--flags...]") while Go's stdlib flag package
 // only supports flags *before* positionals (it stops parsing at the first
 // non-flag token). valueFlags names every flag that consumes the following
-// token as its value — mirroring splitApplyArgs/splitPairJoinArgs'
-// established pattern in this package — so a bare boolean flag (there are
+// token as its value, mirroring splitApplyArgs/splitPairJoinArgs'
+// established pattern in this package, so a bare boolean flag (there are
 // none on room create/join today, but -h/--help always needs this) is never
 // mistaken for one that eats the next argument.
 func splitSingleRoomIDArgs(args []string, valueFlags map[string]bool, commandName string) ([]string, string, error) {
@@ -89,7 +89,7 @@ func splitSingleRoomIDArgs(args []string, valueFlags map[string]bool, commandNam
 }
 
 // roomCreateValueFlags lists every flag.String/repeatedStringFlag `room
-// create` binds — see splitSingleRoomIDArgs' doc comment for why this must
+// create` binds, see splitSingleRoomIDArgs' doc comment for why this must
 // stay in sync with runRoomCreate's flag definitions (room_create.go).
 var roomCreateValueFlags = map[string]bool{
 	"--name":         true,
@@ -103,7 +103,7 @@ var roomCreateValueFlags = map[string]bool{
 	"--token-env":    true,
 }
 
-// roomJoinValueFlags lists every flag `room join` binds — see
+// roomJoinValueFlags lists every flag `room join` binds, see
 // splitSingleRoomIDArgs' doc comment; must stay in sync with runRoomJoin's
 // flag definitions (room_join.go).
 var roomJoinValueFlags = map[string]bool{

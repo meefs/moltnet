@@ -229,7 +229,7 @@ func TestRenderSelectOptionsRedrawUsesPassedPrevRowsNotFreshCount(t *testing.T) 
 // round 3's headline P1 regression test: it drives the real arrow-key
 // widget (promptSelectInteractive, via promptSelect) over a genuine pty at
 // 50 columns with the wizard's own actual Q1 option set (reproduced
-// literally, like setup_prompt_select_test.go's own copies of it) — the
+// literally, like setup_prompt_select_test.go's own copies of it), the
 // exact width/option combination the reviewer's repro used, where option
 // 0's line wraps onto a second terminal row. Before the fix, every redraw
 // emitted "\x1b[2A" (len(options)) regardless of wrapping, under-shooting

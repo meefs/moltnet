@@ -54,7 +54,7 @@ func TestSelectLeastPrivilegedTokenAdminSatisfiesObserve(t *testing.T) {
 // [admin]-only token beat a single-scope [observe]-only token by config
 // order (both have len(Scopes) == 1). An admin-bearing token must never win
 // over a non-admin one that satisfies the same requirement, regardless of
-// scope count or document order — this checks both orderings.
+// scope count or document order; this checks both orderings.
 func TestSelectLeastPrivilegedTokenPrefersNonAdminOverShorterAdminList(t *testing.T) {
 	adminFirst := []authn.TokenConfig{
 		{ID: "admin-only", Value: "admin-secret", Scopes: []authn.Scope{authn.ScopeAdmin}},
@@ -75,7 +75,7 @@ func TestSelectLeastPrivilegedTokenPrefersNonAdminOverShorterAdminList(t *testin
 
 // TestSelectLeastPrivilegedTokenPrefersNonAdminOverFewerScopes is the P1
 // fix's second case: [write, admin] (2 scopes, admin-bearing) must lose to
-// [write, pair] (2 scopes, non-admin) even though scope counts tie — the
+// [write, pair] (2 scopes, non-admin) even though scope counts tie; the
 // admin/non-admin axis is checked first, scope count only breaks a tie on
 // that axis.
 func TestSelectLeastPrivilegedTokenPrefersNonAdminOverFewerScopes(t *testing.T) {
@@ -114,7 +114,7 @@ func TestOperatorFallbackSendPrefersObserveOverAdminOnlyToken(t *testing.T) {
 	t.Chdir(directory)
 	t.Setenv("HOME", t.TempDir())
 	// operator (all scopes, including admin) listed before console
-	// (observe-only) — canonical `moltnet init --bearer` document order.
+	// (observe-only); canonical `moltnet init --bearer` document order.
 	writeOperatorFallbackServerConfig(t, directory+"/Moltnet", parsed.Host, []operatorFallbackToken{
 		{id: "operator", value: "operator-secret", scopes: []string{"observe", "write", "admin", "pair"}},
 		{id: "console", value: "console-secret", scopes: []string{"observe"}},
@@ -130,7 +130,7 @@ func TestOperatorFallbackSendPrefersObserveOverAdminOnlyToken(t *testing.T) {
 
 // TestOperatorFallbackSendSucceedsInOpenMode is the P2 fix: auth.mode: open
 // still authorizes POST /v1/messages on authorizedAnyWithVerifier
-// regardless of mode (internal/transport/http.go) — PublicRead's widening
+// regardless of mode (internal/transport/http.go); PublicRead's widening
 // only ever covers reads (internal/transport/auth.go's
 // publicInOpen/optionalAuthInOpen). operatorAuthForScope used to treat any
 // non-bearer mode as "no token needed", so a send against an open-mode
@@ -167,7 +167,7 @@ func TestOperatorFallbackSendSucceedsInOpenMode(t *testing.T) {
 
 // TestOperatorFallbackSendNoAuthWhenOpenModeHasNoTokens covers
 // operatorAuthForScope's remaining no-auth case: auth.mode: open with zero
-// configured tokens (valid — unlike bearer, NewPolicy does not require open
+// configured tokens (valid; unlike bearer, NewPolicy does not require open
 // mode to have any) still resolves to no Authorization header, exactly as
 // before this fix, rather than failing with a spurious "no scoped token
 // found" error.

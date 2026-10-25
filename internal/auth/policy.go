@@ -52,12 +52,12 @@ type Config struct {
 	// RequirePairNetworkBinding rejects remote-origin pairing messages when
 	// their pair credential has no bound network (internal/rooms's
 	// pairCredentialMatchesOrigin). Defaults to false (internal/app's
-	// defaultConfig, config_load.go) — an inbound pair-scoped message that
+	// defaultConfig, config_load.go): an inbound pair-scoped message that
 	// claims a remote origin but carries a credential with no confirmed
 	// network binding is accepted with a logged warning rather than refused
 	// outright. F3: 7B.2 shipped this defaulting to true on the assumption
 	// that the inviting side's credential gets bound "once the peer has made
-	// contact" — no code does that persistence today (see config_load.go's
+	// contact"; no code does that persistence today (see config_load.go's
 	// field comment), so a strict default left every `pair invite` inviter
 	// permanently unable to receive from the peer it invited. Set
 	// `auth.require_pair_network_binding: true` in the config file, or
@@ -211,7 +211,7 @@ func (p *Policy) AgentRegistration() string {
 // TrustForwardedProto reports whether the operator has told Moltnet
 // (server.trust_forwarded_proto) that a reverse proxy sits in front of it.
 // Once true, a loopback RemoteAddr no longer proves a request originated on
-// this machine — it just means the proxy connected from here.
+// this machine; it just means the proxy connected from here.
 func (p *Policy) TrustForwardedProto() bool {
 	return p != nil && p.trustForwardedProto
 }

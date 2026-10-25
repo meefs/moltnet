@@ -36,16 +36,16 @@ func ensureInstallDirWritable(installPath string) error {
 
 // replaceInstalledBinary atomically installs newBinaryPath (a binary freshly
 // built from a source checkout) over installPath. It stages the new binary
-// into a temp file in installPath's own directory first — so the final
+// into a temp file in installPath's own directory first, so the final
 // rename always lands on the same filesystem even when newBinaryPath itself
 // lives elsewhere, such as inside a source checkout mounted on a different
-// volume than the install directory — then backs up the current installed
+// volume than the install directory, then backs up the current installed
 // binary with a plain copy (installPath itself is never renamed away or
 // unlinked) before a single atomic rename swaps the staged binary in.
 // Because installPath keeps its original content until that one rename
 // either fully completes or fully fails, a crash or a permission error
 // between the backup and the swap always leaves a runnable binary at
-// installPath — never nothing, unlike a rename-then-rename sequence that
+// installPath; never nothing, unlike a rename-then-rename sequence that
 // unlinks installPath in between.
 func replaceInstalledBinary(installPath string, newBinaryPath string) (string, error) {
 	if strings.TrimSpace(installPath) == "" {
@@ -58,7 +58,7 @@ func replaceInstalledBinary(installPath string, newBinaryPath string) (string, e
 		return "", fmt.Errorf("inspect freshly built binary %q: %w", newBinaryPath, err)
 	}
 	// Preserve the INSTALLED binary's own executable mode when one exists
-	// (an operator may have chmod'd it deliberately — e.g. setgid for a
+	// (an operator may have chmod'd it deliberately, e.g. setgid for a
 	// shared install) rather than blindly taking whatever mode the freshly
 	// built file happens to carry.
 	mode := builtInfo.Mode().Perm() | 0o100

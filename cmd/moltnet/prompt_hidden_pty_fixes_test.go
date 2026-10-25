@@ -17,9 +17,9 @@ import (
 // P0 mid-deploy-typeahead fix: even with the P0 input-flush fix in place
 // (which only discards input queued before a read *starts*), anything
 // typed during a slow operation that happens *before* the save prompt is
-// even reached — modeled here by the helper's "flush-then-confirm"
+// even reached, modeled here by the helper's "flush-then-confirm"
 // scenario sleeping 300ms before calling flushPendingTerminalInput and
-// promptYesNoDefaultYes — must never silently answer that prompt. A stray
+// promptYesNoDefaultYes, must never silently answer that prompt. A stray
 // "n\n" (a real no) is written to the pty while the helper is still
 // "deploying"; if flushPendingTerminalInput did not discard it, the
 // prompt's read would immediately consume that stale "n" and return
@@ -35,8 +35,8 @@ func TestPromptHiddenPTYMidDeployTypeaheadDoesNotAnswerSavePrompt(t *testing.T) 
 	// This scenario never disables echo, so every byte written to master
 	// below (both the stray typeahead and the real answer) gets echoed
 	// straight back into master's own read buffer by the kernel. Drain
-	// continuously in the background from the start — exactly what a real
-	// terminal emulator does — since the P0 input-flush fix made
+	// continuously in the background from the start, exactly what a real
+	// terminal emulator does, since the P0 input-flush fix made
 	// flushPendingTerminalInput's write use the flush ioctl variant
 	// (TIOCSETAF / TCSETSF), which blocks until that echoed output has
 	// actually been read from the far end; without a reader running, the
@@ -49,7 +49,7 @@ func TestPromptHiddenPTYMidDeployTypeaheadDoesNotAnswerSavePrompt(t *testing.T) 
 	go func() { waitErr <- cmd.Wait() }()
 
 	// Written immediately, well before the helper's 300ms simulated-deploy
-	// sleep elapses and it ever calls flushPendingTerminalInput/reads —
+	// sleep elapses and it ever calls flushPendingTerminalInput/reads,
 	// exactly the "typed during the deploy" scenario this fix closes.
 	if _, err := master.Write([]byte("n\n")); err != nil {
 		t.Fatalf("write stray typeahead to pty master: %v", err)
@@ -57,12 +57,12 @@ func TestPromptHiddenPTYMidDeployTypeaheadDoesNotAnswerSavePrompt(t *testing.T) 
 
 	// The helper's sleep alone is 300ms; give it time to wake, flush, print
 	// its question, and start blocking on the real read, then confirm it
-	// is still waiting — proof the stray "n" typed above was discarded,
+	// is still waiting, proof the stray "n" typed above was discarded,
 	// not consumed as the answer.
 	time.Sleep(450 * time.Millisecond)
 	select {
 	case err := <-waitErr:
-		t.Fatalf("helper process exited before a real answer was sent (err=%v) — the stray typeahead answered the prompt; stderr: %s", err, stderr.String())
+		t.Fatalf("helper process exited before a real answer was sent (err=%v); the stray typeahead answered the prompt; stderr: %s", err, stderr.String())
 	default:
 	}
 
@@ -88,7 +88,7 @@ func TestPromptHiddenPTYMidDeployTypeaheadDoesNotAnswerSavePrompt(t *testing.T) 
 // fix: when the termios ioctl seam itself fails (stubbed here via the
 // "echo-unavailable" scenario overriding ioctlGetTermios), the real
 // maybePromptForCloudflareToken flow must refuse to print the interactive
-// paste prompt or read anything at all — falling back to the guidance path
+// paste prompt or read anything at all, falling back to the guidance path
 // with a clear warning instead of ever risking a secret echoing to the
 // screen under an "(input hidden)" label.
 func TestPromptHiddenPTYEchoDisableFailsClosed(t *testing.T) {
@@ -108,6 +108,6 @@ func TestPromptHiddenPTYEchoDisableFailsClosed(t *testing.T) {
 		t.Fatalf("helper stderr = %q, want the errTerminalEchoUnavailable error reported", got)
 	}
 	if got := stderr.String(); !strings.Contains(got, `token=""`) {
-		t.Fatalf("helper stderr = %q, want an empty token — nothing was ever read", got)
+		t.Fatalf("helper stderr = %q, want an empty token: nothing was ever read", got)
 	}
 }

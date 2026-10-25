@@ -14,7 +14,7 @@ import (
 // every select question, so a bare option cannot ship again.
 //
 // It asserts on the *rendered* prompt output rather than the option structs,
-// because selectOptionText is what a person actually reads — a hint set on a
+// because selectOptionText is what a person actually reads, a hint set on a
 // struct but dropped by the renderer would still be a bare option on screen.
 func TestSetupSelectOptionsAllExplainThemselves(t *testing.T) {
 	tests := []struct {

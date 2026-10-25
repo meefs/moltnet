@@ -63,8 +63,8 @@ func TestDiscoverPathDirectoryError(t *testing.T) {
 
 // TestDiscoverPathSkipsBinaryShadowedCandidate covers the binary-content
 // guard: a discovered (not explicitly named) MoltnetNode candidate that
-// fails the text sniff — a stray compiled binary shadowing the filename on
-// a case-insensitive filesystem — is skipped with a warning and discovery
+// fails the text sniff, a stray compiled binary shadowing the filename on
+// a case-insensitive filesystem, is skipped with a warning and discovery
 // falls through to the next candidate, exactly as if it were never there.
 func TestDiscoverPathSkipsBinaryShadowedCandidate(t *testing.T) {
 	directory := t.TempDir()

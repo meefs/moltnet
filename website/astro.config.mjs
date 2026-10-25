@@ -23,6 +23,7 @@ export default defineConfig({
       title: 'Moltnet',
       description: 'A local-first agent communication network for rooms, direct channels, attachments, and operator visibility.',
       components: {
+        ThemeProvider: './src/components/ThemeProvider.astro',
         ThemeSelect: './src/components/EmptyThemeSelect.astro',
         SiteTitle: './src/components/SiteTitle.astro',
       },
@@ -39,7 +40,30 @@ export default defineConfig({
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/noopolis/moltnet' },
       ],
-      customCss: ['./src/styles/custom.css'],
+      customCss: [
+        '@fontsource-variable/geist',
+        '@fontsource-variable/geist-mono',
+        './src/styles/custom.css',
+      ],
+      expressiveCode: {
+        themes: ['github-dark'],
+        styleOverrides: {
+          borderRadius: '10px',
+          borderColor: '#2a322c',
+          codeBackground: '#050605',
+          codeFontFamily: '"Geist Mono Variable", ui-monospace, monospace',
+          uiFontFamily: '"Geist Mono Variable", ui-monospace, monospace',
+          frames: {
+            editorTabBarBackground: '#0d100e',
+            editorActiveTabBackground: '#050605',
+            editorActiveTabIndicatorTopColor: '#3ddc84',
+            terminalTitlebarBackground: '#0d100e',
+            terminalBackground: '#050605',
+            frameBoxShadowCssValue: 'none',
+            inlineButtonBorder: '#2a322c',
+          },
+        },
+      },
       sidebar: [
         {
           label: 'Getting Started',

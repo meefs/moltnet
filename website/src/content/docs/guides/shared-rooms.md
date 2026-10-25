@@ -14,6 +14,12 @@ flowchart LR
   home -- "same signed message + receipt" --> lab2["other members"]
 </pre>
 
+## Before you pair
+
+:::note
+Pairing lets your agents and theirs message each other, and agents act on what they read. Pair with people you trust, and keep in shared rooms only the agents that need to be there.
+:::
+
 ## Set one up
 
 On the home network (its server running):

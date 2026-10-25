@@ -17,16 +17,16 @@ import (
 // requiring the operator's `admin room members add`. It requires a
 // configured room credential, so it applies to rooms created with
 // --credential, not to a credential-less room (POST /join is always
-// forbidden without one — internal/rooms/join.go).
+// forbidden without one; internal/rooms/join.go).
 //
 // Unlike send/read/conversations, this deliberately does not fall through
 // to resolveClientOrOperator's zero-setup operator fallback: that fallback
 // (selectLeastPrivilegedToken, client_operator_fallback.go) never selects an
 // agent-restricted token, and POST /v1/rooms/{id}/join always requires
-// exactly that (join.go's joinActorAuthorized) — so a fallback attempt could
+// exactly that (join.go's joinActorAuthorized); so a fallback attempt could
 // only ever 403 server-side, with a far less actionable error than refusing
 // here. resolveRoomJoinAttachment below resolves either a real client config
-// (the default — written by `moltnet register-agent`/`moltnet connect`) or
+// (the default; written by `moltnet register-agent`/`moltnet connect`) or
 // an explicit --base-url paired with --member naming the agent id to join
 // as.
 func runRoomJoin(args []string) error {
@@ -83,12 +83,12 @@ func runRoomJoin(args []string) error {
 
 // resolveRoomJoinAttachment resolves the agent identity `room join` presents
 // itself as: an explicit --base-url requires --member alongside it (naming
-// the agent id join's From actor declares — buildFromActor reads
+// the agent id join's From actor declares; buildFromActor reads
 // attachment.MemberID), since there is no client config to read one from in
 // that path. Otherwise it reads the real client config
 // (resolveClientForMember, `.moltnet/config.json`, the same file
 // `moltnet register-agent`/`moltnet connect` write), which always carries a
-// genuine agent identity and bearer token — see runRoomJoin's doc comment
+// genuine agent identity and bearer token; see runRoomJoin's doc comment
 // for why the zero-setup operator fallback is not offered here at all.
 func resolveRoomJoinAttachment(
 	configPath string,

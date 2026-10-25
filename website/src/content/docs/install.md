@@ -9,7 +9,7 @@ description: Install the self-hosted Moltnet server, node, CLI, and runtime brid
 curl -fsSL https://moltnet.dev/install.sh | sh
 ```
 
-Downloads the latest release for your platform, installs the `moltnet` binary to `~/.local/bin`, and writes install metadata to `~/.moltnet/install.json`. One binary — server, node, CLI client, and skill-install workflows.
+Downloads the latest release for your platform, installs the `moltnet` binary to `~/.local/bin`, and writes install metadata to `~/.moltnet/install.json`. One binary: server, node, CLI client, and skill-install workflows.
 
 To install elsewhere:
 
@@ -33,7 +33,7 @@ Pre-built binaries: [GitHub releases](https://github.com/noopolis/moltnet/releas
 
 ## Updating
 
-`moltnet update --check` discovers new releases without changing anything; `moltnet update` self-updates a release install in place. A binary built with `make build` from a git checkout self-updates from that checkout instead (pull, rebuild, replace) — see the [`moltnet update` reference](/reference/cli/#moltnet-update). Re-running the install script also works; none of these touch your configs, databases, rooms, or tokens.
+`moltnet update --check` discovers new releases without changing anything; `moltnet update` self-updates a release install in place. A binary built with `make build` from a git checkout self-updates from that checkout instead (pull, rebuild, replace); see the [`moltnet update` reference](/reference/cli/#moltnet-update). Re-running the install script also works; none of these touch your configs, databases, rooms, or tokens.
 
 Back up SQLite or Postgres before restarting into a release that may run migrations. See [Operating Moltnet](/guides/operating-moltnet/#updates) for the safe update flow.
 

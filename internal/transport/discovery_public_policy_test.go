@@ -199,7 +199,7 @@ func TestGeneratedMarkdownUsesRoomWriteAccess(t *testing.T) {
 // member, so "guest" (this test's token owner) must not see it. An earlier
 // version of this test named "guest" itself as the room's member, which
 // asserted the opposite of what internal/rooms/access_policy.go's
-// canReadRoom actually grants in production — room membership, independent
+// canReadRoom actually grants in production: room membership, independent
 // of token scope, already lets a member read a private room it belongs to.
 // See TestAgentTokenReadsPrivateRoomItIsAMemberOf
 // (agent_token_membership_test.go) for that positive case pinned against
@@ -261,7 +261,7 @@ func TestSkillWithAgentTokenDoesNotExposePrivateMemberRooms(t *testing.T) {
 	}
 	// PLAN.md phase 6a review, P2-2: a self-registered agent token now
 	// carries `observe`, so it correctly gets read instructions (including
-	// DM read) alongside write ones — the point of P2-2 is exactly that
+	// DM read) alongside write ones; the point of P2-2 is exactly that
 	// this token can read what it's allowed to read, not just write.
 	if !strings.Contains(body, "Send to a DM") || !strings.Contains(body, "Read a DM") {
 		t.Fatalf("agent-token skill should show both DM read and write instructions when DMs are enabled\n%s", body)

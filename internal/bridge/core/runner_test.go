@@ -35,7 +35,6 @@ func TestSelectAdapter(t *testing.T) {
 	t.Parallel()
 
 	for _, runtimeKind := range []string{
-		bridgeconfig.RuntimeTinyClaw,
 		bridgeconfig.RuntimeOpenClaw,
 		bridgeconfig.RuntimePicoClaw,
 		bridgeconfig.RuntimePi,

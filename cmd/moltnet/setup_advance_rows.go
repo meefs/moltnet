@@ -6,13 +6,13 @@ import "unicode/utf8"
 // purely to keep that file under this repo's 400-line limit.
 
 // advanceRows is setupHeader.Write's pure row-accounting core, split out so
-// it is unit-tested directly against a known width and starting column —
+// it is unit-tested directly against a known width and starting column,
 // mirroring nextPingPongIndex's own "pure function, independent of any
-// terminal state" split (setup_header_render.go) — rather than only
+// terminal state" split (setup_header_render.go), rather than only
 // indirectly through a real pty. It reports how many additional terminal
 // rows s consumes when appended at column col on a width-column-wide
 // terminal, the column the cursor ends up at afterward, and whether a wrap
-// is left pending at the end of s (see pendingWrap below) — the same triple
+// is left pending at the end of s (see pendingWrap below), the same triple
 // setupHeader.col/pendingWrap carry across separate Write calls.
 //
 // Two things advance the row count, matching how a real terminal actually
@@ -25,7 +25,7 @@ import "unicode/utf8"
 // before it wraps.
 //
 // P2-3 (this fix): every mainstream terminal uses *deferred* (pending)
-// autowrap, not immediate wrap — reaching the last column does not itself
+// autowrap, not immediate wrap, reaching the last column does not itself
 // move the cursor to a new row. The cursor parks there, and the wrap only
 // resolves once the *next visible character* actually arrives; a '\n' that
 // arrives instead simply ends the line, consuming its own one row and
@@ -33,7 +33,7 @@ import "unicode/utf8"
 // second row when nothing after it turns out to occupy one. pendingWrap
 // (the incoming and outgoing bool) is exactly this parked state, threaded
 // through a single Write call's whole input and back out so it survives
-// into the *next* Write call too — the same reason col itself is threaded
+// into the *next* Write call too, the same reason col itself is threaded
 // rather than reset to 0 at the top of every call. col intentionally stays
 // at width (not reset to 0) for as long as a wrap is pending: only the
 // resolving character (or, for setupHeader.col's own purposes, the fact
@@ -41,7 +41,7 @@ import "unicode/utf8"
 //
 // This replaces the immediate-wrap model P2-1 shipped (rows++ / col = 0 the
 // instant col reached width): that model overcounted by exactly one row for
-// any line landing on an exact multiple of width — not a rare case in
+// any line landing on an exact multiple of width, not a rare case in
 // practice, since the wizard's own Q1 option text (setup_questions.go's
 // askSetupScope) renders at exactly 67 and 44 visible columns for its two
 // options, so terminals at those two widths hit the overcount on every
@@ -105,7 +105,7 @@ func advanceRows(col, width int, pendingWrap bool, s string) (newCol, rows int, 
 		case s[i] == '\n':
 			// A '\n' always ends the line and always advances exactly one
 			// row, whether or not a wrap was pending: a real terminal never
-			// also charges the deferred wrap its own row here — the pending
+			// also charges the deferred wrap its own row here, the pending
 			// state simply lapses along with the rest of the line.
 			pendingWrap = false
 			rows++
@@ -113,13 +113,13 @@ func advanceRows(col, width int, pendingWrap bool, s string) (newCol, rows int, 
 			i++
 		case s[i] == 0x1b && i+1 < len(s) && s[i+1] == '[':
 			// P2-1: scan for the CSI sequence's actual final byte (any byte
-			// in 0x40-0x7E — ECMA-48's whole final-byte range), not just
+			// in 0x40-0x7E, ECMA-48's whole final-byte range), not just
 			// 'm' (SGR only, "dim/green/yellow/bold/red"). style.go's own
 			// escapes are all SGR, but the header's own cursor-motion
 			// sequences ("\x1b[3A", "\x1b[2K", ...) end in 'A'/'K'/etc, and
 			// scanning only for 'm' never found one, hit the "unterminated"
-			// branch below, and discarded every byte after the escape —
-			// including its newlines — from this Write call's row count.
+			// branch below, and discarded every byte after the escape,
+			// including its newlines, from this Write call's row count.
 			j := i + 2
 			for j < len(s) && !(s[j] >= 0x40 && s[j] <= 0x7e) {
 				j++
@@ -129,7 +129,7 @@ func advanceRows(col, width int, pendingWrap bool, s string) (newCol, rows int, 
 				// final byte anywhere in the rest of s): stop advancing col
 				// for these trailing bytes rather than guess, but keep
 				// whatever rows/col were already correctly counted before
-				// it — style.go always writes a complete "<code>...reset"
+				// it, style.go always writes a complete "<code>...reset"
 				// span in one call, so this should never actually trigger
 				// in practice.
 				return col, rows, pendingWrap
@@ -137,7 +137,7 @@ func advanceRows(col, width int, pendingWrap bool, s string) (newCol, rows int, 
 			i = j + 1
 		default:
 			// Escape sequences aside, this is the only branch that reaches a
-			// genuinely visible character — exactly the event a deferred
+			// genuinely visible character, exactly the event a deferred
 			// wrap is waiting for. Resolve it first, before this character
 			// is placed: it lands on the new row, not the one that just
 			// filled up.

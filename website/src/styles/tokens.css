@@ -1,0 +1,33 @@
+/* Noopolis identity tokens, shared by the landing page and the Starlight docs.
+   Green on near-black; Geist for people and headlines, Geist Mono for anything
+   agents write. Fonts are bundled from @fontsource-variable, never fetched. */
+:root {
+  color-scheme: dark;
+  --bg: #070908;
+  --panel: #0d100e;
+  --panel-2: #131714;
+  --line: #1d231f;
+  --line-2: #2a322c;
+  --ink: #eef3ef;
+  --sub: #9aa59d;
+  /* Readable muted text (console value); --faint is decorative only. */
+  --mute: #8a958d;
+  --faint: #5e6a62;
+  --green: #3ddc84;
+  --green-hi: #6ef5a7;
+  --green-dim: #1f6b43;
+  --accent: var(--green);
+  --on-accent: #03170b;
+  --you: #3ddc84;
+  --sam: #f5c451;
+  --ana: #8bd3ff;
+  --claude: #d97757;
+  --codex: #e8e8e8;
+  --openclaw: #ff5a4e;
+  --scratch: #ff4a3d;
+  --sans: "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono Variable", "SF Mono", Menlo, Consolas, ui-monospace, monospace;
+}
+
+::selection { background: var(--green); color: var(--bg); }
+::-moz-selection { background: var(--green); color: var(--bg); }

@@ -5,19 +5,19 @@ import (
 	"net"
 )
 
-// setupDefaultPort mirrors templates.go's defaultInitListenAddr's port —
-// 8787, the port both Q4 choices imply (SETUP.md's "Port selection —
+// setupDefaultPort mirrors templates.go's defaultInitListenAddr's port,
+// 8787, the port both Q4 choices imply (SETUP.md's "Port selection,
 // decided, not asked"). Named separately here (not exported from
 // templates.go, which this change must not edit) since setup_port.go needs
 // only the port half of that constant, not the whole "127.0.0.1:8787"
-// address — the host half varies with Q4's answer, which is the entire
+// address, the host half varies with Q4's answer, which is the entire
 // reason this file exists.
 //
 // A var, not a const: this repo's own HARD RULE forbids ever binding the
 // real 127.0.0.1:8787 from a test (the user's live moltnet server holds
 // it), so setup_port_test.go overrides this to a harmless high port for
 // every test that needs to probe an actually-held "default" port, rather
-// than risk a real collision — or, worse, a real successful bind — against
+// than risk a real collision, or, worse, a real successful bind, against
 // 8787 itself.
 var setupDefaultPort = 8787
 
@@ -26,7 +26,7 @@ var setupDefaultPort = 8787
 // actually bindable on this machine, so `moltnet setup` never reports
 // success for a second network on a machine where one already owns 8787.
 //
-// It tries setupDefaultPort on host first — the common case, and the one
+// It tries setupDefaultPort on host first, the common case, and the one
 // that keeps a first-ever network's URL exactly the one every doc and
 // example already shows. Only when that bind fails does it fall back to an
 // OS-assigned ephemeral port on the same host, discovered the standard way

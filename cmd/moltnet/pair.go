@@ -38,7 +38,7 @@ func runPairCommand(ctx context.Context, args []string) error {
 }
 
 // resolvePairConfigPath discovers the Moltnet server config that a
-// pair/relay command should read and write (app.ResolveConfigPath) — the
+// pair/relay command should read and write (app.ResolveConfigPath), the
 // same order `moltnet start` and `moltnet admin` use: explicit --config
 // wins outright; with id given, ~/.moltnet/<id>/Moltnet is resolved first,
 // falling back to cwd only when its config self-identifies as network id
@@ -140,11 +140,11 @@ func writePairingWithRollback(path string, pairing app.PairingWriteback, authTok
 // (pair_aftercare.go) need beyond the loaded config: whether --restart was
 // requested, the shared room ids the pairing declared (for the
 // membership-command guidance, PLAN.md phase 4 item 3), whether --verbose
-// was passed (restoring the per-line detail --verbose still gates — the
-// wrote-pairing path and the --restart tip — behind the quiet single
+// was passed (restoring the per-line detail --verbose still gates, the
+// wrote-pairing path and the --restart tip, behind the quiet single
 // checkmark plus "next:" line default; the plain restart reminder and the
 // auth.mode note are real, actionable facts and print either way, see
-// printPairRestartLine/printPairStatusBlock), and — join only — the remote
+// printPairRestartLine/printPairStatusBlock), and, join only, the remote
 // network's id and display name learned straight from the invite (`pair
 // invite` never round-trips these; it prints friend-side placeholders
 // instead).
@@ -160,8 +160,8 @@ type pairAftercareOptions struct {
 // pairStatusColumn is the column plain (unstyled) "wrote pairing" status
 // text pads to before its abbreviated path annotation (--verbose only). It
 // mirrors configLineColumn's *pattern* for `moltnet init` (init_summary.go)
-// — pad the plain-width prefix to a fixed column before the dimmed path
-// annotation — not its value: pair's own prefix text is a different length,
+// mirrors it: pad the plain-width prefix to a fixed column before the dimmed path
+// annotation, not its value: pair's own prefix text is a different length,
 // so its column is its own number (44 here vs. configLineColumn's 24), not
 // a copy of it.
 const pairStatusColumn = 44
@@ -186,15 +186,15 @@ func printPairWroteLine(id, path string) {
 }
 
 // printPairRestartLine prints the restart half of the status block. A real
-// restart outcome — success, or either "did not restart" case (no managed
-// service at all, or the restart command itself failed) — always prints:
+// restart outcome, success, or either "did not restart" case (no managed
+// service at all, or the restart command itself failed), always prints:
 // these are genuine, actionable facts, never hidden behind --verbose. The
 // plain manual-restart reminder is likewise unconditional whenever a restart
-// was not actually performed (P1 fix — there is no hot-reload; relay clients
+// was not actually performed (P1 fix, there is no hot-reload; relay clients
 // are built once at startup, so a pairing written without a restart simply
 // does not work yet, and an operator running the quiet default deserves to
 // know that as much as one running --verbose does). Only the --restart tip
-// itself — "you could have passed --restart" — stays boilerplate, gated
+// itself, "you could have passed --restart", stays boilerplate, gated
 // behind --verbose plus an interactive session (PLAN.md phase 4 item 3's
 // "offer only if trivially detectable" clause).
 func printPairRestartLine(networkID string, outcome restartOutcome, restartRequested, verbose bool) {
@@ -229,15 +229,15 @@ func printPairRestartLine(networkID string, outcome restartOutcome, restartReque
 // outcome regardless of --verbose), and the auth.mode note. The auth.mode
 // note is unconditional too (P1 fix): on a plain `moltnet init` (no
 // --bearer), auth.mode is ModeNone, which makes the just-written pairing
-// token inert — gating that fact behind --verbose meant the quiet default
+// token inert, gating that fact behind --verbose meant the quiet default
 // silently handed back a pairing that could never actually authenticate. It
 // never itself returns an error: a --restart failure of either kind is
 // reported inline as part of the block (see printPairRestartLine) and also
 // carried out in the returned restartOutcome, so a caller that wants to fail
 // the command on a *real* restart failure (never on a merely missing
-// service — see restartOutcome) can propagate outcome.err itself, once every
-// remaining aftercare line — most importantly, on the invite side, the
-// invite command — has already printed.
+// service, see restartOutcome) can propagate outcome.err itself, once every
+// remaining aftercare line, most importantly, on the invite side, the
+// invite command, has already printed.
 func printPairStatusBlock(ctx context.Context, config app.Config, path, pairingID string, restart, verbose bool) restartOutcome {
 	if verbose {
 		printPairWroteLine(pairingID, path)
@@ -263,13 +263,13 @@ func printPairStatusBlock(ctx context.Context, config app.Config, path, pairingI
 //     never run for it). This is deliberately *not* carried in err: a
 //     pairing was already written to disk by the time --restart ever runs,
 //     and a failed convenience flag on top of that successful write should
-//     not fail the whole command (P1 — a joiner running `pair <code>
+//     not fail the whole command (P1, a joiner running `pair <code>
 //     --restart` on a hand-run server, never having installed a service,
 //     used to lose their entire aftercare over this).
 //   - err: --restart was requested, the service *is* installed, but the
 //     restart command itself failed (e.g. launchctl/systemctl erroring).
 //     This is a real failure and is still meant to be this command's exit
-//     error — but only after the rest of aftercare (printPairRestartLine
+//     error, but only after the rest of aftercare (printPairRestartLine
 //     already reports it inline as a warning) has printed; see
 //     printPairInviteAftercare and printPairJoinAftercare (pair_aftercare.go).
 //
@@ -284,7 +284,7 @@ type restartOutcome struct {
 // restart is true, distinguishing "no service installed for this network"
 // (restartOutcome.missingService, downgraded to a warning by
 // printPairRestartLine, never a command-failing error) from a real restart
-// failure on an installed service (restartOutcome.err, still a real error —
+// failure on an installed service (restartOutcome.err, still a real error,
 // see restartOutcome's doc comment for the exact semantics and why).
 func maybeRestartService(ctx context.Context, networkID string, restart bool) restartOutcome {
 	if !restart {
@@ -306,7 +306,7 @@ func maybeRestartService(ctx context.Context, networkID string, restart bool) re
 // the gate `moltnet uninstall` uses before prompting for confirmation. It
 // is a var, not a plain func, so tests (see cmd/moltnet/uninstall_test.go)
 // can force the confirmation-prompt path without a real terminal attached
-// to stdin — go test's own stdin never is one.
+// to stdin, go test's own stdin never is one.
 var isInteractive = func() bool {
 	fd := os.Stdin.Fd()
 	return isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)

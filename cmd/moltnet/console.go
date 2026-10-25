@@ -32,7 +32,7 @@ var errConsoleServerDown = errors.New("console: server not running")
 const consoleHealthTimeout = 1500 * time.Millisecond
 
 // consoleHTTPClient is the client probeConsoleHealth issues its GET
-// through. It carries no client-level Timeout of its own — the per-call
+// through. It carries no client-level Timeout of its own, the per-call
 // context deadline (consoleHealthTimeout, applied in probeConsoleHealth)
 // governs how long any single probe can run.
 var consoleHTTPClient = &http.Client{}
@@ -333,7 +333,7 @@ func reportConsoleServerDown(networkID string, explicitConfigPath string) error 
 	// `URL=$(moltnet console --print)` with failure prose instead of
 	// leaving stdout empty on a failed run. errConsoleServerDown (wrapped
 	// below) is what main.go matches to skip a second, redundant
-	// "error: ..." line — that sentinel already prevents this fact from
+	// "error: ..." line, that sentinel already prevents this fact from
 	// printing twice, so moving it to stderr loses nothing. Printed plain,
 	// never through bold/green/yellow/dim: those four gate on stdout's own
 	// TTY/NO_COLOR/TERM state (see style.go) and would check the wrong

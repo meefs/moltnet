@@ -13,9 +13,9 @@ import (
 // banner.txt is authored at), each rendered on a fixed 40x8 canvas, frames
 // separated by a line containing only "%%". See assets/AGENTS.md for full
 // render provenance. parseBannerFrames crops that shared canvas margin away
-// and drops consecutive duplicate frames before playBanner ever sees them
-// — see bannerFrames/bannerFramesErr below. assets/banner-frames-loop.txt
-// (a 7-frame idle pendulum quarter-period — 0deg to +18deg; a player
+// and drops consecutive duplicate frames before playBanner ever sees them,
+// see bannerFrames/bannerFramesErr below. assets/banner-frames-loop.txt
+// (a 7-frame idle pendulum quarter-period; 0deg to +18deg; a player
 // ping-pongs it for the full swing, see assets/AGENTS.md) ships alongside
 // it for a later "waiting" animation but is not embedded or wired up here.
 //
@@ -31,7 +31,7 @@ const bannerFrameSeparator = "%%"
 // their shared content window, and de-duplicated (parseBannerFrames). A
 // non-nil bannerFramesErr means the embedded asset failed its own
 // dimension validation: playBanner treats that as "cannot animate" and
-// falls back to the static banner rather than panicking —
+// falls back to the static banner rather than panicking,
 // TestParseBannerFramesUniformDimensions is what actually catches a
 // malformed or drifted assets/banner-frames.txt, at test time, before it
 // ever ships.
@@ -40,7 +40,7 @@ var bannerFrames, bannerFramesErr = parseBannerFrames(bannerFramesText)
 // bannerFrameContentWidth is the widest row (rune count) across every
 // parsed, cropped, trailing-space-trimmed frame in bannerFrames. playBanner
 // requires the terminal be at least bannerFrameContentWidth+1 columns wide
-// before it will animate — see playBanner's doc comment for why the "+1"
+// before it will animate; see playBanner's doc comment for why the "+1"
 // matters (deferred autowrap).
 var bannerFrameContentWidth = maxFrameRowWidth(bannerFrames)
 
@@ -53,8 +53,8 @@ type bannerFrame struct {
 }
 
 // block renders the frame for a single write: its rows joined by "\n",
-// with exactly one trailing "\n" after the last row — never zero, never
-// two — so every frame, first or Nth, advances the cursor by exactly
+// with exactly one trailing "\n" after the last row, never zero, never
+// two, so every frame, first or Nth, advances the cursor by exactly
 // len(rows) lines. playBanner's per-step "\x1b[<rows>A" cursor-up depends
 // on that being true of every frame, not just the first.
 func (f bannerFrame) block() string {
@@ -64,7 +64,7 @@ func (f bannerFrame) block() string {
 // parseBannerFrames splits raw into frames, validates their dimensions,
 // crops away the shared canvas margin, and drops consecutive duplicate
 // frames. It returns an error rather than panicking on a dimension
-// mismatch — see this file's package doc comment on
+// mismatch; see this file's package doc comment on
 // bannerFrames/bannerFramesErr for why that matters.
 func parseBannerFrames(raw string) ([]bannerFrame, error) {
 	frames, err := splitAndValidateBannerFrames(raw)
@@ -135,8 +135,8 @@ func splitAndValidateBannerFrames(raw string) ([]bannerFrame, error) {
 
 // cropBannerFramesToSharedContent strips assets/banner-frames.txt's shared
 // fixed-canvas margin (see assets/AGENTS.md) using ONE content window
-// computed as the union across every frame — never a per-frame bounding
-// box — so every frame keeps exactly the same row/column offset as every
+// computed as the union across every frame, never a per-frame bounding
+// box, so every frame keeps exactly the same row/column offset as every
 // other. A per-frame crop would let each frame's own tightest content box
 // shift independently (foreshortening narrows a turntable-rotated frame
 // from a different side than the frontal one), which is exactly what put
@@ -147,8 +147,8 @@ func splitAndValidateBannerFrames(raw string) ([]bannerFrame, error) {
 // frame's own left/right content edge, so the widest frame is never
 // clipped.
 //
-// Every row is then right-trimmed of trailing spaces — invisible cells,
-// so this never changes what's on screen — which both narrows playBanner's
+// Every row is then right-trimmed of trailing spaces, invisible cells,
+// so this never changes what's on screen, which both narrows playBanner's
 // per-write cost (P1 narrow-terminal fix) and, combined with the shared
 // crop window, reproduces banner.txt's own ragged-row shape exactly
 // (glyphcss's cropGlyphInner trims trailing spaces independently per row):
@@ -222,7 +222,7 @@ func cropBannerFramesToSharedContent(frames []bannerFrame) []bannerFrame {
 // two such pairs, both artifacts of the easing curve's discrete steps
 // landing on the same glyph selection twice in a row rather than any real
 // motion: each duplicate is a transition that draws, sleeps
-// bannerFrameStepInterval, and redraws pixel-for-pixel the same content — a
+// bannerFrameStepInterval, and redraws pixel-for-pixel the same content; a
 // dead frame from the viewer's perspective. Dropping them shortens the
 // frame count (and thus, via bannerFrameStepInterval, tightens the
 // per-transition spacing of the frames that remain) without touching the

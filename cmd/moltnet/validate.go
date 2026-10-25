@@ -35,7 +35,7 @@ func runValidate(args []string) error {
 	if serverPath != "" {
 		// LoadConfigForPath (not LoadFile): the running server always loads
 		// through the env-merged path (server.go's LoadConfigForPath call),
-		// so validate must see the same environment overrides it would —
+		// so validate must see the same environment overrides it would,
 		// otherwise `MOLTNET_LISTEN_ADDR=0.0.0.0 moltnet validate` stays
 		// silent about an exposure the server itself would warn about the
 		// moment it actually started (PLAN.md phase 6a review, P3).

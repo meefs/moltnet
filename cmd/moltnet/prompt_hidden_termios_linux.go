@@ -15,8 +15,8 @@ import "golang.org/x/sys/unix"
 // plain TCSETS): TCSETSF applies the new termios state after first
 // discarding any input already queued in the kernel's terminal input
 // buffer (equivalent to TCSAFLUSH in POSIX tcsetattr terms). Both of
-// disableTerminalEcho's two writes — clearing ECHO before the read, and
-// restoring the original state after — go through this same constant, so
+// disableTerminalEcho's two writes, clearing ECHO before the read, and
+// restoring the original state after, go through this same constant, so
 // both transitions flush: a multi-line paste whose trailing lines would
 // otherwise sit in the input buffer and get echoed/executed by the shell
 // after the prompt exits, or answer a later prompt unasked, is discarded

@@ -78,14 +78,14 @@ func checkoutWarning(root string) string {
 	}
 	if len(found) > 0 {
 		return fmt.Sprintf(
-			"  %s %s looks like a source checkout (found %s); Moltnet here will hold this network's admin credential in plaintext — did you mean a different --dir, or the default ~/.moltnet/ home?",
+			"  %s %s looks like a source checkout (found %s); Moltnet here will hold this network's admin credential in plaintext; did you mean a different --dir, or the default ~/.moltnet/ home?",
 			yellow("warning:"), root, strings.Join(found, ", "),
 		)
 	}
 
 	if gitRoot, ok := gitCheckoutRoot(root); ok {
 		return fmt.Sprintf(
-			"  %s %s is inside the git checkout at %s; Moltnet here will hold this network's admin credential in plaintext — did you mean a different --dir, or the default ~/.moltnet/ home?",
+			"  %s %s is inside the git checkout at %s; Moltnet here will hold this network's admin credential in plaintext; did you mean a different --dir, or the default ~/.moltnet/ home?",
 			yellow("warning:"), root, gitRoot,
 		)
 	}

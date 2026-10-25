@@ -108,7 +108,7 @@ trap 'exit 130' INT TERM
 
 # write_base_config writes the pre-pairing Moltnet server config: identity,
 # transport, storage, and one admin-scoped operator token. No rooms[] and no
-# pairings[] yet — those are exactly what the `pair` commands under test add.
+# pairings[] yet; those are exactly what the `pair` commands under test add.
 write_base_config() {
 	local config_path="$1"
 	local network_id="$2"
@@ -223,7 +223,7 @@ log "consuming the invite on side B via 'moltnet pair <code>'"
 "$run_dir/moltnet" pair "$invite_code" --config "$config_b" >"$run_dir/pair-join.log" 2>&1
 
 # Both configs must now declare the shared room (pair invite/join create it
-# when absent) with a federation entry for pairing_id — internal/app's
+# when absent) with a federation entry for pairing_id; internal/app's
 # config_writeback_test.go asserts that write precisely at the Go level; this
 # is the coarse file-level sanity check before either server starts.
 for side_config in "A:$config_a" "B:$config_b"; do
