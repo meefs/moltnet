@@ -143,7 +143,7 @@ func pinInviteKey(configPath string, invite protocol.Invite) error {
 	if invite.NetworkFingerprint == "" {
 		return nil
 	}
-	_, err := netkeys.OpenPinStore(netkeys.DirForConfig(configPath)).PinKey(netkeys.Pin{
+	_, err := netkeys.OpenPinStore(app.KeysDirForConfigPath(configPath)).PinKey(netkeys.Pin{
 		NetworkID: invite.NetworkID, Fingerprint: invite.NetworkFingerprint, PublicKey: invite.NetworkPublicKey,
 		Trust: protocol.KeyTrustVerified, Source: netkeys.PinSourceInvite, SourceID: invite.PairingID,
 	})

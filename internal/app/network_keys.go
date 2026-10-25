@@ -25,7 +25,7 @@ func (c Config) KeysDir() string {
 		return dir
 	}
 	if c.roomCredentialBaseDir != "" {
-		return filepath.Join(c.roomCredentialBaseDir, ".moltnet", "keys")
+		return netkeys.DirForConfig(filepath.Join(c.roomCredentialBaseDir, "Moltnet"))
 	}
 	switch c.Storage.Kind {
 	case storageKindSQLite:
@@ -38,6 +38,17 @@ func (c Config) KeysDir() string {
 		}
 	}
 	return ""
+}
+
+// KeysDirForConfigPath is the keys directory the server uses for the config
+// file at configPath: $MOLTNET_KEYS_DIR when set, else `<dir>/.moltnet/keys`.
+// Every CLI command that reads or writes keys, pins, grants or pending joins
+// resolves through it, so the CLI and the running server share one store.
+func KeysDirForConfigPath(configPath string) string {
+	if dir := strings.TrimSpace(os.Getenv(KeysDirEnv)); dir != "" {
+		return dir
+	}
+	return netkeys.DirForConfig(configPath)
 }
 
 // loadNetworkKeys opens the signing identity (created on first start) and

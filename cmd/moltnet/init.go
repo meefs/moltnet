@@ -336,7 +336,7 @@ func runInit(ctx context.Context, args []string) error {
 	}
 	// Generate the network signing key now (0600, .moltnet/keys/) so
 	// `moltnet keys show` and `pair invite` work before the first start.
-	if _, _, err := netkeys.LoadOrCreateIdentity(netkeys.DirForConfig(serverPath)); err != nil {
+	if _, _, err := netkeys.LoadOrCreateIdentity(app.KeysDirForConfigPath(serverPath)); err != nil {
 		return err
 	}
 

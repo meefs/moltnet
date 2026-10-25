@@ -122,7 +122,7 @@ func revokePairingWithRollback(path string, pairingID string) (app.RevokeResult,
 	}
 	// The credential is gone, so the network it spoke for no longer binds
 	// the pairing id: a later invite minted under the same id starts fresh.
-	if err := netkeys.OpenPinStore(netkeys.DirForConfig(path)).ForgetPairing(pairingID); err != nil {
+	if err := netkeys.OpenPinStore(app.KeysDirForConfigPath(path)).ForgetPairing(pairingID); err != nil {
 		return app.RevokeResult{}, fmt.Errorf("revoked pairing but failed to clear its network binding: %w", err)
 	}
 

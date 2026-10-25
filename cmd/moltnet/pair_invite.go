@@ -95,7 +95,7 @@ func runPairInvite(ctx context.Context, args []string) error {
 
 	// The invite carries this network's signing identity so the joiner can
 	// pin it as verified; the key is created here if the server never ran.
-	identity, _, err := netkeys.LoadOrCreateIdentity(netkeys.DirForConfig(path))
+	identity, _, err := netkeys.LoadOrCreateIdentity(app.KeysDirForConfigPath(path))
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func runPairInvite(ctx context.Context, args []string) error {
 	if *force {
 		// A re-minted credential under the same pairing id speaks for
 		// whichever network joins next, not the one the old one bound.
-		if err := netkeys.OpenPinStore(netkeys.DirForConfig(path)).ForgetPairing(id); err != nil {
+		if err := netkeys.OpenPinStore(app.KeysDirForConfigPath(path)).ForgetPairing(id); err != nil {
 			return fmt.Errorf("wrote the new pairing but failed to clear the old credential's network binding: %w", err)
 		}
 	}

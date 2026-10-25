@@ -66,7 +66,7 @@ func runRoomInvite(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	identity, _, err := netkeys.LoadOrCreateIdentity(netkeys.DirForConfig(resolved.path))
+	identity, _, err := netkeys.LoadOrCreateIdentity(app.KeysDirForConfigPath(resolved.path))
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func runRoomInvite(ctx context.Context, args []string) error {
 	}
 	// The grant goes first: a pairing without a grant only refuses, while
 	// a grant without its pairing can never be redeemed.
-	grants := hubinvites.Open(netkeys.DirForConfig(resolved.path))
+	grants := hubinvites.Open(app.KeysDirForConfigPath(resolved.path))
 	if err := grants.AddGrant(hubinvites.Grant{PairingID: id, GlobalRoomID: info.GlobalRoomID, Role: *role, Exp: invite.Exp}); err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func runRoomHubJoin(ctx context.Context, args []string) error {
 		return err
 	}
 	join := hubinvites.PendingJoin{PairingID: invite.PairingID, GlobalRoomID: invite.HubRoom.GlobalRoomID, LocalRoomID: local}
-	if err := hubinvites.Open(netkeys.DirForConfig(path)).AddJoin(join); err != nil {
+	if err := hubinvites.Open(app.KeysDirForConfigPath(path)).AddJoin(join); err != nil {
 		return err
 	}
 	fmt.Fprintf(stdout, "%s joining shared room %s homed by %s (%s) as %s\n", green("✓"), canonical, invite.NetworkID,

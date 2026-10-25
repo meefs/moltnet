@@ -83,7 +83,7 @@ func runKeysShow(args []string) error {
 	if err != nil {
 		return err
 	}
-	identity, created, err := netkeys.LoadOrCreateIdentity(netkeys.DirForConfig(path))
+	identity, created, err := netkeys.LoadOrCreateIdentity(app.KeysDirForConfigPath(path))
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func runKeysList(args []string) error {
 	if err != nil {
 		return err
 	}
-	pins, err := netkeys.OpenPinStore(netkeys.DirForConfig(path)).List()
+	pins, err := netkeys.OpenPinStore(app.KeysDirForConfigPath(path)).List()
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func runKeysTrust(args []string) error {
 	if err != nil {
 		return err
 	}
-	pin, err := netkeys.OpenPinStore(netkeys.DirForConfig(path)).PinKey(netkeys.Pin{
+	pin, err := netkeys.OpenPinStore(app.KeysDirForConfigPath(path)).PinKey(netkeys.Pin{
 		NetworkID: values[0], Fingerprint: values[1], Trust: protocol.KeyTrustVerified, Source: netkeys.PinSourceOperator,
 	})
 	if errors.Is(err, netkeys.ErrPinConflict) {
@@ -150,7 +150,7 @@ func runKeysForget(args []string) error {
 	if err != nil {
 		return err
 	}
-	removed, err := netkeys.OpenPinStore(netkeys.DirForConfig(path)).Forget(values[0])
+	removed, err := netkeys.OpenPinStore(app.KeysDirForConfigPath(path)).Forget(values[0])
 	if err != nil {
 		return err
 	}
