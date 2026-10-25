@@ -56,6 +56,12 @@ export function memberTrustBadge(member: RoomHubMember, hub: RoomHub): TrustBadg
       };
     case "unconfirmed":
       return { label: "unconfirmed", tone: "muted", title: `Key first seen on this pairing; not yet confirmed${key}` };
+    case "conflict":
+      return {
+        label: "key conflict",
+        tone: "coral",
+        title: `The room names a key${key} other than the one this network pinned for ${member.network_id}; its messages are refused`,
+      };
     default:
       return null;
   }

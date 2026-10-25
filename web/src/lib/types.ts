@@ -194,7 +194,7 @@ export interface Message {
 }
 
 /** Trust this network holds in a shared-room member's key. */
-export type HubTrust = "verified" | "introduced" | "unconfirmed" | "self";
+export type HubTrust = "verified" | "introduced" | "unconfirmed" | "self" | "conflict";
 
 export interface RoomHubMember {
   network_id: string;

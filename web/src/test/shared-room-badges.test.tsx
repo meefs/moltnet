@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { continuesFrom, TimelineMessage } from "../components/Content/Timeline/TimelineMessage";
 import { shortFingerprint } from "../lib/format";
+import { memberTrustBadge } from "../lib/trust";
 import type { Message, MessageOrigin } from "../lib/types";
 
 const FP = `sha256:0123abcd${"e".repeat(56)}`;
@@ -89,5 +90,16 @@ describe("shortFingerprint", () => {
   it("keeps the first 8 hex chars after sha256:", () => {
     expect(shortFingerprint(FP)).toBe("0123abcd");
     expect(shortFingerprint(undefined)).toBe("");
+  });
+});
+
+describe("member key conflict", () => {
+  it("labels a member whose roster key conflicts with this network's pin", () => {
+    const badge = memberTrustBadge(
+      { network_id: "lab", role: "writer", fingerprint: `sha256:${"cd".repeat(32)}`, trust: "conflict" },
+      { global_room_id: "sha256:feed/research", local_room_id: "research", home_network_id: "newsroom", is_home: false },
+    );
+    expect(badge?.label).toBe("key conflict");
+    expect(badge?.tone).toBe("coral");
   });
 });

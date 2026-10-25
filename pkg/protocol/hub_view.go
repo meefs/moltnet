@@ -39,6 +39,10 @@ type HubControlInfo struct {
 // HubTrustSelf labels this network's own entry in a roster.
 const HubTrustSelf = "self"
 
+// HubTrustConflict labels a member whose roster key differs from the key
+// this network pinned for it: its messages are refused.
+const HubTrustConflict = "conflict"
+
 // HubRoomSummary is the operator view the hub administration endpoints
 // return (POST /v1/hub/rooms, /v1/hub/rooms/control, ...): a hub room with
 // its current roster as network id -> role.

@@ -60,16 +60,18 @@ func (s *Service) hubRoomInfo(ctx context.Context, hub store.HubRoom) (protocol.
 
 // memberTrust is this network's trust in a member's key, by its own pin.
 // A key the roster names that this network never pinned is introduced by
-// the room home; one pinned to a different key is shown unconfirmed, since
-// messages under it are refused anyway.
+// the room home; one pinned to a different key is a conflict (messages
+// under it are refused). An unreadable trust store shows unconfirmed.
 func (s *Service) memberTrust(member hubMember) string {
 	if member.NetworkID == s.networkID {
 		return protocol.HubTrustSelf
 	}
 	pin, ok, err := s.keyPins.Lookup(member.NetworkID)
 	switch {
-	case err != nil || (ok && pin.Fingerprint != member.Fingerprint):
+	case err != nil:
 		return protocol.KeyTrustUnconfirmed
+	case ok && pin.Fingerprint != member.Fingerprint:
+		return protocol.HubTrustConflict
 	case !ok:
 		return protocol.KeyTrustIntroduced
 	}

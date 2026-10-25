@@ -38,3 +38,18 @@ func TestHubRoomViewShowsHomeRosterTrustAndControlEvents(t *testing.T) {
 		t.Fatalf("unknown room: %d", status)
 	}
 }
+
+func TestHubRoomViewLabelsAConflictingPinAsConflict(t *testing.T) {
+	h := joinedTopology(t, memoryBackend)
+	pinKey(t, h.beta.pins, verifiedPin("alpha", newTestIdentity(t)))
+	var info protocol.HubRoomInfo
+	body := pairGet(t, h.beta.url+"/v1/rooms/"+localRoom(h.beta)+"/hub", hubOperatorToken)
+	if err := json.Unmarshal([]byte(body), &info); err != nil {
+		t.Fatalf("%v: %s", err, body)
+	}
+	for _, member := range info.Members {
+		if member.NetworkID == "alpha" && member.Trust != protocol.HubTrustConflict {
+			t.Fatalf("alpha's trust with a conflicting pin = %q", member.Trust)
+		}
+	}
+}
