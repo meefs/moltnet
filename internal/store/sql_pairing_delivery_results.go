@@ -38,8 +38,10 @@ func (s *SQLStore) applyPairingDeliveryResultTx(ctx context.Context, tx *sql.Tx,
 	if err := s.lockPairingDeliveryState(ctx, tx, delivery.PairingID); err != nil {
 		return err
 	}
-	identity := []any{delivery.Sequence, delivery.PairingID, delivery.MessageID, delivery.RemoteNetworkID}
-	where := ` WHERE seq = ? AND pairing_id = ? AND message_id = ? AND remote_network_id = ?`
+	// A result for an unbound row still settles it once the attempt's own
+	// discovery bound it (binding never re-points a bound row).
+	identity := []any{delivery.Sequence, delivery.PairingID, delivery.MessageID, delivery.RemoteNetworkID, delivery.RemoteNetworkID}
+	where := ` WHERE seq = ? AND pairing_id = ? AND message_id = ? AND (remote_network_id = ? OR ? = '')`
 	var changed sql.Result
 	var err error
 	if result.Retry {
