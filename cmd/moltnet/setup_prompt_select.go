@@ -23,26 +23,26 @@ type selectOption struct {
 
 // errSetupCancelled is promptSelect's Ctrl-C sentinel for the raw-key
 // interactive path. In practice a real terminal's ISIG bit (left untouched
-// by enableRawSelectMode — only ECHO and ICANON are cleared) means Ctrl-C
+// by enableRawSelectMode, only ECHO and ICANON are cleared) means Ctrl-C
 // raises SIGINT at the OS level and never reaches this program as the byte
 // 0x03 at all; runCLI's signal.NotifyContext (cli.go) turns that into a
 // cancelled ctx instead, which promptSelectInteractive's ctx.Done() case
 // already handles the same way every other interactive prompt in this
 // package does. This sentinel exists for the two cases where the byte
-// really is seen directly: a terminal with ISIG disabled, and — the one
-// this package's own tests exercise — a scripted promptReader that sends
+// really is seen directly: a terminal with ISIG disabled, and, the one
+// this package's own tests exercise, a scripted promptReader that sends
 // 0x03 deliberately.
 var errSetupCancelled = errors.New("setup: cancelled")
 
 // promptSelect asks question and returns the index of the chosen option in
-// options, plus paintedRows — the number of terminal rows the question line
+// options, plus paintedRows, the number of terminal rows the question line
 // and the option block actually occupy in their final, settled state (P1-1),
 // or selectRowsUnmeasured (-1) when promptSelectPlain ran instead: that
 // path's output is pure top-to-bottom prints with no in-place redraw, so
 // Write's own running bodyLines count (setup_header.go) is already exactly
 // correct and setupPromptSelect must not overwrite it with a foreign value.
 // defaultIndex is returned unchanged when the answer is empty (an
-// out-of-range defaultIndex is clamped to 0) — the "Enter-through-everything
+// out-of-range defaultIndex is clamped to 0), the "Enter-through-everything
 // must be a valid complete path" rule every setup question has to satisfy.
 //
 // Two implementations back this, chosen by the same real-terminal gate
@@ -51,9 +51,9 @@ var errSetupCancelled = errors.New("setup: cancelled")
 // (stdin) and isOutputTerminal() (stdout) must both hold. When they do, and
 // the controlling terminal's raw mode can actually be engaged
 // (enableRawSelectMode), the real arrow-key/Enter UI runs
-// (promptSelectInteractive). Everything else — a script, a test's scripted
+// (promptSelectInteractive). Everything else, a script, a test's scripted
 // promptReader, a piped session, or a terminal enableRawSelectMode could not
-// touch — falls back to promptSelectPlain: the numbered list is printed
+// touch, falls back to promptSelectPlain: the numbered list is printed
 // once, and one line is read and parsed as an empty answer (default), a
 // 1-based number, or a case-insensitive label match. Both paths accept
 // exactly the same set of valid answers in spirit; only the input mechanism
@@ -77,7 +77,7 @@ func promptSelect(ctx context.Context, question string, options []selectOption, 
 }
 
 // selectRowsUnmeasured is promptSelect's sentinel paintedRows value for the
-// promptSelectPlain path (P1-1): "not measured, and not needed — trust
+// promptSelectPlain path (P1-1): "not measured, and not needed, trust
 // whatever Write already counted."
 const selectRowsUnmeasured = -1
 
@@ -116,7 +116,7 @@ func promptSelectPlain(question string, options []selectOption, defaultIndex int
 // that option, and a case-insensitive prefix match against a label selects
 // the first option it matches. Anything else is a clear, actionable error
 // naming the valid choices, rather than silently falling back to the
-// default — a typo should never be mistaken for "Enter pressed".
+// default, a typo should never be mistaken for "Enter pressed".
 func parseSelectAnswer(answer string, options []selectOption, defaultIndex int) (int, error) {
 	trimmed := strings.TrimSpace(answer)
 	if trimmed == "" {
@@ -146,7 +146,7 @@ func parseSelectAnswer(answer string, options []selectOption, defaultIndex int) 
 
 // promptSelectInteractive is promptSelect's real-terminal path: it assumes
 // the caller has already engaged raw mode (enableRawSelectMode) and only
-// restores it on return via the caller's own deferred restore — this
+// restores it on return via the caller's own deferred restore, this
 // function itself never toggles terminal state. It prints the question and
 // option list once, then loops reading one decoded key at a time
 // (readSelectKey), redrawing the option block on every Up/Down and
@@ -157,16 +157,16 @@ func parseSelectAnswer(answer string, options []selectOption, defaultIndex int) 
 // ReadByte has no ctx-aware variant, so a cancelled ctx (SIGINT/SIGTERM,
 // caught by runCLI's signal.NotifyContext) returns immediately rather than
 // waiting on a keypress that may never come, leaving that one goroutine to
-// exit on its own once the process does — bounded the same way, for the
+// exit on its own once the process does, bounded the same way, for the
 // same reason.
 //
-// P1-1: every return path reports paintedRows — the question line's row(s)
+// P1-1: every return path reports paintedRows, the question line's row(s)
 // plus the option block's rows in their final, currently-visible state,
 // measured against the terminal's live width via selectBlockRows/
 // advanceRows rather than assumed as one row per option. This widget is the
 // one place that actually knows what it painted (renderSelectOptions'
 // redraw reprints the whole block in place, so naive forward Write
-// accounting inflates by len(options) per keypress — see
+// accounting inflates by len(options) per keypress, see
 // setup_header_render.go's setupPromptSelect); reporting the true figure
 // here, once, at the point of return, is simpler and more robust than
 // teaching Write to undo that inflation after the fact.
@@ -271,7 +271,7 @@ func selectOptionText(opt selectOption, isCurrent bool) string {
 
 // renderSelectOptions prints options with current marked "> ", the rest
 // indented to match. redraw moves the cursor back up over the previously
-// printed block first — but only when stdoutIsRealTTY() (the concrete,
+// printed block first, but only when stdoutIsRealTTY() (the concrete,
 // non-mockable terminal check banner_player.go's playBanner also insists
 // on, deliberately independent of the swappable isOutputTerminal var):
 // promptSelect's own gate already requires isOutputTerminal() to reach this
@@ -340,10 +340,10 @@ func selectOptionsRows(width int, options []selectOption, current int) int {
 
 // selectBlockRows measures how many terminal rows promptSelectInteractive's
 // question line plus its option block actually occupy at width columns in
-// their current (current-index) settled state — the real geometry, wrap
+// their current (current-index) settled state, the real geometry, wrap
 // included, rather than the "1 + len(options)" formula P1-1 replaces. It is
 // now the question line's own row count (measured the same way, via
-// advanceRows) plus selectOptionsRows' option-block figure — split apart in
+// advanceRows) plus selectOptionsRows' option-block figure, split apart in
 // round 3 so renderSelectOptions' redraw can share the option-only half of
 // this same measurement instead of assuming one terminal row per option.
 // Equivalent to the old single-builder version bit-for-bit: the question

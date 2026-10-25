@@ -86,7 +86,7 @@ func splitApplyArgs(args []string) ([]string, string, error) {
 
 // isHelpArg reports whether arg is one of the three spellings this CLI's
 // subcommand dispatchers (admin, pair, relay, service, skill, uninstall,
-// console) treat as a help request before ever reaching a flag.FlagSet —
+// console) treat as a help request before ever reaching a flag.FlagSet,
 // "help", "--help", and "-h". Centralizing the three-way check here means a
 // dispatcher can't accidentally recognize only "help" (a real bug: a router
 // with unrecognized-argument behavior fails when an operator naturally
@@ -170,7 +170,7 @@ func runAdminRemoveAgent(args []string) error {
 // entry point (PLAN.md 7A.0's namespace decision (a) moved room verbs to the
 // top-level "room" namespace and kept this one as an alias that still
 // works). It prints a one-line deprecation note, then delegates to
-// removeRoomCommand for the actual work — the same implementation
+// removeRoomCommand for the actual work, the same implementation
 // "moltnet room remove" (room.go) calls directly, without the note, since it
 // is not the deprecated spelling.
 func runAdminRemoveRoom(args []string) error {
@@ -280,12 +280,12 @@ func runAdminRoomMembers(args []string) error {
 	// --network alone. That is wrong whenever a client config
 	// (.moltnet/config.json, MOLTNET_CLIENT_CONFIG, or the legacy
 	// .spawnfile/moltnet.json) exists and points the live request above at a
-	// different — possibly remote — server: the PATCH above lands on that
+	// different, possibly remote, server: the PATCH above lands on that
 	// client config's target, but the writeback would land on whatever local
 	// server config --network happened to name, silently. resolution.LocalServerConfigPath
 	// (admin_client_resolve.go) is non-empty only when resolveAdminClient
-	// itself resolved through the local-server-config fallback — no
-	// --base-url and no client config found at all — which is the only case
+	// itself resolved through the local-server-config fallback, no
+	// --base-url and no client config found at all, which is the only case
 	// a follow-up write to that same path is guaranteed to target the server
 	// the live request just went to.
 	adminRoomMembersConfigWriteback(resolution.LocalServerConfigPath, strings.TrimSpace(*roomID), request.Add, request.Remove)

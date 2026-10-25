@@ -10,17 +10,17 @@ import (
 )
 
 // These tests cover the interactive Cloudflare-token paste prompt
-// (maybePromptForCloudflareToken, promptHidden — relay_deploy.go,
+// (maybePromptForCloudflareToken, promptHidden, relay_deploy.go,
 // relay_deploy_token.go, prompt_hidden.go): the flow that replaces
 // `export CLOUDFLARE_API_TOKEN=...` with an inline paste when relay deploy
 // finds no token and both stdin and stdout are a TTY. The real echo-off
 // behavior (stty -echo/-echo against a controlling terminal) is only
-// exercisable with a real pty, not go test's own stdin — see the
+// exercisable with a real pty, not go test's own stdin, see the
 // disableTerminalEcho noop-path tests below, and the separate manual pty
 // run recorded for this change.
 
 // withInteractiveOutput forces isOutputTerminal to true for the test's
-// duration, restoring it afterward — withPromptAnswers (uninstall_test.go)
+// duration, restoring it afterward, withPromptAnswers (uninstall_test.go)
 // already forces isInteractive (stdin) to true, but the interactive-prompt
 // gate requires both stdin AND stdout to be a TTY (maybePromptForCloudflareToken),
 // so tests exercising that gate need this too.
@@ -33,7 +33,7 @@ func withInteractiveOutput(t *testing.T) {
 
 // TestRunRelayDeployInteractivePromptPasteDeploySaveYes exercises the full
 // happy path end to end: no CLOUDFLARE_API_TOKEN, no stored token, a real
-// (fake) TTY on both stdin and stdout — relay deploy prints the guidance
+// (fake) TTY on both stdin and stdout, relay deploy prints the guidance
 // essentials, prompts for a paste, deploys using the pasted token against
 // the fake Cloudflare server, then (default yes) saves it.
 func TestRunRelayDeployInteractivePromptPasteDeploySaveYes(t *testing.T) {
@@ -136,7 +136,7 @@ func TestRunRelayDeployInteractivePromptBareEnterSaves(t *testing.T) {
 
 // TestRunRelayDeployInteractivePromptPastedTokenSaveTokenFlag covers the
 // P3-11 fix: --save-token on the pasted-token path saves unconditionally,
-// without asking the post-deploy save prompt at all — mirroring the
+// without asking the post-deploy save prompt at all, mirroring the
 // existing env-token --save-token coverage
 // (TestRunRelayDeployEndToEndSaveTokenFlag, relay_deploy_token_test.go) for
 // the newer paste path.
@@ -151,7 +151,7 @@ func TestRunRelayDeployInteractivePromptPastedTokenSaveTokenFlag(t *testing.T) {
 	withInteractiveOutput(t)
 	// Only one scripted answer: the paste itself. If --save-token still
 	// prompted for confirmation, this would either hang or fail with an
-	// unexpected read — proof the flag skips the prompt outright.
+	// unexpected read, proof the flag skips the prompt outright.
 	withPromptAnswers(t, "pasted-cf-token")
 
 	output := captureStdout(t, func() {
@@ -167,7 +167,7 @@ func TestRunRelayDeployInteractivePromptPastedTokenSaveTokenFlag(t *testing.T) {
 	}
 	// The path now prints through printInitConfigCheckLine's dim "extra"
 	// column (P3 unify ✓-line path treatment), so it carries its own ANSI
-	// escapes here — this test forces isOutputTerminal true — rather than
+	// escapes here, this test forces isOutputTerminal true, rather than
 	// sitting inline in the plain "what" text; dim(tokenPath) renders
 	// exactly what the real call produces, since tokenPath (under t.TempDir,
 	// not $HOME) never abbreviates.
@@ -179,9 +179,9 @@ func TestRunRelayDeployInteractivePromptPastedTokenSaveTokenFlag(t *testing.T) {
 // TestRunRelayDeployInteractivePromptEmptyInputErrors covers a bare Enter
 // (empty paste) at the token prompt (P3-9): the operator already saw the
 // guidance right before the prompt, so this is a short "no token pasted"
-// error rather than a reprint of the full export-and-retry guidance block —
+// error rather than a reprint of the full export-and-retry guidance block,
 // and it must never attempt a Cloudflare call (no fake server wired up
-// here — one would fail the test outright if dialed).
+// here, one would fail the test outright if dialed).
 func TestRunRelayDeployInteractivePromptEmptyInputErrors(t *testing.T) {
 	t.Setenv("CLOUDFLARE_API_TOKEN", "")
 	directory := t.TempDir()
@@ -206,8 +206,8 @@ func TestRunRelayDeployInteractivePromptEmptyInputErrors(t *testing.T) {
 
 // TestRunRelayDeployInteractivePromptRejectedTokenNotSaved covers a pasted
 // token the fake Cloudflare server rejects (401, e.g. a typo'd paste): a
-// clear error propagates, nothing is saved, and — since runRelayDeploy
-// returns before ever reaching the post-deploy save prompt — the run never
+// clear error propagates, nothing is saved, and, since runRelayDeploy
+// returns before ever reaching the post-deploy save prompt, the run never
 // re-prompts.
 func TestRunRelayDeployInteractivePromptRejectedTokenNotSaved(t *testing.T) {
 	t.Setenv("CLOUDFLARE_API_TOKEN", "")
@@ -271,7 +271,7 @@ func TestRunRelayDeployPromptRequiresBothStdinAndStdoutTTY(t *testing.T) {
 
 // TestPromptHiddenReadsAndTrimsFromFakeReader covers promptHidden's read
 // and trim behavior directly, using the same promptReader test seam as
-// promptYesNo — it is what the paste prompt reduces to once
+// promptYesNo, it is what the paste prompt reduces to once
 // disableTerminalEcho has already no-op'd (see the tests below for that).
 func TestPromptHiddenReadsAndTrimsFromFakeReader(t *testing.T) {
 	withPromptAnswers(t, "  padded-token-value  ")
@@ -296,7 +296,7 @@ func TestPromptHiddenReadsAndTrimsFromFakeReader(t *testing.T) {
 }
 
 // TestPromptHiddenEmptyLineReturnsEmptyString covers a bare Enter: an empty
-// line trims to "", nil — the caller (maybePromptForCloudflareToken) treats
+// line trims to "", nil, the caller (maybePromptForCloudflareToken) treats
 // this identically to EOF (Ctrl-D), matching promptYesNo's own EOF
 // handling.
 func TestPromptHiddenEmptyLineReturnsEmptyString(t *testing.T) {
@@ -319,7 +319,7 @@ func TestPromptHiddenEmptyLineReturnsEmptyString(t *testing.T) {
 // safety property of disableTerminalEcho without a real TTY: whenever
 // promptReader has been swapped away from the real os.Stdin (every test in
 // this package, via withPromptAnswers), it must never attempt to run
-// `stty` at all — only return a harmless, idempotent no-op restore. This is
+// `stty` at all, only return a harmless, idempotent no-op restore. This is
 // the branch every automated test in this suite actually exercises.
 func TestDisableTerminalEchoNoopWhenPromptReaderNotStdin(t *testing.T) {
 	withPromptAnswers(t, "irrelevant")
@@ -339,7 +339,7 @@ func TestDisableTerminalEchoNoopWhenPromptReaderNotStdin(t *testing.T) {
 
 // TestDisableTerminalEchoNoopWhenNotInteractive covers the other no-op
 // gate: even if promptReader were the real os.Stdin, a non-interactive
-// stdin (isInteractive() false — the default in this test binary, and the
+// stdin (isInteractive() false, the default in this test binary, and the
 // real-world piped/CI case) must not attempt `stty` either.
 func TestDisableTerminalEchoNoopWhenNotInteractive(t *testing.T) {
 	previousReader := promptReader

@@ -10,7 +10,7 @@ import (
 
 // TestFlagHelpNeverErrors is the P0 onboarding fix: `--help`/`-h` on any
 // flag.FlagSet-backed leaf command must return an error satisfying
-// errors.Is(err, flag.ErrHelp) — the one sentinel main.go now special-cases
+// errors.Is(err, flag.ErrHelp), the one sentinel main.go now special-cases
 // (like context.Canceled and errConsoleServerDown) to exit 0 without
 // printing "error: flag: help requested" on top of the usage text Go's flag
 // package already wrote to stdout (every flag.FlagSet in this CLI calls
@@ -86,7 +86,7 @@ func TestMainExitsZeroOnFlagHelp(t *testing.T) {
 // this fix closes: a few subcommand routers (admin, skill, attachment,
 // bridge) dispatch on a bare string match against args[0] *before* any
 // flag.FlagSet exists, so `--help`/`-h` never reached Go's flag package at
-// all — they fell through to "unknown command" (admin, skill) or were
+// all, they fell through to "unknown command" (admin, skill) or were
 // handed to unrelated code as if they were a file path (attachment,
 // bridge). isHelpArg (remove.go) is the shared three-way check
 // ("help"/"--help"/"-h") that now backs every one of these routers; this
@@ -108,7 +108,7 @@ func TestDispatcherHelpFlagsReturnNil(t *testing.T) {
 		{"bridge --help", []string{"bridge", "--help"}, "moltnet bridge run"},
 		// validate --help used to fall straight into discoverValidationTargets
 		// and error as `inspect "--help": stat --help: no such file or
-		// directory` — it never had an isHelpArg check like these other
+		// directory`, it never had an isHelpArg check like these other
 		// dispatchers (validate.go).
 		{"validate --help", []string{"validate", "--help"}, "moltnet validate"},
 		{"validate -h", []string{"validate", "-h"}, "moltnet validate"},
@@ -136,7 +136,7 @@ func TestDispatcherHelpFlagsReturnNil(t *testing.T) {
 // --help/-h/help itself, before its own flag.FlagSet, so it belongs with
 // the dispatcher-level cases above in spirit even though it is not routed
 // through isHelpArg's callers list the same way (it calls isHelpArg
-// directly on args[0] too — see uninstall.go).
+// directly on args[0] too, see uninstall.go).
 func TestUninstallHelpFlagReturnsNil(t *testing.T) {
 	var err error
 	output := captureStdout(t, func() {

@@ -17,15 +17,15 @@ import (
 // a bearer-mode network with no token scoped to exactly [observe] used to
 // leave the operator stuck on a raw 401 with no in-product way forward
 // (consoleObserveToken refuses to hand the browser anything more
-// privileged, by design — see console_url_test.go's P1 history). Self-heal
+// privileged, by design, see console_url_test.go's P1 history). Self-heal
 // closes that gap by minting a fresh observe-only token, writing it, and
 // restarting the managed service (when one exists) so it actually takes
 // effect before ever putting it in the browser URL.
 
 // writeConsoleUnitFile marks networkID's managed service as installed by
 // writing a real (placeholder-content) unit file at the path
-// service.IsInstalled checks — the same setup console_down_test.go's
-// service-installed cases use — so restartForConsoleToken's IsInstalled
+// service.IsInstalled checks, the same setup console_down_test.go's
+// service-installed cases use, so restartForConsoleToken's IsInstalled
 // check finds it and proceeds to call the (fake) Restart.
 func writeConsoleUnitFile(t *testing.T, networkID string) {
 	t.Helper()
@@ -62,7 +62,7 @@ func onlyObserveOnlyToken(t *testing.T, cfg app.Config) authn.TokenConfig {
 // the P1 security regression this file inherited from console_url_test.go: a
 // token whose scopes merely INCLUDE "observe" alongside a privileged scope
 // (here "admin") must never be the one appended to the browser URL. Under
-// self-heal, runConsole now writes a genuinely fresh observe-only token —
+// self-heal, runConsole now writes a genuinely fresh observe-only token,
 // but with no managed service installed in this test's scratch HOME to
 // restart, it cannot confirm that token has taken effect. P1 fix: it no
 // longer opens the browser at all in that case (a bare consoleURL would
@@ -188,7 +188,7 @@ func TestRunConsoleSelfHealWithManagedServiceOpensWithNewToken(t *testing.T) {
 // 3's id-collision decision: when a token with id "console" already exists
 // but does not carry exactly [observe] (so it is not the token
 // consoleObserveToken looked for), self-heal must never touch or replace
-// it — it picks a non-colliding id ("console-2") for the new observe-only
+// it, it picks a non-colliding id ("console-2") for the new observe-only
 // token instead.
 func TestRunConsoleSelfHealPicksNonCollidingIDWhenConsoleIDInUse(t *testing.T) {
 	withConsoleFakeServiceManager(t, "linux")
@@ -249,8 +249,8 @@ func TestRunConsoleSelfHealPicksNonCollidingIDWhenConsoleIDInUse(t *testing.T) {
 // scope decision behind self-heal only ever running on the actual
 // browser-opening default path: --print (and, by the same code path,
 // --no-open and a non-terminal stdout) is an explicit "just give me the
-// URL" request, so it must stay side-effect-free — no token written, no
-// service restarted — exactly like it was before self-heal existed.
+// URL" request, so it must stay side-effect-free, no token written, no
+// service restarted, exactly like it was before self-heal existed.
 func TestRunConsoleSelfHealSkippedUnderPrintNeverMutatesConfig(t *testing.T) {
 	withConsoleFakeServiceManager(t, "linux")
 	opened := withFakeOpenURL(t, nil)

@@ -52,16 +52,16 @@ type initSummary struct {
 const configLineColumn = 24
 
 // printInitSummary renders `moltnet init`'s aftercare: by default, one
-// checkmark line naming the network ready — with the resolved directory
+// checkmark line naming the network ready, with the resolved directory
 // abbreviated alongside it, and " (existing)" appended when that directory
 // was already there before this run rather than freshly created (P3: quiet
-// mode used to say only "<id> ready", with no way to tell the two apart) —
+// mode used to say only "<id> ready", with no way to tell the two apart),
 // plus a real --bearer failure note, which is never hidden (an actionable
 // problem, not decoration), and a single "next:" line. With --verbose, the
 // full per-file breakdown this command used to always print (what was
 // written or already existed, where the operator token landed, a nudge
 // toward --bearer when none was requested) prints in addition to that same
-// outcome line (P3: --verbose superset parity — it must only ever add
+// outcome line (P3: --verbose superset parity, it must only ever add
 // detail on top of the quiet essentials, never replace them outright).
 func printInitSummary(summary initSummary) {
 	printInitConfigCheckLine(fmt.Sprintf("%s ready", summary.id), initReadyExtra(summary))
@@ -86,12 +86,12 @@ func printInitSummary(summary initSummary) {
 // initRegistrationNote surfaces the one permissive element of `moltnet
 // init`'s defaults (PLAN.md phase 6a review, P2-4): plain init writes
 // auth.mode: open, which forces auth.agent_registration: open
-// (defaultMoltnetConfig, templates.go) — any local agent can claim its own
+// (defaultMoltnetConfig, templates.go), any local agent can claim its own
 // id and receive its own token without ever touching an operator
 // credential. Neither quiet nor --verbose mode used to mention this at all.
 // --bearer keeps registration disabled (bearerMoltnetConfig), so this only
 // fires on the plain-init path, and only when this run actually wrote that
-// config — an existing config this run left untouched (serverCreated
+// config, an existing config this run left untouched (serverCreated
 // false) might carry any registration setting, so nothing is claimed about
 // it. This prints in quiet mode too: it is the one permissive default, not
 // per-file detail, so it does not wait behind --verbose the way the rest of
@@ -100,12 +100,12 @@ func initRegistrationNote(summary initSummary) string {
 	if summary.bearer || !summary.serverCreated {
 		return ""
 	}
-	return "local agent self-registration is open — any local agent can claim its own id and receive its own token"
+	return "local agent self-registration is open; any local agent can claim its own id and receive its own token"
 }
 
 // initReadyExtra renders printInitSummary's checkmark-line extra: the
 // abbreviated resolved directory, with " (existing)" appended when
-// summary.dirExisted — i.e. this run reused a directory that was already
+// summary.dirExisted, i.e. this run reused a directory that was already
 // there rather than creating a fresh one.
 func initReadyExtra(summary initSummary) string {
 	extra := abbreviateHome(summary.root) + string(filepath.Separator)
@@ -154,17 +154,17 @@ func printInitSummaryVerbose(summary initSummary) {
 
 	switch {
 	case summary.bearer && summary.serverCreated:
-		fmt.Fprintf(stdout, "  %s operator + console tokens stored in Moltnet (0600) — full access + read-only console\n", green("✓"))
+		fmt.Fprintf(stdout, "  %s operator + console tokens stored in Moltnet (0600); full access + read-only console\n", green("✓"))
 		fmt.Fprintln(stdout, "    commands pick it up automatically")
 	case summary.bearer && summary.bearerAdded && summary.bearerUpgradeOnly:
 		// PLAN.md phase 7.0: the operator token already existed (plain
 		// `init` mints one unconditionally now), so this --bearer rerun
 		// only added the console token and flipped auth.mode -- it did not
 		// touch, rotate, or re-scope the existing operator credential.
-		fmt.Fprintf(stdout, "  %s added a console token to %s (0600) and switched auth.mode to bearer — full access + read-only console\n", green("✓"), abbreviateHome(summary.serverPath))
+		fmt.Fprintf(stdout, "  %s added a console token to %s (0600) and switched auth.mode to bearer; full access + read-only console\n", green("✓"), abbreviateHome(summary.serverPath))
 		fmt.Fprintln(stdout, "    commands pick it up automatically")
 	case summary.bearer && summary.bearerAdded:
-		fmt.Fprintf(stdout, "  %s operator + console tokens added to %s (0600) — full access + read-only console\n", green("✓"), abbreviateHome(summary.serverPath))
+		fmt.Fprintf(stdout, "  %s operator + console tokens added to %s (0600); full access + read-only console\n", green("✓"), abbreviateHome(summary.serverPath))
 		fmt.Fprintln(stdout, "    commands pick it up automatically")
 	case summary.bearer && summary.bearerAddErr != nil:
 		// The reason varies (auth.tokens already has entries, or the config
@@ -174,7 +174,7 @@ func printInitSummaryVerbose(summary initSummary) {
 	case summary.operatorTokenRepaired:
 		// PLAN.md phase 7.0's repair path: a pre-7.0, tokenless open-mode
 		// config just got its missing operator token in place.
-		fmt.Fprintf(stdout, "  %s added an operator token to %s (0600) — this network can now be administered locally\n", green("✓"), abbreviateHome(summary.serverPath))
+		fmt.Fprintf(stdout, "  %s added an operator token to %s (0600); this network can now be administered locally\n", green("✓"), abbreviateHome(summary.serverPath))
 	default:
 		// Plain `init` already mints an operator token unconditionally
 		// (PLAN.md phase 7.0), so this no longer promises one --bearer
@@ -186,8 +186,8 @@ func printInitSummaryVerbose(summary initSummary) {
 
 // initNextStep names the one real follow-up command for a just-initialized
 // network: `moltnet service install` for a real network id, or a re-init
-// nudge for the still-default id (`pair invite` refuses to run against it —
-// two default installs would collide — so suggesting service install/relay
+// nudge for the still-default id (`pair invite` refuses to run against it,
+// two default installs would collide, so suggesting service install/relay
 // deploy first would just lead to a dead end).
 func initNextStep(id string) nextStep {
 	if id == app.DefaultNetworkID {
@@ -214,7 +214,7 @@ func printInitConfigLine(label string, created bool, extra string) {
 // gets its own truthful checkmark line instead of reusing "wrote" (which
 // would claim the file was freshly written) or "already exists (unchanged)"
 // (which would contradict the operator-token-added line printed right
-// after it) — and, more generally, is the shared single-outcome-line
+// after it), and, more generally, is the shared single-outcome-line
 // building block every command's quiet-by-default checkmark
 // (`relay deploy`'s "relay live", `service install`'s "service running",
 // `pair invite`'s "pairing ready", ...) is printed through.

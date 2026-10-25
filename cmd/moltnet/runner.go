@@ -16,7 +16,7 @@ import (
 // "acme"}.
 //
 // Env carries additional KEY=VALUE entries appended to the child's
-// environment — the one and only channel a secret value (a Cloudflare API
+// environment, the one and only channel a secret value (a Cloudflare API
 // token, a room credential, ...) is ever allowed to reach a child through.
 // Nothing in this package may put a secret in Args: argv is visible to
 // every other process on the machine via `ps`, and it is also exactly what
@@ -33,7 +33,7 @@ type childInvocation struct {
 	// it is persisted nowhere else the wizard can read it back from. Setting
 	// this tells the caller (setup_execute.go's runSetupStep) to keep
 	// childResult.Stdout instead of discarding it, and to skip printing a
-	// generic step checkmark line for it — the retrieved code gets its own,
+	// generic step checkmark line for it, the retrieved code gets its own,
 	// dedicated presentation in the completion screen instead.
 	CaptureOutput bool
 }
@@ -55,7 +55,7 @@ type childResult struct {
 // command through. execChild is the production implementation, spawning a
 // real subprocess; cmd/moltnet's own tests swap it for an in-process
 // adapter that dispatches through this same test binary's run() dispatcher
-// instead (see setup_runner_test.go) — a literal exec.Command(os.Executable(),
+// instead (see setup_runner_test.go), a literal exec.Command(os.Executable(),
 // "init", ...) would re-invoke the `go test` binary itself under `go test`,
 // not a real moltnet CLI (SETUP.md's "Driving the terminal", precondition
 // 5), so production code must never call execChild directly; every setup
@@ -64,18 +64,18 @@ var runChild = execChild
 
 // execChild spawns currentExecutable() (uninstall.go's own symlink-resolved
 // "which moltnet binary is this" seam, reused rather than duplicated) with
-// invocation.Args, piped stdin/stdout/stderr — never the parent's inherited
+// invocation.Args, piped stdin/stdout/stderr, never the parent's inherited
 // file descriptors, so the child always sees a non-TTY regardless of
 // whether this process's own stdout happens to be a real terminal. That
 // matters concretely: every existing interactivity gate in this CLI
 // (playBanner's settle animation, promptHidden's TTY check, ...) already
 // does the right, non-interactive thing the moment its stdin/stdout are not
 // a genuine terminal, so a piped child degrades to flag-driven, silent
-// behavior for free — no child-side flag needed to suppress it.
+// behavior for free, no child-side flag needed to suppress it.
 //
 // Stdin is deliberately never connected to anything (cmd.Stdin left nil,
 // which os/exec wires to an already-closed /dev/null-equivalent read): no
-// child this wizard drives ever prompts for input — that is precisely what
+// child this wizard drives ever prompts for input, that is precisely what
 // makes "every child input has a non-interactive channel" (SETUP.md
 // precondition 1) a precondition of exec-piped working at all, not
 // something this seam itself enforces.

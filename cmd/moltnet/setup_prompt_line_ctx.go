@@ -15,13 +15,13 @@ import (
 // setup_questions.go) needs the same interruptibility guarantee every
 // select question already has via promptSelectInteractive's ctx.Done()
 // case, and resolveInitNetworkID's own interactive --id prompt already
-// solves exactly this (init.go) — races the underlying line read against
+// solves exactly this (init.go); races the underlying line read against
 // ctx.Done() in a goroutine, since bufio.Reader.ReadString has no ctx-aware
 // variant of its own.
 //
 // P1-2: before this existed, a SIGINT at any of these typed prompts
 // cancelled ctx (runCLI's signal.NotifyContext) but the process stayed
-// blocked in ReadString regardless — it only noticed cancellation once the
+// blocked in ReadString regardless; it only noticed cancellation once the
 // operator pressed Enter, and by then the typed line had already been
 // silently consumed as the answer to that question rather than treated as
 // an interrupt. Racing the read the same way resolveInitNetworkID and

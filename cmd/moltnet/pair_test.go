@@ -23,8 +23,8 @@ func writeMoltnetConfig(t *testing.T, directory string, networkID string, networ
 }
 
 // extractInviteCode pulls the invite code out of `pair invite`'s output.
-// The normal aftercare embeds it in ONE copyable command — `moltnet pair
-// '<code>'` (rule 4 of the quiet-by-default redesign, pair_aftercare.go) —
+// The normal aftercare embeds it in ONE copyable command; `moltnet pair
+// '<code>'` (rule 4 of the quiet-by-default redesign, pair_aftercare.go),
 // so this first looks for the single-quoted span on that line; --print-only
 // bypasses the aftercare entirely and prints the bare code on its own line
 // instead, so that is checked too.

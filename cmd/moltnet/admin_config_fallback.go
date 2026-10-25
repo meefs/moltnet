@@ -11,7 +11,7 @@ import (
 // resolveAdminFromServerConfig is admin's config-resolution fallback
 // (PLAN.md phase 4 item 1): when neither --base-url nor a client config
 // (.moltnet/config.json) is available, derive an attachment from the local
-// Moltnet *server* config instead — the same order start/pair/relay use
+// Moltnet *server* config instead, the same order start/pair/relay use
 // (app.ResolveConfigPath): explicit wins outright; with --network given,
 // ~/.moltnet/<id>/Moltnet is resolved first, falling back to cwd only when
 // its config self-identifies as network id id; with neither, ./Moltnet in

@@ -11,8 +11,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// openTestPTY allocates a fresh Unix98 pseudo-terminal pair — a master
-// (control) side and its paired slave (child) side — via /dev/ptmx, the
+// openTestPTY allocates a fresh Unix98 pseudo-terminal pair, a master
+// (control) side and its paired slave (child) side, via /dev/ptmx, the
 // same device a real terminal emulator uses. Tests use it to exercise
 // disableTerminalEcho's real termios ioctls against an actual terminal
 // device, never the test's own controlling terminal (see HARD RULE in the
@@ -20,7 +20,7 @@ import (
 //
 // Darwin's pty-allocation sequence differs from Linux's (openpty_linux_test.go):
 // TIOCPTYGRANT then TIOCPTYUNLK prepare the slave, and TIOCPTYGNAME reads
-// its device path back as a NUL-terminated C string into a fixed buffer —
+// its device path back as a NUL-terminated C string into a fixed buffer,
 // there is no golang.org/x/sys/unix helper for that last one (it is not an
 // int- or Termios-shaped ioctl), so it goes through unix.Syscall directly.
 func openTestPTY() (master, slave *os.File, err error) {

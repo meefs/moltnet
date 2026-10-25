@@ -15,7 +15,7 @@ import (
 
 // These tests exercise disableTerminalEcho's real, non-noop termios path
 // (P2-6) against a genuine pseudo-terminal (openpty_test.go), never this
-// test binary's own controlling terminal — see the HARD RULE governing
+// test binary's own controlling terminal, see the HARD RULE governing
 // this change. disableTerminalEcho only engages when promptReader is the
 // process's own os.Stdin (prompt_hidden.go), so the only way to reach that
 // branch at all is a real, separate child process whose actual stdin is
@@ -26,14 +26,14 @@ import (
 // this same test binary re-execs itself (the standard os/exec_test.go
 // TestHelperProcess pattern) with MOLTNET_PROMPT_HIDDEN_HELPER set to pick
 // a scenario. Run normally (the env var unset), it does nothing and passes
-// immediately — it never runs stray on its own.
+// immediately, it never runs stray on its own.
 
 // promptHiddenHelperEnv selects which scenario a re-exec'd copy of this
 // test binary runs, in TestPromptHiddenHelperProcess.
 const promptHiddenHelperEnv = "MOLTNET_PROMPT_HIDDEN_HELPER"
 
 // TestPromptHiddenHelperProcess is never meaningfully run by `go test`
-// itself — the driving tests below re-exec this same test binary with
+// itself, the driving tests below re-exec this same test binary with
 // -test.run scoped to just this function and promptHiddenHelperEnv set,
 // so it runs as its own separate process with its real os.Stdin/os.Stdout
 // dup'd to a pty's slave side.
@@ -69,11 +69,11 @@ func TestPromptHiddenHelperProcess(t *testing.T) {
 			os.Exit(1)
 		}
 		restore()
-		restore() // must not panic (P2-5) — a real termios path this time.
+		restore() // must not panic (P2-5), a real termios path this time.
 		fmt.Fprintln(os.Stderr, "HELPER-RESULT:OK")
 	case "flush-then-confirm":
 		// The P0 mid-deploy-typeahead fix (prompt_hidden_pty_fixes_test.go):
-		// sleeps to model a slow Deploy() call, then flushes and prompts —
+		// sleeps to model a slow Deploy() call, then flushes and prompts,
 		// anything the test writes to the pty during the sleep must never
 		// answer the prompt below.
 		time.Sleep(300 * time.Millisecond)
@@ -111,7 +111,7 @@ func TestPromptHiddenHelperProcess(t *testing.T) {
 
 // startPromptHiddenHelper re-execs this test binary as a fresh process
 // running TestPromptHiddenHelperProcess under scenario, with its stdin and
-// stdout dup'd to slave (a real pty's slave side — see requireTestPTY,
+// stdout dup'd to slave (a real pty's slave side, see requireTestPTY,
 // openpty_test.go) and its stderr piped back for the structured
 // HELPER-RESULT/HELPER-ERROR lines the scenarios above print. The caller
 // still owns starting/signaling/waiting on the returned *exec.Cmd.
@@ -200,19 +200,19 @@ func (b *syncBuffer) String() string {
 
 // drainMasterInBackground continuously reads master into a syncBuffer on a
 // background goroutine until master.Read errors (in practice, when this
-// test's t.Cleanup closes it) — modeling what a real terminal emulator
+// test's t.Cleanup closes it), modeling what a real terminal emulator
 // actually does with its pty master: read and render continuously, never
 // stopping. It exists because the P0 input-flush fix
 // (prompt_hidden_termios_darwin.go / _linux.go) made disableTerminalEcho's
 // restore write use the flush ioctl variant (TIOCSETAF / TCSETSF) for both
 // echo-off and restore, and that variant blocks until any output the
-// helper process still has queued has actually been read from the far end
-// — exactly what a real terminal's continuous draining guarantees, but
+// helper process still has queued has actually been read from the far end,
+// exactly what a real terminal's continuous draining guarantees, but
 // what this suite's earlier demand-driven readMasterUntil/drainMaster
 // calls do not once they stop reading after finding a substring. Tests
 // that reach a graceful (non-signal) restore after their last
-// readMasterUntil call — unlike the signal/idempotent-restore scenarios,
-// where nothing more is written after the last demand read — need this
+// readMasterUntil call, unlike the signal/idempotent-restore scenarios,
+// where nothing more is written after the last demand read, need this
 // still running so the helper's own shutdown never stalls waiting for a
 // reader that stopped showing up.
 func drainMasterInBackground(master *os.File) *syncBuffer {
@@ -235,8 +235,8 @@ func drainMasterInBackground(master *os.File) *syncBuffer {
 // masterEcho reports whether the ECHO local-mode bit is currently set on
 // the terminal behind master. Querying/setting termios through a pty's
 // master fd affects (and reads back) the same termios state as the slave
-// side — confirmed empirically against a real openpty pair before writing
-// this suite — so the parent process can observe exactly what the child
+// side, confirmed empirically against a real openpty pair before writing
+// this suite, so the parent process can observe exactly what the child
 // process did to its own controlling terminal without touching the
 // child's fds directly.
 func masterEcho(t *testing.T, master *os.File) bool {
@@ -250,8 +250,8 @@ func masterEcho(t *testing.T, master *os.File) bool {
 
 // waitForMasterEchoOff polls masterEcho until it reports ECHO cleared or
 // timeout elapses, failing the test in the latter case. It exists for the
-// bare-promptHidden scenarios ("block-on-read"), where — unlike
-// maybePromptForCloudflareToken's guidance-first flow — the question text
+// bare-promptHidden scenarios ("block-on-read"), where, unlike
+// maybePromptForCloudflareToken's guidance-first flow, the question text
 // is printed *before* disableTerminalEcho runs (promptHidden's own
 // question is short and non-secret, so this ordering is fine in
 // production; see promptHidden's doc comment), which means "the question
@@ -277,17 +277,17 @@ func waitForMasterEchoOff(t *testing.T, master *os.File, timeout time.Duration) 
 // paste" live-pty scenario end to end: it drives a real child process
 // through the actual maybePromptForCloudflareToken flow over a real
 // pseudo-terminal, and proves, against the kernel's own termios state
-// (not just this package's own bookkeeping) —
+// (not just this package's own bookkeeping),
 //
 //   - P2-6: disableTerminalEcho's real IoctlGetTermios/IoctlSetTermios path
 //     actually clears and restores ECHO on a real terminal device.
 //   - P3-7: ECHO is already off by the time the very first byte of the
-//     guidance block reaches the terminal — deterministic, not a timing
+//     guidance block reaches the terminal, deterministic, not a timing
 //     race: printing happens strictly after disableTerminalEcho in
 //     maybePromptForCloudflareToken's program order, so the first visible
 //     output byte proves the ioctl already completed.
 //   - The pasted token is never visible anywhere in the pty's output
-//     stream, from the moment the child starts to the moment it exits —
+//     stream, from the moment the child starts to the moment it exits,
 //     true kernel-level suppression, not just an application choosing not
 //     to print it.
 //   - P3-8: echo is restored (ECHO back on) after the child's normal
@@ -298,7 +298,7 @@ func TestPromptHiddenPTYNormalPasteHiddenAndRestored(t *testing.T) {
 	cmd, stderr := startPromptHiddenHelper(t, "guidance-then-read", slave)
 
 	// The very first output byte proves disableTerminalEcho already ran
-	// (see the ordering argument above) — check it before reading anything
+	// (see the ordering argument above), check it before reading anything
 	// further.
 	_ = readMasterUntil(t, master, "No Cloudflare API token found", 5*time.Second)
 	if masterEcho(t, master) {
@@ -307,8 +307,8 @@ func TestPromptHiddenPTYNormalPasteHiddenAndRestored(t *testing.T) {
 
 	readMasterUntil(t, master, "paste token (input hidden): ", 5*time.Second)
 
-	// From here on, keep draining master continuously in the background —
-	// exactly what a real terminal emulator does — instead of the discrete
+	// From here on, keep draining master continuously in the background,
+	// exactly what a real terminal emulator does, instead of the discrete
 	// demand reads above. The P0 input-flush fix made disableTerminalEcho's
 	// restore write use the flush ioctl variant (TIOCSETAF / TCSETSF),
 	// which blocks until any output the helper still has queued (just the
@@ -340,7 +340,7 @@ func TestPromptHiddenPTYNormalPasteHiddenAndRestored(t *testing.T) {
 
 	// Whatever the helper wrote after the paste (just the trailing newline
 	// promptHidden prints once the read returns) must not contain the
-	// pasted token itself — ECHO was already confirmed off before the
+	// pasted token itself, ECHO was already confirmed off before the
 	// paste was written and does not come back on until after this point,
 	// so the kernel had no opportunity to echo it either.
 	if got := trailing.String(); strings.Contains(got, pasted) {

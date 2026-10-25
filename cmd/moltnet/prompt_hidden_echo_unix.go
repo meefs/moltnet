@@ -13,7 +13,7 @@ import (
 )
 
 // ioctlGetTermios/ioctlSetTermios are disableTerminalEcho's and
-// flushPendingTerminalInput's only points of contact with the kernel — vars,
+// flushPendingTerminalInput's only points of contact with the kernel, vars,
 // not direct unix.IoctlGetTermios/IoctlSetTermios calls, so a test can
 // inject a get/set failure (the P0 fail-closed-echo coverage in
 // prompt_hidden_pty_test.go) without needing a real terminal device that
@@ -30,26 +30,26 @@ var (
 //
 // It talks directly to the kernel via golang.org/x/sys/unix termios
 // ioctls (through the ioctlGetTermios/ioctlSetTermios vars above) on
-// os.Stdin's file descriptor — no `stty` subprocess, no PATH lookup, no
+// os.Stdin's file descriptor, no `stty` subprocess, no PATH lookup, no
 // exec window during which a pasted token could theoretically be observed
 // by another process inspecting argv. Only the ECHO local-mode bit is
 // cleared; ICANON (and everything else) is left exactly as the terminal
 // had it, so line editing (backspace, etc.) during the paste still works
-// normally — it just isn't drawn. Both the echo-off write here and the
+// normally, it just isn't drawn. Both the echo-off write here and the
 // restore write below go through ioctlWriteTermios, which is the
-// *flush* ioctl variant (TIOCSETAF / TCSETSF —
+// *flush* ioctl variant (TIOCSETAF / TCSETSF,
 // prompt_hidden_termios_darwin.go / _linux.go): any input already queued
 // in the kernel's input buffer at either transition is discarded, closing
 // the P0 tail-of-a-multi-line-paste leak (queued lines getting
 // echoed/executed by the shell after this prompt exits, or silently
 // answering a later prompt).
 //
-// It is a no-op — returning (a no-op restore func, ok=true) — whenever
+// It is a no-op, returning (a no-op restore func, ok=true), whenever
 // promptReader is not the real os.Stdin (the test seam, or any future
 // non-interactive caller), stdin is not a real terminal, or echo is
 // already suppressed by an outer, still-active call (echoSuppressed
 // below): there is nothing to do, and nothing needed doing, in any of
-// those cases. It fails closed — (a no-op restore func, ok=false) — if the
+// those cases. It fails closed, (a no-op restore func, ok=false), if the
 // termios ioctls themselves error: isInteractive already confirmed stdin
 // is a TTY, so this should not happen in practice, but when it does the
 // caller (promptHidden) must refuse to read rather than silently letting a
@@ -66,15 +66,15 @@ var (
 // The returned restore func is idempotent (sync.Once-guarded) and safe to
 // call more than once: once via the deferred call in promptHidden after
 // the read returns, and once from the signal handler registered here, so
-// a SIGINT/SIGTERM/SIGHUP during the paste still restores echo — and
-// exits the process — before it would otherwise leave the terminal
+// a SIGINT/SIGTERM/SIGHUP during the paste still restores echo, and
+// exits the process, before it would otherwise leave the terminal
 // silently un-echoing keystrokes.
 //
 // SIGTSTP (Ctrl-Z) gets its own handling instead of being folded into the
 // SIGINT/SIGTERM/SIGHUP exit path: on SIGTSTP the terminal is restored to
 // its normal (echoing) state, SIGTSTP's disposition is reset to default
 // and re-raised against this process's own group in an attempt to let the
-// kernel do the actual stopping, and — once that unblocks — echo is
+// kernel do the actual stopping, and, once that unblocks, echo is
 // re-suppressed (a fresh ioctl, independent of the once-guarded final
 // restore, which must still be free to run later) and SIGTSTP is re-armed
 // for the next attempt.
@@ -83,7 +83,7 @@ var (
 // actually restore the OS default stop semantics for a running Go
 // process, so the re-raised SIGTSTP does not suspend it: Ctrl-Z during
 // this prompt is effectively inert. What the user sees is echo blinking
-// off, briefly on, then off again while the process keeps running — and
+// off, briefly on, then off again while the process keeps running, and
 // the terminal is still left in the correct (restored) state when the
 // prompt exits normally or via SIGINT/SIGTERM/SIGHUP. Do not "fix" the
 // apparent no-op by looping or retrying the kill: there is no way to make
@@ -92,7 +92,7 @@ var (
 //
 // This covers SIGINT/SIGTERM/SIGHUP/SIGTSTP specifically; it is not a
 // guarantee against every termination path (SIGKILL, a crash, or a killed
-// parent process can still leave echo off — recoverable with `stty sane`
+// parent process can still leave echo off, recoverable with `stty sane`
 // or `reset`).
 func disableTerminalEcho() (restore func(), ok bool) {
 	noop := func() {}
@@ -197,20 +197,20 @@ func exitCodeForSignal(sig os.Signal) int {
 // changing any termios flag. relay_deploy_token.go calls it immediately
 // before the post-deploy save prompts (maybeSaveCloudflareToken,
 // maybeSavePastedCloudflareToken): a Cloudflare deploy can take several
-// seconds, and any key(s) the operator presses during that window — most
-// commonly a stray Enter — would otherwise still be sitting in the input
+// seconds, and any key(s) the operator presses during that window, most
+// commonly a stray Enter, would otherwise still be sitting in the input
 // buffer by the time the save prompt's read starts, silently answering a
 // question the operator never actually saw (the P0 mid-deploy-typeahead
 // fix). It works by reapplying the terminal's current termios state to
 // itself through ioctlWriteTermios, the same flush-variant ioctl
-// disableTerminalEcho's own writes use (TIOCSETAF / TCSETSF —
+// disableTerminalEcho's own writes use (TIOCSETAF / TCSETSF,
 // prompt_hidden_termios_darwin.go / _linux.go): no flag changes, just the
 // kernel-level input-queue discard that write implies.
 //
 // Unlike disableTerminalEcho, this is unconditionally best-effort: it only
 // ever runs on the real terminal path (promptReader is the real os.Stdin
-// and isInteractive() is true — the same gate disableTerminalEcho uses),
-// and a failed ioctl here — get or set — is silently ignored rather than
+// and isInteractive() is true, the same gate disableTerminalEcho uses),
+// and a failed ioctl here, get or set, is silently ignored rather than
 // treated as a hard failure. There is no secret at risk the way there is
 // in disableTerminalEcho's fail-closed echo requirement: the worst case of
 // a no-op here is just the pre-existing typeahead race this exists to

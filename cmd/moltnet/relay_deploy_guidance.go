@@ -9,9 +9,9 @@ import (
 )
 
 // This file holds the text-building helpers `relay deploy` (relay_deploy.go)
-// prints for its various guidance paths — missing token, workers.dev
+// prints for its various guidance paths, missing token, workers.dev
 // subdomain unclaimed (and its interactive-claim/propagation-lag variants),
-// the --print-manual equivalent, and the post-deploy "Next:" block — kept
+// the --print-manual equivalent, and the post-deploy "Next:" block, kept
 // separate from runRelayDeploy's orchestration so both files stay under the
 // repo's 400-line split threshold.
 
@@ -22,7 +22,7 @@ const cloudflareDashboardTokenURL = "https://dash.cloudflare.com/profile/api-tok
 const cloudflareTokenTemplateName = "moltnet-relay-deploy"
 
 // cloudflareTokenDeepLinkPermissions is the permissionGroupKeys JSON for
-// Account > Workers Scripts > Edit — the one permission group
+// Account > Workers Scripts > Edit, the one permission group
 // `moltnet relay deploy` actually needs (script upload, RELAY_TOKEN secret,
 // workers.dev route; see internal/relaydeploy/client.go and deploy.go). It
 // matches Cloudflare's own minimal "Workers development" token-template deep
@@ -76,8 +76,8 @@ func printRelayDeployNextSteps(networkID string) {
 // interactive paste prompt itself came up empty): the same token-creation
 // deep link cloudflareTokenCreationGuidance prints for the interactive
 // prompt, plus the manual-dashboard fallback and the export-and-retry
-// steps needed since there is no prompt to answer here. House block style —
-// two-space indent, four-space nested items — matching the rest of `relay
+// steps needed since there is no prompt to answer here. House block style,
+// two-space indent, four-space nested items, matching the rest of `relay
 // deploy`'s output; the caller (runRelayDeploy) is what prints the
 // "Deploying relay for <id>" header and blank line ahead of this.
 func buildMissingCloudflareTokenGuidance(id string) string {
@@ -101,10 +101,10 @@ func buildMissingCloudflareTokenGuidance(id string) string {
 // apart over time.
 func cloudflareTokenCreationGuidance() string {
 	var b strings.Builder
-	b.WriteString("  No Cloudflare API token found — create one (pre-filled):\n")
+	b.WriteString("  No Cloudflare API token found, create one (pre-filled):\n")
 	fmt.Fprintf(&b, "    %s\n", buildCloudflareTokenDeepLink(cloudflareTokenTemplateName))
 	if isOutputTerminal() {
-		fmt.Fprintf(&b, "    %s\n", dim("(opens pre-filled — just Continue → Create Token → copy)"))
+		fmt.Fprintf(&b, "    %s\n", dim("(opens pre-filled; just Continue → Create Token → copy)"))
 	}
 	return b.String()
 }
@@ -146,11 +146,11 @@ func buildWorkersDevSubdomainGuidance(id string) string {
 // relaydeploy.ErrWorkersDevSubdomainUnclaimed: Cloudflare's account-level
 // subdomain claim can take a moment to become visible to a subsequent read
 // (read-after-write lag), so this is not the "never claimed anything"
-// state buildWorkersDevSubdomainGuidance describes — printing that generic
+// state buildWorkersDevSubdomainGuidance describes, printing that generic
 // guidance here would send the operator back to the dashboard to claim a
 // name that is, in fact, already theirs.
 func buildWorkersDevSubdomainClaimLagGuidance(name, id string) string {
-	return fmt.Sprintf("  %s claimed %q; Cloudflare can take a moment to propagate — rerun `moltnet relay deploy --id %s` in a minute\n", yellow("note:"), name, id)
+	return fmt.Sprintf("  %s claimed %q; Cloudflare can take a moment to propagate; rerun `moltnet relay deploy --id %s` in a minute\n", yellow("note:"), name, id)
 }
 
 func buildRelayDeployManual(scriptName string) string {

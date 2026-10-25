@@ -18,7 +18,7 @@ import (
 // through run() on this same goroutine, and run()'s child steps go through
 // runChildInProcess (setup_runner_test.go), which *does* take
 // processStateMu for its own nested stdout/stderr swap around the
-// dispatched child command — a plain sync.Mutex is not reentrant, so this
+// dispatched child command, a plain sync.Mutex is not reentrant, so this
 // outer capture holding it too would deadlock the moment any test here
 // actually executes a step (every test that does not use --print-commands
 // or refuse before executing anything). This is safe because this package's
@@ -34,7 +34,7 @@ func captureSetupOutput(t *testing.T, fn func()) string {
 // tens of milliseconds for the test's duration. Every test in this file
 // that installs a service goes through withFakeServiceManager
 // (service_test.go), whose fakeServiceRunner never actually spawns a
-// listening process — a health probe against it is guaranteed to exhaust
+// listening process, a health probe against it is guaranteed to exhaust
 // its window every time, so shrinking it keeps these tests fast without
 // changing production behavior (setup_execute.go's own doc comment on why
 // these are vars).
@@ -54,7 +54,7 @@ func writtenSetupConfigPath(home string) string {
 
 // TestSetupEnterThroughGlobalCreatesNetwork is this unit's headline test:
 // answering every question with Enter (an empty line, through the plain
-// fallback prompt path) must produce a real, valid config — the
+// fallback prompt path) must produce a real, valid config, the
 // "Enter-through-everything must be a valid complete path" rule applied to
 // the whole wizard at once, not just one question at a time.
 func TestSetupEnterThroughGlobalCreatesNetwork(t *testing.T) {
@@ -97,7 +97,7 @@ func TestSetupEnterThroughGlobalCreatesNetwork(t *testing.T) {
 
 // TestSetupEnterThroughFallsBackWhenDefaultPortHeld is the test the port
 // preflight exists for: with the default port already bound, setup must
-// still finish successfully, on a different, actually-usable port —
+// still finish successfully, on a different, actually-usable port,
 // exactly SETUP.md's "on a machine where 8787 is already held" case.
 func TestSetupEnterThroughFallsBackWhenDefaultPortHeld(t *testing.T) {
 	withInProcessRunChild(t)
@@ -144,7 +144,7 @@ func TestSetupQ4WideBindWritesWildcardAndWarns(t *testing.T) {
 	t.Setenv("HOME", home)
 
 	// Q1 default, Q2 default, Q4="2" (all network interfaces), Q5 default,
-	// Q6="2" (no service — avoids needing a health probe against a wildcard
+	// Q6="2" (no service, avoids needing a health probe against a wildcard
 	// bind in this test), Q7 default.
 	withPromptAnswers(t, "", "", "2", "", "2", "")
 

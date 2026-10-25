@@ -7,7 +7,7 @@ import (
 
 // runRoomList implements `moltnet room list`. PLAN.md's Phase 7
 // "deliberately not built" list is explicit that a third rooms listing
-// command must not exist alongside `conversations` and the admin surface —
+// command must not exist alongside `conversations` and the admin surface,
 // this is a thin alias over the same client method (moltnetclient.ListRooms,
 // GET /v1/rooms) conversations.go already calls, printed directly rather
 // than merged into a DM view: this command's audience is an operator

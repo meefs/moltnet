@@ -356,8 +356,8 @@ func captureStdout(t *testing.T, fn func()) string {
 	return captureStdoutLocked(t, fn)
 }
 
-// captureMainOutput and captureStdoutAndStderr — the remaining members of
-// this capture-helper family — live in capture_test.go, split out to keep
+// captureMainOutput and captureStdoutAndStderr, the remaining members of
+// this capture-helper family, live in capture_test.go, split out to keep
 // this file under the repo's 400-line limit.
 
 func captureStdoutLocked(t *testing.T, fn func()) string {

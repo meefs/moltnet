@@ -43,13 +43,13 @@ var errSetupPairDefaultNetworkID = errors.New(`setup: "invite a friend" needs a 
 // plan: everything setupPairInvocations (setup_pair.go) needs to build the
 // `relay deploy` / `pair invite` / `pair invite show` child commands.
 type setupPairOpenUpPlan struct {
-	// cloudflareToken is never printed and never placed in argv — see
+	// cloudflareToken is never printed and never placed in argv, see
 	// buildRelayDeployInvocation's doc comment. It is carried here, in
 	// memory, only long enough to reach that one invocation's Env.
 	cloudflareToken string
 	// subdomain is the workers.dev name to pass as `relay deploy
 	// --subdomain`, or "" when the Cloudflare account already had a claim
-	// (Q7.2 is then skipped entirely — SETUP.md: "Existing claim → adopt
+	// (Q7.2 is then skipped entirely, SETUP.md: "Existing claim → adopt
 	// silently").
 	subdomain string
 	// room is Q7.1's resolved answer: the one room `pair invite --room`
@@ -61,24 +61,24 @@ type setupPairOpenUpPlan struct {
 }
 
 // planSetupPairOpenUp implements Q7 = "open it up"'s full flow: refuse
-// outright against the default network id (P1, before anything else —
+// outright against the default network id (P1, before anything else,
 // errSetupPairDefaultNetworkID above), resolve a Cloudflare API token
 // (hosting the secret entry itself, since a piped child can never prompt for
-// one — SETUP.md's "Driving the terminal" precondition 3), check whether the
+// one, SETUP.md's "Driving the terminal" precondition 3), check whether the
 // account already has a workers.dev claim, ask Q7.2 only when it does not,
 // then ask Q7.1 (only when rooms has more than one entry), and mint a
 // pairing id up front.
 //
 // printCommandsOnly (P2-2) skips the token resolution and the live
-// VerifyToken/ResolveAccountID/WorkersDevSubdomain calls entirely — a
+// VerifyToken/ResolveAccountID/WorkersDevSubdomain calls entirely, a
 // --print-commands preview must never contact Cloudflare or demand a secret
-// the operator has no way to supply mid-preview — substituting
+// the operator has no way to supply mid-preview, substituting
 // setupPairOpenUpPlaceholderSubdomain for the unknown claim state instead of
 // guessing it.
 func planSetupPairOpenUp(ctx context.Context, rooms []string, configPath, id string, printCommandsOnly bool) (setupPairOpenUpPlan, error) {
 	if id == app.DefaultNetworkID {
 		return setupPairOpenUpPlan{}, fmt.Errorf(
-			"%w — the default %q would let `relay deploy` burn this Cloudflare account's one-ever workers.dev claim before `pair invite` ever gets a chance to refuse it; rerun and give this network a distinct name at \"Name it\"",
+			"%w: the default %q would let `relay deploy` burn this Cloudflare account's one-ever workers.dev claim before `pair invite` ever gets a chance to refuse it; rerun and give this network a distinct name at \"Name it\"",
 			errSetupPairDefaultNetworkID, app.DefaultNetworkID,
 		)
 	}
@@ -125,7 +125,7 @@ func planSetupPairOpenUp(ctx context.Context, rooms []string, configPath, id str
 	// TODO(setup-p2): pairingID is always freshly minted here, even when this
 	// is a re-run recovering from an interruption between a prior run's
 	// `pair invite` and `pair invite show` steps (executeSetupPlan,
-	// setup_execute.go) — SETUP.md's whole rationale for the invite receipt
+	// setup_execute.go), SETUP.md's whole rationale for the invite receipt
 	// (`pair invite show <id>`) is recovering exactly that interrupted
 	// window, but this plan never looks for an already-committed, unshown
 	// pairing to resume; it always generates a second one instead. Fixing
@@ -149,11 +149,11 @@ func planSetupPairOpenUp(ctx context.Context, rooms []string, configPath, id str
 // up" needs, in the same precedence `relay deploy` itself uses
 // (resolveCloudflareAPIToken, relay_deploy_token.go): CLOUDFLARE_API_TOKEN
 // env first, then a previously stored per-network token
-// (relaydeploy.CloudflareTokenPath), and only then an interactive prompt —
+// (relaydeploy.CloudflareTokenPath), and only then an interactive prompt,
 // via promptHidden directly, per SETUP.md ("the wizard hosts all secret
 // entry itself"), not relay deploy's own maybePromptForCloudflareToken:
 // that helper additionally gates on isOutputTerminal(), which setup itself
-// does not require (only stdin needs to be a real terminal — runSetup
+// does not require (only stdin needs to be a real terminal, runSetup
 // already refused otherwise before any question was ever asked), and it
 // would print relay-deploy-specific guidance framed around that command
 // rather than this wizard's own question flow.
@@ -165,7 +165,7 @@ func resolveSetupCloudflareToken(configPath string) (string, error) {
 	if err != nil {
 		// A corrupt/unreadable stored token file must not block this
 		// question when a working env token or the interactive prompt below
-		// can still supply one — mirrors relay deploy's own tolerance for
+		// can still supply one, mirrors relay deploy's own tolerance for
 		// exactly this failure (relay_deploy.go).
 		fmt.Fprintf(stdout, "  %s %v\n", yellow("warning:"), err)
 		storedToken, storedTokenOK = "", false
@@ -193,7 +193,7 @@ func resolveSetupCloudflareToken(configPath string) (string, error) {
 }
 
 // checkSetupWorkersDevClaimed resolves whether the Cloudflare account behind
-// token already has a workers.dev subdomain claim — Q7.2's own gate
+// token already has a workers.dev subdomain claim, Q7.2's own gate
 // (SETUP.md: "asked only when the Cloudflare account has no existing
 // claim"). It contacts Cloudflare directly (VerifyToken, then
 // ResolveAccountID, then WorkersDevSubdomain) through the same injectable
@@ -221,12 +221,12 @@ func checkSetupWorkersDevClaimed(ctx context.Context, token string) (bool, error
 }
 
 // askSetupWorkersDevSubdomain implements Q7.2: typed, validated locally
-// (relaydeploy.ValidateWorkersDevSubdomainName — the exact rule `relay
+// (relaydeploy.ValidateWorkersDevSubdomainName, the exact rule `relay
 // deploy`'s own interactive claim prompt uses, relay_deploy_subdomain_claim.go),
 // with an explicit permanence confirmation before the name is accepted
 // (SETUP.md: "state that the claim is permanent for the account"). The
 // actual claim PUT is left to the `relay deploy --subdomain` child
-// invocation this plans toward — never issued here — so a name confirmed at
+// invocation this plans toward, never issued here, so a name confirmed at
 // this prompt and a name actually claimed later are always the same single
 // code path (internal/relaydeploy/deploy.go), not two.
 //
@@ -241,7 +241,7 @@ func checkSetupWorkersDevClaimed(ctx context.Context, token string) (bool, error
 // runs, which can be well after this prompt (init, and possibly other
 // questions, still lie between the two). If Cloudflare rejects it then as
 // already taken (error 10031), the failure surfaces as deploy.go's raw
-// "claim workers.dev subdomain %q: %w" — this function never loops back to
+// "claim workers.dev subdomain %q: %w", this function never loops back to
 // offer a different name the way relay deploy's own interactive claim
 // prompt does (relay_deploy_subdomain_claim.go), and `init` has already run
 // by then, unlike every other refusal in this wizard.
@@ -270,7 +270,7 @@ func askSetupWorkersDevSubdomain(ctx context.Context) (string, error) {
 		// PERMANENT confirmation.
 		flushPendingTerminalInput()
 		confirmed, err := promptYesNo(fmt.Sprintf(
-			"  %s claiming %q is PERMANENT for this Cloudflare account — Cloudflare allows exactly one, ever. proceed? [y/N] ",
+			"  %s claiming %q is PERMANENT for this Cloudflare account: Cloudflare allows exactly one, ever. proceed? [y/N] ",
 			yellow("warning:"), name,
 		))
 		if err != nil {
@@ -287,9 +287,9 @@ func askSetupWorkersDevSubdomain(ctx context.Context) (string, error) {
 
 // printSetupPairOpenUpPrintCommandsNote documents --print-commands' one
 // known inaccuracy for the "open it up" branch: the printed `relay deploy`
-// line always carries `--subdomain <name>` — setupPairOpenUpPlaceholderSubdomain
+// line always carries `--subdomain <name>`, setupPairOpenUpPlaceholderSubdomain
 // substitutes for the unknown claim state, since --print-commands never
-// contacts Cloudflare to find out (P2-2 above) — but a real run against an
+// contacts Cloudflare to find out (P2-2 above), but a real run against an
 // already-claimed Cloudflare account omits the flag entirely
 // (buildRelayDeployInvocation, setup_pair.go). Deliberate and harmless to
 // paste verbatim (the placeholder name fails local validation rather than
@@ -305,7 +305,7 @@ func printSetupPairOpenUpPrintCommandsNote(answers setupAnswers) {
 // askSetupShareRoom implements Q7.1, asked only when rooms has more than one
 // entry (SETUP.md: "asked only when Q5 produced more than one room"); a
 // single room is used without asking, and an empty rooms slice (should not
-// happen — Q5 always yields at least one — but defended anyway) falls back
+// happen, Q5 always yields at least one, but defended anyway) falls back
 // to the starter room id.
 func askSetupShareRoom(ctx context.Context, rooms []string) (string, error) {
 	switch len(rooms) {

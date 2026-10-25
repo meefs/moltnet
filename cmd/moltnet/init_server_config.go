@@ -79,7 +79,7 @@ type initExistingServerTokenOutcome struct {
 //     7.0 almost always finds the
 //     plain-init operator token already present and upgrades in place
 //     (leaving it untouched, landing only the console token) rather than
-//     minting a fresh pair — bearerUpgradeOnly records which one happened.
+//     minting a fresh pair; bearerUpgradeOnly records which one happened.
 //     ErrAuthTokensExist becomes a recorded bearerAddErr, not a returned
 //     error, so the rest of init's summary still prints; any other error is
 //     returned outright.

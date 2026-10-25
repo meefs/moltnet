@@ -24,7 +24,7 @@ func setPTYSize(t *testing.T, master *os.File, cols, rows int) {
 
 // snapshotIdx is a test-only accessor into setupHeader's animation state,
 // synchronized through the same mu every real reader/writer of these
-// fields uses — so reading it concurrently with the ticker goroutine (or
+// fields uses, so reading it concurrently with the ticker goroutine (or
 // Suspend/Resume racing it) is race-detector clean, not just convenient.
 func (h *setupHeader) snapshotIdx() int {
 	h.mu.Lock()
@@ -42,7 +42,7 @@ func (h *setupHeader) snapshotRunning() bool {
 // prepareSetupHeaderPTYTest allocates a fresh pty (requireTestPTY,
 // openpty_test.go), sets its width to cols, points stdout at the slave
 // side, and forces the styling gates setupHeaderEligible needs (NO_COLOR
-// unset, TERM capable) — the same recipe preparePTYBannerTest
+// unset, TERM capable), the same recipe preparePTYBannerTest
 // (banner_player_test.go) uses for playBanner's own pty tests, minus the
 // drain: callers here mostly want to read specific bytes with
 // readMasterUntil rather than passively drain everything.
@@ -76,7 +76,7 @@ func shrinkSetupHeaderTickInterval(t *testing.T, d time.Duration) {
 // animation test: over a real, wide-enough, color-capable pty,
 // startSetupHeader must return a live header whose frame index actually
 // advances over time, and whose redraws are visible on the wire as real
-// escape sequences — not just a single static paint.
+// escape sequences, not just a single static paint.
 func TestSetupHeaderAnimatesAndFrameChangesOverTime(t *testing.T) {
 	master, _ := prepareSetupHeaderPTYTest(t, 80)
 	shrinkSetupHeaderTickInterval(t, 5*time.Millisecond)
@@ -111,8 +111,8 @@ func TestSetupHeaderAnimatesAndFrameChangesOverTime(t *testing.T) {
 // own test, and the property the task brief calls "the single most
 // important correctness property in this unit": while setupPromptSelect's
 // underlying read is genuinely blocked waiting on a keypress, the ticker
-// must not fire at all — no frame-index change, and no bytes written to the
-// pty — for as long as the prompt is outstanding. Once the prompt is
+// must not fire at all, no frame-index change, and no bytes written to the
+// pty, for as long as the prompt is outstanding. Once the prompt is
 // confirmed, the ticker must resume and the frame index must move again.
 func TestSetupHeaderTickerSuspendedDuringPromptRead(t *testing.T) {
 	master, slave := prepareSetupHeaderPTYTest(t, 80)
@@ -130,7 +130,7 @@ func TestSetupHeaderTickerSuspendedDuringPromptRead(t *testing.T) {
 	// reading its pty master, and at a 5ms tick interval this test runs
 	// long enough that anything less than continuous draining fills the
 	// pty's kernel buffer and makes the ticker's own write() block forever
-	// — a self-inflicted deadlock that has nothing to do with the property
+	// a self-inflicted deadlock that has nothing to do with the property
 	// under test. See waitForSubstring's doc comment for why this rules out
 	// readMasterUntil here.
 	buf := drainMasterInBackground(master)
@@ -222,7 +222,7 @@ func waitForIdxChange(t *testing.T, h *setupHeader, from int, timeout time.Durat
 // readMasterUntil whenever a test also needs a *continuous* background
 // drain of the same master for its whole duration (readMasterUntil does its
 // own one-shot master.Read loop and would race a concurrent drain goroutine
-// for the same bytes) — continuous draining matters here because these
+// for the same bytes), continuous draining matters here because these
 // tests run the ticker at a very short interval for several seconds, and a
 // real terminal always keeps reading its pty master, so a test that stops
 // draining mid-way is what would deadlock the ticker's own writes, not
@@ -242,8 +242,8 @@ func waitForSubstring(t *testing.T, buf *syncBuffer, substr string, timeout time
 // TestSetupHeaderArrowKeysDoNotInflateBodyLines is P1-1's own test: driving
 // a real select prompt through several arrow presses (its own in-place,
 // net-zero-rows redraw) must leave bodyLines at exactly the select region's
-// true final size — preSelectBodyLines + 1 (question) + len(options) +
-// 1 (confirm's trailing blank line) — not inflated by len(options) per
+// true final size, preSelectBodyLines + 1 (question) + len(options) +
+// 1 (confirm's trailing blank line), not inflated by len(options) per
 // keypress the way counting each redraw's newlines did before the fix.
 func TestSetupHeaderArrowKeysDoNotInflateBodyLines(t *testing.T) {
 	master, slave := prepareSetupHeaderPTYTest(t, 80)
@@ -307,7 +307,7 @@ func TestSetupHeaderArrowKeysDoNotInflateBodyLines(t *testing.T) {
 
 // TestSetupHeaderStopsRepaintingOnceViewportReached is P1-2's own test: once
 // rows+bodyLines reaches the pty's actual row count, redraw must stop
-// emitting anything at all — no more "\x1b[2K" line-clear escapes — for the
+// emitting anything at all, no more "\x1b[2K" line-clear escapes, for the
 // rest of the run, rather than continuing to redraw into cursor-up
 // sequences the terminal silently clamps at its top margin.
 func TestSetupHeaderStopsRepaintingOnceViewportReached(t *testing.T) {
@@ -350,7 +350,7 @@ func TestSetupHeaderStopsRepaintingOnceViewportReached(t *testing.T) {
 
 // TestTerminalSizeZeroRowDoesNotInvalidateCols is P3-1's own test: a real
 // pty can legitimately report Row:0 with Col perfectly good (a real
-// IoctlSetWinsize{Row:0,Col:80} round-trips exactly as set — no kernel
+// IoctlSetWinsize{Row:0,Col:80} round-trips exactly as set, no kernel
 // validation rejects it), and the pre-fix terminalSize folded both into one
 // combined ok, so a zero Row silently took a good Col down with it. Every
 // `moltnet init` banner and the setup header would then go static on such a

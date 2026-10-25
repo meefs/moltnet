@@ -14,7 +14,7 @@ import (
 // unit wires up as the wizard's live header: 7 frames, a 0deg..+18deg
 // quarter-swing that setupHeader ping-pongs for the full sway. It goes
 // through the exact same parser/validator banner_frames.go's settle
-// animation uses (parseBannerFrames) rather than a second implementation —
+// animation uses (parseBannerFrames) rather than a second implementation,
 // same dimension checks, same shared-content crop, same consecutive-
 // duplicate drop.
 //
@@ -24,15 +24,15 @@ var setupHeaderFramesText string
 // setupHeaderFrames and setupHeaderFramesErr mirror bannerFrames/
 // bannerFramesErr's contract exactly: a non-nil error means the embedded
 // asset failed its own validation, and startSetupHeader treats that as
-// "cannot animate", falling back to the static banner — never panicking.
+// "cannot animate", falling back to the static banner, never panicking.
 var setupHeaderFrames, setupHeaderFramesErr = parseBannerFrames(setupHeaderFramesText)
 
 // setupHeaderFrameWidth is the widest row across every parsed loop frame,
-// setupHeaderEligible's width gate input — the same role
+// setupHeaderEligible's width gate input, the same role
 // bannerFrameContentWidth plays for the settle animation.
 var setupHeaderFrameWidth = maxFrameRowWidth(setupHeaderFrames)
 
-// setupHeaderTickInterval is the header's idle-sway redraw cadence — a var,
+// setupHeaderTickInterval is the header's idle-sway redraw cadence, a var,
 // not a const, so tests can shrink it rather than waiting out a realistic
 // interval (spinner.go's spinnerInterval is the same pattern).
 var setupHeaderTickInterval = 220 * time.Millisecond
@@ -41,8 +41,8 @@ var setupHeaderTickInterval = 220 * time.Millisecond
 // setup` invocation, or nil whenever no header is running (degraded/static
 // fallback, --print-commands, or the non-interactive refusal, which never
 // reaches this package at all). It exists so setupPromptSelect/
-// setupPromptLineCtx — the two wrappers setup_questions.go calls instead of
-// promptSelect/promptLineCtx directly — can suspend/resume the ticker
+// setupPromptLineCtx, the two wrappers setup_questions.go calls instead of
+// promptSelect/promptLineCtx directly, can suspend/resume the ticker
 // without every ask* function having to carry a header parameter of its
 // own, the same package-var-seam style this file's neighbors already use
 // for stdout, promptReader, and runChild.
@@ -52,7 +52,7 @@ var setupHeaderTickInterval = 220 * time.Millisecond
 // It is an atomic.Pointer rather than a bare var purely so a test on a
 // different goroutine (e.g. one asserting the header is live while the
 // wizard's own goroutine is blocked at a prompt, or gone once it has
-// returned) can read it without racing that single writer — a plain
+// returned) can read it without racing that single writer, a plain
 // pointer read/write pair across goroutines with no synchronization is a
 // data race regardless of how obviously ordered the events look from a
 // pty's output, since file I/O establishes no happens-before edge the race
@@ -66,7 +66,7 @@ var activeSetupHeader atomic.Pointer[setupHeader]
 // ordinary writes.
 //
 // It also *is* the package's stdout var for its entire lifetime (Start to
-// Stop) — see Write/Fd below — rather than something that hands stdout back
+// Stop), see Write/Fd below, rather than something that hands stdout back
 // and forth across Suspend/Resume: unwrapping stdout during a suspended
 // prompt would make isOutputTerminal/stdoutIsRealTTY (both keyed off a type
 // assertion against whatever stdout currently is) report the real terminal
@@ -78,7 +78,7 @@ var activeSetupHeader atomic.Pointer[setupHeader]
 // in-place redraw.
 //
 // bodyLines is the number of terminal rows printed *below* the header since
-// it was last (re)painted at the current cursor position — every redraw
+// it was last (re)painted at the current cursor position, every redraw
 // moves up by rows+bodyLines, repaints, and moves back down by bodyLines,
 // never touching a scroll region (SETUP.md: "do not use DECSTBM").
 //
@@ -87,7 +87,7 @@ var activeSetupHeader atomic.Pointer[setupHeader]
 // derives that from the live width via advanceRows), and the select
 // widget's own in-place arrow-key redraw (renderSelectOptions,
 // setup_prompt_select.go) repaints its block net-zero rows even though every
-// byte of it still flows through Write — counting those bytes' newlines
+// byte of it still flows through Write, counting those bytes' newlines
 // would inflate bodyLines by len(options) on every keypress. That region is
 // not append-only, so Write cannot be the sole source of truth for it:
 // setupPromptSelect instead snapshots bodyLines before the read and
@@ -96,7 +96,7 @@ var activeSetupHeader atomic.Pointer[setupHeader]
 //
 // The one exception Write also cannot see at all is promptLineCtx's
 // cooked-terminal echo of a typed answer, rendered by the kernel without
-// this process writing a single byte for it — see noteEchoedLine.
+// this process writing a single byte for it, see noteEchoedLine.
 type setupHeader struct {
 	file *os.File
 
@@ -162,9 +162,9 @@ func setupHeaderEligible() bool {
 
 // startSetupHeader decides, once, how `moltnet setup` opens: nothing at all
 // for --print-commands or a genuinely non-terminal stdout (no header, no
-// ticker, no goroutine — the exact non-negotiable this unit's brief calls
-// out), a static dim(bannerText) frame — byte-identical in spirit to
-// printBanner's own — whenever the terminal can't support the animation
+// ticker, no goroutine, the exact non-negotiable this unit's brief calls
+// out), a static dim(bannerText) frame, byte-identical in spirit to
+// printBanner's own, whenever the terminal can't support the animation
 // (NO_COLOR, TERM=dumb, too narrow, a malformed frame asset), or the live,
 // ticking header otherwise. Only the last case returns a non-nil
 // *setupHeader; the first two return nil, and every method on a nil
@@ -210,8 +210,8 @@ func startSetupHeader(printCommandsOnly bool) *setupHeader {
 }
 
 // Write implements io.Writer, making *setupHeader itself a drop-in stdout
-// value: every write this process makes while the header is live — every
-// question, checkmark line, warning, and the summary screen — passes
+// value: every write this process makes while the header is live, every
+// question, checkmark line, warning, and the summary screen, passes
 // through here, forwarded to the real file unchanged and counted (via
 // advanceRows, against the terminal's live width) so the next redraw knows
 // exactly how far below the header the cursor now sits. Guarded by mu, the
@@ -220,7 +220,7 @@ func startSetupHeader(printCommandsOnly bool) *setupHeader {
 // writer owns stdout at a time").
 //
 // The select widget's own in-place redraw is a deliberate exception to this
-// being the sole source of truth for bodyLines — see setupPromptSelect and
+// being the sole source of truth for bodyLines, see setupPromptSelect and
 // the struct doc comment above.
 func (h *setupHeader) Write(p []byte) (int, error) {
 	h.mu.Lock()

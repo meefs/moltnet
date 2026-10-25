@@ -78,7 +78,7 @@ func TestPreflightListenAddrFallsBackWhenPortHeld(t *testing.T) {
 // actually chose, not loopback as a stand-in for it. This is asserted here
 // by checking the returned address's host, not by trying to force a real
 // 0.0.0.0 bind conflict (which would require binding a privileged-adjacent,
-// machine-wide address in a test — riskier than this test needs to be).
+// machine-wide address in a test; riskier than this test needs to be).
 func TestPreflightListenAddrProbesRequestedFamily(t *testing.T) {
 	withTestDefaultPort(t)
 	addr, err := preflightListenAddr("0.0.0.0")

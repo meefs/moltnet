@@ -138,7 +138,7 @@ func TestRunRelayDeployRequiresConfigWhenTokenIsSet(t *testing.T) {
 // TestRunRelayDeployRejectsEmptyTokenEnvValue also covers the P3 fix moving
 // this validation ahead of the "Deploying relay for <id>" header: an
 // empty/unset --token-env value is a config-independent usage error, so it
-// must return before that header ever prints — printing it first would
+// must return before that header ever prints, printing it first would
 // suggest a deploy attempt actually started.
 func TestRunRelayDeployRejectsEmptyTokenEnvValue(t *testing.T) {
 	t.Setenv("CLOUDFLARE_API_TOKEN", "test-cloudflare-token")

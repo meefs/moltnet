@@ -28,7 +28,7 @@ func runSend(args []string) error {
 	// A bare "send help" never reaches Go's flag package as a help request
 	// (it is a plain positional argument, not "-h"/"--help", both of which
 	// flags.Parse below already turns into flag.ErrHelp after printing
-	// usage — see help_test.go's TestFlagHelpNeverErrors). Catch only the
+	// usage, see help_test.go's TestFlagHelpNeverErrors). Catch only the
 	// literal word here, before Parse, so it prints usage instead of
 	// falling through to parseTarget's "target must be room:<id> or
 	// dm:<id>" error on "help" treated as the target.
@@ -75,7 +75,7 @@ func runSend(args []string) error {
 	var fromActor protocol.Actor
 	if usingFallback {
 		// No agent-config rooms/DMs allowlist exists in this mode (there is
-		// no attachment.Rooms to check) — the server's own write-policy and
+		// no attachment.Rooms to check), the server's own write-policy and
 		// access checks are authoritative instead; see
 		// resolveClientOrOperator's doc comment.
 		fromActor = operatorSenderActor(*networkID, *memberID)
@@ -141,7 +141,7 @@ func daimonWakeDeliveryID(value string) (string, bool) {
 // form, without breaking it.
 //
 // When --target is already set and exactly one positional argument remains
-// that itself looks like a target (room:<id> or dm:<id> — targetLikePattern),
+// that itself looks like a target (room:<id> or dm:<id>, targetLikePattern),
 // that is almost certainly a mistake, not a message: `send --target room:a
 // room:b` used to silently post the literal text "room:b" instead of
 // erroring, since nothing here previously distinguished "the trailing
@@ -151,7 +151,7 @@ func daimonWakeDeliveryID(value string) (string, bool) {
 // commands agree on the same mistake.
 //
 // Once target is resolved, any remaining positional words become the
-// message when --text was not given — `moltnet send room:chat hola mundo`
+// message when --text was not given, `moltnet send room:chat hola mundo`
 // joins "hola mundo" into one message, the natural way an operator types a
 // multi-word message unquoted at a terminal. --text was given explicitly,
 // any remaining positional is still an error (never silently dropped or
@@ -189,6 +189,6 @@ func resolveSendPositionalArgs(positional []string, targetFlag string, textFlag 
 }
 
 // targetLikePattern matches the room:<id>/thread:<id>/dm:<id> target
-// shorthand — resolveSendPositionalArgs' guard for a stray positional that
+// shorthand, resolveSendPositionalArgs' guard for a stray positional that
 // looks like a forgotten second target rather than a message.
 var targetLikePattern = regexp.MustCompile(`^(room|thread|dm):`)

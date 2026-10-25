@@ -28,7 +28,7 @@ func TestProbeSetupNetworkHealthMatchingID(t *testing.T) {
 
 // TestProbeSetupNetworkHealthWrongIDNeverSucceeds proves the probe checks
 // identity, not just reachability: a 200 response naming a *different*
-// network id must never report healthy, however long it retries — exactly
+// network id must never report healthy, however long it retries, exactly
 // the case SETUP.md calls out (a second network on the same port).
 func TestProbeSetupNetworkHealthWrongIDNeverSucceeds(t *testing.T) {
 	previousTimeout, previousInterval := setupHealthProbeTimeout, setupHealthProbeInterval
@@ -46,7 +46,7 @@ func TestProbeSetupNetworkHealthWrongIDNeverSucceeds(t *testing.T) {
 }
 
 // TestProbeSetupNetworkHealthUnreachableTimesOut confirms the probe gives
-// up (rather than blocking forever) when nothing answers at all — the
+// up (rather than blocking forever) when nothing answers at all, the
 // state a fresh `service install` is briefly in before its process has
 // actually bound the port.
 func TestProbeSetupNetworkHealthUnreachableTimesOut(t *testing.T) {

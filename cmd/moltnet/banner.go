@@ -16,11 +16,11 @@ import (
 var bannerText string
 
 // printBanner writes the moltnet wordmark banner, dimmed, followed by a
-// blank line, but only when stdout is a terminal (isOutputTerminal) — never
+// blank line, but only when stdout is a terminal (isOutputTerminal); never
 // when piped, and never in the non-TTY golden tests. Styling (dim) still
 // goes through the usual colorEnabled gate, so NO_COLOR prints the same
 // banner text with no escape codes. This is the plain, never-animated
-// entry point — see printBannerAnimated for `init`'s counterpart.
+// entry point; see printBannerAnimated for `init`'s counterpart.
 func printBanner() {
 	if !isOutputTerminal() {
 		return
@@ -36,7 +36,7 @@ func printBanner() {
 // byte-for-byte to printBanner's own static dim(bannerText) otherwise.
 //
 // Bare `moltnet` (cli.go's no-command path) deliberately keeps calling
-// plain printBanner() instead of this — it now just prints help and exits
+// plain printBanner() instead of this; it now just prints help and exits
 // (PLAN 7A.5), and animating there would add a purely cosmetic ~1s delay to
 // a one-shot help lookup. `init` is already an interactive, one-shot
 // command that narrates several steps in sequence, so the same ~1s reads as
@@ -45,7 +45,7 @@ func printBanner() {
 // ctx is threaded straight through to playBanner (banner_player.go), whose
 // doc comment covers what a cancelled ctx does mid-animation. When it comes
 // back with ctx already done, printBannerAnimated skips the trailing blank
-// line too — runInit is about to return ctx.Err() and exit, so there is no
+// line too; runInit is about to return ctx.Err() and exit, so there is no
 // following output for that blank line to separate.
 func printBannerAnimated(ctx context.Context) {
 	if !isOutputTerminal() {

@@ -18,13 +18,13 @@ import (
 // happy path makes. internal/relaydeploy has its own richer fake (used to
 // unit test the client and Deploy orchestration in isolation); this one
 // exists only so cmd/moltnet's CLI-layer tests can drive `relay deploy`
-// end to end — flags, token resolution, save/prompt, output — without a
+// end to end, flags, token resolution, save/prompt, output, without a
 // real Cloudflare account, and cannot reuse relaydeploy's unexported fake
 // since it lives in a different package.
 type fakeCloudflareCLIServer struct {
 	Server *httptest.Server
 	// wantToken, when non-empty, makes every call require this exact
-	// bearer token, returning 401 otherwise — how tests prove which token
+	// bearer token, returning 401 otherwise; how tests prove which token
 	// (env vs. stored) a deploy actually used.
 	wantToken string
 
@@ -46,18 +46,18 @@ type fakeCloudflareCLIServer struct {
 
 	// simulateClaimLag, when true, makes a successful handleClaimSubdomain
 	// PUT accept the name (so the claim itself is reported as succeeded)
-	// without actually updating f.subdomain — standing in for Cloudflare's
+	// without actually updating f.subdomain; standing in for Cloudflare's
 	// real read-after-write lag on the account-level subdomain claim: a
 	// redeploy immediately afterward still finds the account unclaimed.
 	simulateClaimLag bool
 
 	// uploadAndSecretSucceedWhenUnclaimed, when true, makes handleOK ignore
-	// f.subdomain entirely and always succeed — standing in for an account
+	// f.subdomain entirely and always succeed; standing in for an account
 	// where Cloudflare's upload/secret steps never surface error code 10063
 	// (unlike startFakeCloudflareCLIServerUnclaimed's default, the
 	// field-observed 10063-at-upload failure mode), so
 	// relaydeploy.Deploy's *own* WorkersDevSubdomain GET check (deploy.go)
-	// is what first detects the account as unclaimed — the P1 regression
+	// is what first detects the account as unclaimed; the P1 regression
 	// this fake exists to cover (that primary detection path must still
 	// populate Result.AccountID, not just the upload-10063 belt-and-braces
 	// path already covered elsewhere).
@@ -69,16 +69,16 @@ type fakeCloudflareCLIServer struct {
 	// (unclaimed) for the interactive-claim-flow tests
 	// (startFakeCloudflareCLIServerUnclaimed), in which case the upload,
 	// secret, and route-enable steps mirror the field failure this fix
-	// covers — Cloudflare error code 10063 — until a PUT
+	// covers, Cloudflare error code 10063, until a PUT
 	// /workers/subdomain claims one.
 	subdomain string
 	// claimAttempts counts every PUT /workers/subdomain request this fake
-	// has received, regardless of outcome — the --subdomain flag tests
+	// has received, regardless of outcome; the --subdomain flag tests
 	// (relay_deploy_subdomain_flag_test.go) use this to prove an already-
 	// matching claim is adopted without a redundant re-claim PUT.
 	claimAttempts int
 	// requests counts every request this fake has received across every
-	// registered route, regardless of method or outcome — unlike
+	// registered route, regardless of method or outcome; unlike
 	// claimAttempts, which only ever sees the one PUT /workers/subdomain
 	// route. "--print-commands must never contact Cloudflare" needs this
 	// wider count: VerifyToken/ResolveAccountID/WorkersDevSubdomain are all
@@ -108,8 +108,8 @@ func startFakeCloudflareCLIServerUnclaimed(t *testing.T, wantToken, acceptClaimN
 // test covering the *primary* ErrWorkersDevSubdomainUnclaimed detection
 // path: unlike that fake, upload and secret both succeed even though the
 // account has no claimed subdomain (uploadAndSecretSucceedWhenUnclaimed), so
-// it is relaydeploy.Deploy's own WorkersDevSubdomain GET check — not a
-// 10063 upload/secret rejection — that first detects the account as
+// it is relaydeploy.Deploy's own WorkersDevSubdomain GET check, not a
+// 10063 upload/secret rejection, that first detects the account as
 // unclaimed and returns relaydeploy.ErrWorkersDevSubdomainUnclaimed.
 func startFakeCloudflareCLIServerUnclaimedViaSubdomainCheck(t *testing.T, wantToken, acceptClaimName string) *fakeCloudflareCLIServer {
 	t.Helper()
@@ -122,8 +122,8 @@ func startFakeCloudflareCLIServerUnclaimedViaSubdomainCheck(t *testing.T, wantTo
 // counterpart for the P2 post-claim propagation-lag messaging test: a PUT
 // /workers/subdomain claiming acceptClaimName is reported as succeeding,
 // but f.subdomain (backing GET /workers/subdomain and the upload/secret/
-// route steps) is deliberately never actually updated — see
-// fakeCloudflareCLIServer.simulateClaimLag — modeling Cloudflare's real
+// route steps) is deliberately never actually updated, see
+// fakeCloudflareCLIServer.simulateClaimLag, modeling Cloudflare's real
 // read-after-write lag: a redeploy immediately after a successful claim
 // can still see the account as unclaimed for a moment.
 func startFakeCloudflareCLIServerClaimLag(t *testing.T, wantToken, acceptClaimName string) *fakeCloudflareCLIServer {
@@ -137,7 +137,7 @@ func startFakeCloudflareCLIServerClaimLag(t *testing.T, wantToken, acceptClaimNa
 // account already has claimedName as its workers.dev subdomain, but whose
 // PUT /workers/subdomain always rejects any claim attempt with Cloudflare's
 // documented error code 10036 ("account already has a subdomain") rather
-// than ever accepting one — the P2 real-error-codes fix's "continue as
+// than ever accepting one; the P2 real-error-codes fix's "continue as
 // claimed" path: attemptInteractiveWorkersDevSubdomainClaim must treat this
 // as success, not a rejection to retry, discovering claimedName via a
 // follow-up GET.
@@ -153,8 +153,8 @@ func startFakeCloudflareCLIServerAccountAlreadyHasSubdomain(t *testing.T, wantTo
 // the P3 copy fix (relay_deploy_subdomain_claim.go): PUT /workers/subdomain
 // still always rejects with Cloudflare's documented error code 10036
 // ("account already has a subdomain"), but unlike that fake, the account's
-// claim is never visible via the follow-up GET either — f.subdomain stays
-// "" — modeling Cloudflare's own read-after-write lag on the very claim it
+// claim is never visible via the follow-up GET either, f.subdomain stays
+// "", modeling Cloudflare's own read-after-write lag on the very claim it
 // just told us about via 10036. attemptInteractiveWorkersDevSubdomainClaim
 // must treat this as a terminal, non-retryable case (propagationPending)
 // rather than burning its remaining attempts on names that were never the
@@ -212,7 +212,7 @@ func (f *fakeCloudflareCLIServer) handleAccounts(w http.ResponseWriter, r *http.
 // per-script migration state the way internal/relaydeploy's own richer
 // fake does (see that package's fake_cloudflare_migration_test.go for the
 // stateful, precondition-enforcing version this CLI-layer fake
-// intentionally does not replicate) — it always reports the script as not
+// intentionally does not replicate); it always reports the script as not
 // found (Cloudflare error code 10092), so every deploy through this fake
 // is treated as a fresh create and sends the embedded migration unchanged,
 // exactly matching this fake's pre-fix behavior (`handleOK` never modeled
@@ -226,7 +226,7 @@ func (f *fakeCloudflareCLIServer) handleGetService(w http.ResponseWriter, r *htt
 // this account has a claimed subdomain (the common case: every existing
 // test's default "acme"), each just needs a bare success:true envelope for
 // Deploy to proceed. Before a claim (startFakeCloudflareCLIServerUnclaimed),
-// it instead returns Cloudflare error code 10063 — the field-observed
+// it instead returns Cloudflare error code 10063; the field-observed
 // failure this fix maps to relaydeploy.ErrWorkersDevSubdomainUnclaimed at
 // every step that can hit it, not just route-enable.
 func (f *fakeCloudflareCLIServer) handleOK(w http.ResponseWriter, r *http.Request) {
@@ -256,8 +256,8 @@ func (f *fakeCloudflareCLIServer) handleGetSubdomain(w http.ResponseWriter, r *h
 // rejectClaimAsAccountAlreadyHasSubdomain, when set, always rejects with
 // Cloudflare's documented error code 10036 ("account already has a
 // subdomain", HTTP 409), regardless of the name submitted; otherwise (2)
-// only acceptClaimName (when set) is accepted, and anything else —
-// including a resubmission of a name already rejected — is refused with
+// only acceptClaimName (when set) is accepted, and anything else,
+// including a resubmission of a name already rejected; is refused with
 // Cloudflare's documented error code 10031 ("name already taken"); a
 // successful claim updates f.subdomain unless simulateClaimLag is set (see
 // its doc comment).
@@ -298,7 +298,7 @@ func (f *fakeCloudflareCLIServer) claimAttemptCount() int {
 }
 
 // requestCount returns how many requests this fake has received so far,
-// across every registered route — the total-contact count "--print-commands
+// across every registered route; the total-contact count "--print-commands
 // must never contact Cloudflare" actually needs (see the requests field's
 // doc comment).
 func (f *fakeCloudflareCLIServer) requestCount() int {
@@ -323,7 +323,7 @@ func writeFakeCloudflareEnvelope(w http.ResponseWriter, status int, success bool
 
 // writeFakeCloudflareEnvelopeError writes a failure envelope carrying a
 // specific error code and message, unlike writeFakeCloudflareEnvelope's
-// hardcoded auth-failure shape — used by handleOK, handleGetSubdomain, and
+// hardcoded auth-failure shape; used by handleOK, handleGetSubdomain, and
 // handleClaimSubdomain above to return the specific Cloudflare error codes
 // their scenarios need (10063, 10007, 10036).
 func writeFakeCloudflareEnvelopeError(w http.ResponseWriter, status, code int, message string) {
@@ -341,7 +341,7 @@ func writeFakeCloudflareEnvelopeError(w http.ResponseWriter, status, code int, m
 // resolveRelayDeployHostname at a stub reporting the deployed hostname as
 // resolved, for the test's duration, restoring both afterward. Without the
 // stub, a deploy through the fake server would fall through to Deploy's
-// real DNS lookup on the fake's script.acme.workers.dev hostname — a live
+// real DNS lookup on the fake's script.acme.workers.dev hostname; a live
 // network call in every test, and one that is not actually reliable: the
 // workers.dev wildcard DNS record resolves for essentially any subdomain
 // whether or not a script was ever deployed there, so the "not resolving
@@ -364,7 +364,7 @@ func withRelayDeployFakeCloudflare(t *testing.T, fake *fakeCloudflareCLIServer) 
 // the freshly deployed hostname is not resolving yet
 // (Result.HostnameResolved false), the printed note must name the specific
 // hostname that isn't resolving, not just the generic "DNS can take a few
-// minutes" reason — restoring the detected fact the guide's own prose
+// minutes" reason; restoring the detected fact the guide's own prose
 // ("it says so") promises. Unlike withRelayDeployFakeCloudflare's default
 // stub (always resolved, so most tests never hit a live DNS lookup), this
 // overrides resolveRelayDeployHostname to report unresolved instead.

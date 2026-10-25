@@ -45,7 +45,7 @@ func runRelayDeploy(args []string) error {
 		configPath  = flags.String("config", "", "Moltnet config path")
 		id          = flags.String("id", "", "network id to select under ~/.moltnet when several exist")
 		verboseFlag = flags.Bool("verbose", false, "print full detail: per-step checkmarks, stored-token source, credential paths, the rotation warning")
-		subdomain   = flags.String("subdomain", "", "claim this workers.dev subdomain for the Cloudflare account non-interactively, instead of the interactive prompt (required when stdin/stdout are not both terminals and the account has no existing claim); claiming a workers.dev subdomain is PERMANENT for the account and Cloudflare allows exactly one, ever — passing this flag is your explicit confirmation of that claim. Ignored (adopted silently) if it matches an existing claim; refused if it names a different one")
+		subdomain   = flags.String("subdomain", "", "claim this workers.dev subdomain for the Cloudflare account non-interactively, instead of the interactive prompt (required when stdin/stdout are not both terminals and the account has no existing claim); claiming a workers.dev subdomain is PERMANENT for the account and Cloudflare allows exactly one, ever; passing this flag is your explicit confirmation of that claim. Ignored (adopted silently) if it matches an existing claim; refused if it names a different one")
 	)
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -76,7 +76,7 @@ func runRelayDeploy(args []string) error {
 	// deep inside relaydeploy.Deploy after a header already printed.
 	// Normalizing (lowercasing) here, once, is what lets deployOpts.Subdomain
 	// below and the equality checks inside relaydeploy.Deploy assume a
-	// canonical form — the same rule
+	// canonical form; the same rule
 	// attemptInteractiveWorkersDevSubdomainClaim applies to a typed name
 	// (relay_deploy_subdomain_claim.go).
 	//
@@ -130,8 +130,8 @@ func runRelayDeploy(args []string) error {
 	// --print-manual or --forget-token, both already returned above), so
 	// this is the one place the "Deploying relay for <id>" header prints.
 	// sections then tracks blank-line separation between whichever of this
-	// run's phases — corrupt-token warning, token prompt, subdomain claim,
-	// results, relay url, token save — actually produce output.
+	// run's phases, corrupt-token warning, token prompt, subdomain claim,
+	// results, relay url, token save, actually produce output.
 	fmt.Fprintf(stdout, "  Deploying relay for %s\n\n", config.NetworkID)
 	sections := &sectionPrinter{}
 
@@ -143,15 +143,15 @@ func runRelayDeploy(args []string) error {
 		// that has a working CLOUDFLARE_API_TOKEN env override, or one that
 		// can fall through to the interactive paste prompt below: warn and
 		// fall back to treating nothing as stored. Only surface the load
-		// error itself when neither of those is available — no env token,
-		// and no real terminal to prompt on — since in that case it is the
+		// error itself when neither of those is available, no env token,
+		// and no real terminal to prompt on, since in that case it is the
 		// only explanation for why the deploy cannot proceed.
 		if envToken == "" && !(isInteractive() && isOutputTerminal()) {
 			return fmt.Errorf("%w; run `moltnet relay deploy --forget-token` to remove it", loadErr)
 		}
 		sections.start()
 		// P2-3: loadErr's message embeds tokenPath as a raw absolute path
-		// (relaydeploy.LoadCloudflareToken's own decode error) — abbreviate
+		// (relaydeploy.LoadCloudflareToken's own decode error); abbreviate
 		// it for display here, at the presentation layer, rather than in
 		// internal/relaydeploy: that package's own tests pin the raw path in
 		// what it returns to its callers.
@@ -161,7 +161,7 @@ func runRelayDeploy(args []string) error {
 	apiToken, tokenSource := resolveCloudflareAPIToken(envToken, storedToken, storedTokenOK)
 	if apiToken == "" {
 		pastedToken, promptErr := maybePromptForCloudflareToken(sections)
-		// errTerminalEchoUnavailable is not itself fatal — it means the
+		// errTerminalEchoUnavailable is not itself fatal; it means the
 		// prompt was never even shown (echo could not be reliably disabled,
 		// P0 fail-open-echo fix), so this falls through to the same
 		// guidance-and-error path a non-interactive run takes, exactly as
@@ -227,13 +227,13 @@ func runRelayDeploy(args []string) error {
 		// result.AccountID is already resolved here even though this Deploy
 		// call itself failed: every step that can return
 		// ErrWorkersDevSubdomainUnclaimed runs after account resolution
-		// (see Result's doc comment, deploy.go) — attemptInteractiveWorkersDevSubdomainClaim
+		// (see Result's doc comment, deploy.go); attemptInteractiveWorkersDevSubdomainClaim
 		// reuses it instead of resolving the account a second time.
 		name, ok, pending := attemptInteractiveWorkersDevSubdomainClaim(ctx, client, result.AccountID, sections)
 		if ok {
 			claimedSubdomainName = name
 			// The claim succeeded; re-run Deploy in full rather than trying
-			// to resume mid-flight — see attemptInteractiveWorkersDevSubdomainClaim's
+			// to resume mid-flight; see attemptInteractiveWorkersDevSubdomainClaim's
 			// doc comment for why that's the simplest correct choice here.
 			redeploySpinner := startSpinner("deploying relay…")
 			result, err = relaydeploy.Deploy(ctx, client, deployOpts)
@@ -250,7 +250,7 @@ func runRelayDeploy(args []string) error {
 				// was only set on a successful attemptInteractiveWorkersDevSubdomainClaim
 				// call); this redeploy failing again with the same sentinel
 				// means Cloudflare's own read-after-write lag, not an
-				// unclaimed account — printing the generic "has not claimed"
+				// unclaimed account; printing the generic "has not claimed"
 				// guidance here would be actively misleading (P2 post-claim
 				// lag messaging fix).
 				sections.start()
@@ -271,7 +271,7 @@ func runRelayDeploy(args []string) error {
 		// P2-3: when this deploy used a stored per-network token
 		// (storedTokenPathForDeploy set) and Cloudflare rejected it,
 		// wrapStoredTokenError (internal/relaydeploy/deploy.go) already named
-		// the file in err's message using its raw absolute path — abbreviate
+		// the file in err's message using its raw absolute path; abbreviate
 		// that here, at the presentation layer, rather than in
 		// internal/relaydeploy itself: that package's own tests pin the raw
 		// path in what it returns to its callers, so the returned error
@@ -313,16 +313,16 @@ func runRelayDeploy(args []string) error {
 	if claimedSubdomainName != "" || printedStepLines {
 		sections.start()
 	}
-	// P2-3: the relay URL itself must stay at full contrast — it is the
-	// value an operator copies out of this line — so it is never dimmed or
+	// P2-3: the relay URL itself must stay at full contrast, it is the
+	// value an operator copies out of this line, so it is never dimmed or
 	// abbreviated, unlike the "extra" column printInitConfigCheckLine dims.
 	fmt.Fprintf(stdout, "  %s relay live   %s\n", green("✓"), result.URL)
 	if !result.HostnameResolved {
 		// P2-5: name the detected hostname itself, not just the generic
-		// "DNS can take a few minutes" reason — the guide's own prose
+		// "DNS can take a few minutes" reason; the guide's own prose
 		// ("it says so") promises this note names what isn't resolving yet.
 		// A detected condition, so it always prints, --verbose or not.
-		fmt.Fprintf(stdout, "    %s %s is not resolving yet — workers.dev DNS can take a few minutes; retry `moltnet pair invite` shortly if it fails\n", yellow("note:"), result.Hostname)
+		fmt.Fprintf(stdout, "    %s %s is not resolving yet: workers.dev DNS can take a few minutes; retry `moltnet pair invite` shortly if it fails\n", yellow("note:"), result.Hostname)
 	}
 	if verbose {
 		fmt.Fprintf(stdout, "  %s rotating RELAY_TOKEN (redeploying with a new --token-env value) breaks every pairing on this relay at once\n", yellow("warning:"))
@@ -337,7 +337,7 @@ func runRelayDeploy(args []string) error {
 		// The token this deploy used already lives at tokenPath (that's what
 		// "stored" means); --save-token has nothing new to persist. Say so
 		// instead of silently doing nothing, so the flag never looks like it
-		// was ignored — a --verbose-only note, since it is informational,
+		// was ignored; a --verbose-only note, since it is informational,
 		// not actionable.
 		if *saveToken && verbose {
 			sections.start()

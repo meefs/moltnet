@@ -107,7 +107,7 @@ func runServiceInstall(ctx context.Context, manager *service.Manager, spec servi
 // every time rather than the CLI guessing which one the operator came for.
 //
 // The first line points at this network's own /install.md rather than at
-// `moltnet room create` (PLAN.md 7A.1 — not shipped yet): the starter
+// `moltnet room create` (PLAN.md 7A.1, not shipped yet): the starter
 // "general" room plain `init` now writes (defaultMoltnetConfig, templates.go)
 // already accepts self-registered agents, so there is nothing left to run
 // before pointing an agent at the join guide. The base URL is derived from
@@ -158,7 +158,7 @@ func runServiceUninstall(ctx context.Context, manager *service.Manager, networkI
 }
 
 // runServiceStatus prints one outcome line naming the service's state
-// (running, stopped-but-installed, or not installed at all — the last two
+// (running, stopped-but-installed, or not installed at all, the last two
 // are real, actionable facts, so they always print, never behind
 // --verbose), plus the platform tool's raw status output when --verbose.
 func runServiceStatus(ctx context.Context, manager *service.Manager, networkID string, verbose bool) error {
@@ -182,7 +182,7 @@ func runServiceStatus(ctx context.Context, manager *service.Manager, networkID s
 }
 
 // resolveServiceSpec resolves the network config the same way
-// start/pair/relay do (app.ResolveConfigPath via resolvePairConfigPath —
+// start/pair/relay do (app.ResolveConfigPath via resolvePairConfigPath,
 // with --id given, ~/.moltnet/<id>/Moltnet is resolved first, falling back
 // to cwd only when its config self-identifies as network id id), then
 // derives the rest of service.Spec from it: NetworkID from the loaded

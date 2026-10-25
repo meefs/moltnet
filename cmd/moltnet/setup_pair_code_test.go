@@ -13,7 +13,7 @@ import (
 
 // buildSetupTestInviteCode encodes a standalone invite code for the setup
 // wizard's "I have an invite code" tests, independent of any `pair invite`
-// call — these tests exercise Q7's own decode-and-validate step, not the
+// call, these tests exercise Q7's own decode-and-validate step, not the
 // invite-generation side.
 func buildSetupTestInviteCode(t *testing.T, exp time.Time) string {
 	t.Helper()
@@ -73,10 +73,10 @@ func TestSetupQ7HaveCodeValidPairs(t *testing.T) {
 // TestSetupQ7HaveCodeCollidingNetworkIDRefusesBeforeMutation is P2-1's
 // regression test: `pair` itself refuses an invite whose NetworkID collides
 // with the local network id (pair_join.go), but only after `init` has
-// already written the config to disk — planSetupPairHaveCode must catch the
+// already written the config to disk, planSetupPairHaveCode must catch the
 // exact same collision itself, before init (or any other mutation) ever
-// runs. The invite's NetworkID here is "local" — the same default Q2 itself
-// falls back to on an empty answer — so this drives the collision through
+// runs. The invite's NetworkID here is "local", the same default Q2 itself
+// falls back to on an empty answer, so this drives the collision through
 // the Enter-through path rather than a hand-picked id.
 func TestSetupQ7HaveCodeCollidingNetworkIDRefusesBeforeMutation(t *testing.T) {
 	withInProcessRunChild(t)
@@ -149,7 +149,7 @@ func TestSetupQ7HaveCodeExpiredProducesClearMessage(t *testing.T) {
 
 	// The code is decoded and validated before planSetupPairing ever
 	// returns, which is before runSetupInteractive builds or executes any
-	// invocation at all (setup.go) — so not even `init` has run yet, and no
+	// invocation at all (setup.go), so not even `init` has run yet, and no
 	// config exists on disk to load.
 	if _, err := app.LoadFile(writtenSetupConfigPath(home), ""); err == nil {
 		t.Fatal("expected no config to have been written before the code was validated")

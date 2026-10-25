@@ -14,7 +14,7 @@ import (
 // TestRunUninstallCommandPurgeSymlinkedHomeReportsLinkRemoved is the P2-2
 // regression test: when ~/.moltnet is a symlink to data stored elsewhere,
 // --purge must remove only the link, name the resolved target in its
-// outcome message, and leave the data at that target untouched — never
+// outcome message, and leave the data at that target untouched, never
 // silently RemoveAll the target, and never claim "removed ~/.moltnet" as
 // if the data itself was gone.
 func TestRunUninstallCommandPurgeSymlinkedHomeReportsLinkRemoved(t *testing.T) {
@@ -167,7 +167,7 @@ func TestBuildPurgeConfirmationPromptListsNetworkIDs(t *testing.T) {
 	}
 
 	// When the directory does not exist at all, the prompt must not promise
-	// to remove it — it should say plainly that there is nothing there yet.
+	// to remove it, it should say plainly that there is nothing there yet.
 	missing := buildPurgeConfirmationPrompt(nil, root, uninstall.HomeState{}, "", false)
 	if !strings.Contains(missing, "no network data found under it") || !strings.Contains(missing, "nothing exists there yet") {
 		t.Fatalf("buildPurgeConfirmationPrompt(nil) = %q, want the nothing-exists-yet wording", missing)

@@ -35,8 +35,8 @@ type adminClientOptions struct {
 // independently re-resolve a local server config by --network alone. That
 // silently lands on the wrong file whenever a client config
 // (.moltnet/config.json, MOLTNET_CLIENT_CONFIG, or the legacy
-// .spawnfile/moltnet.json) exists and resolves to a different — possibly
-// remote — server: the live request goes there, but the writeback would
+// .spawnfile/moltnet.json) exists and resolves to a different, possibly
+// remote, server: the live request goes there, but the writeback would
 // still guess at whatever local server config --network happened to name.
 type adminClientResolution struct {
 	// LocalServerConfigPath is non-empty only when resolveAdminClient
@@ -141,7 +141,7 @@ func resolveAdminClientResolution(flags *flag.FlagSet, options *adminClientOptio
 			// No client config (.moltnet/config.json) on disk. Before giving
 			// up, fall back to the local Moltnet *server* config (PLAN.md
 			// phase 4's shared config resolution), deriving --base-url and an
-			// admin-scoped token from it — --network doubles as the network
+			// admin-scoped token from it, --network doubles as the network
 			// id to disambiguate ~/.moltnet/ when several networks exist,
 			// exactly like start/pair/relay's --id.
 			if attachment.BaseURL == "" {

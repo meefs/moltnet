@@ -7,7 +7,7 @@ import (
 )
 
 // setupPairOpenUpTestPlan is a fully populated setupPairOpenUpPlan for the
-// pure-function invariant tests below — no Cloudflare, no filesystem, no
+// pure-function invariant tests below, no Cloudflare, no filesystem, no
 // prompts, just setupPairInvocations/buildRelayDeployInvocation's own
 // argv-shaping rules.
 func setupPairOpenUpTestPlan() *setupPairOpenUpPlan {
@@ -26,7 +26,7 @@ func setupPairOpenUpTestPlan() *setupPairOpenUpPlan {
 // it must be `pair invite show`, not `relay deploy` (which carries the
 // secret-bearing Env) or `pair invite` itself. Setting CaptureOutput: true
 // on the wrong invocation would leave the suite green today since nothing
-// else asserts this — this is that assertion.
+// else asserts this, this is that assertion.
 func TestSetupPairInvocationsCaptureOutputOnlyOnInviteShow(t *testing.T) {
 	answers := setupAnswers{
 		id:         "acme-net",
@@ -121,7 +121,7 @@ func argsContainFlagValue(args []string, flag, value string) bool {
 // under that flag): appending "--token", plan.cloudflareToken to Args below
 // would still print as "--token ”" and pass that test, and the three
 // end-to-end tests would only fail incidentally, because `relay deploy`
-// happens to reject an unknown flag — a leak through an *accepted* flag
+// happens to reject an unknown flag, a leak through an *accepted* flag
 // would ship silently. This asserts on Args/Env directly, with a plan whose
 // token is actually non-empty (setupPairOpenUpTestPlan), so it would catch
 // that leak regardless of what --print-commands prints or which flags

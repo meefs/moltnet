@@ -24,7 +24,7 @@ var checkoutMarkers = []string{".git", "go.mod", "package.json"}
 //
 // With no --dir, it writes into the global home ~/.moltnet/<network-id>/,
 // prompting for --id on a TTY (hard error otherwise). --dir opts out of the
-// global home entirely — including the --id prompt/requirement, so
+// global home entirely; including the --id prompt/requirement, so
 // `moltnet init --dir .` keeps behaving exactly like the pre-phase-4
 // `moltnet init` did: a "local" network written into the given directory,
 // no prompt, no TTY requirement.
@@ -37,7 +37,7 @@ var checkoutMarkers = []string{".git", "go.mod", "package.json"}
 // through so Ctrl-C is actually responsive during init: printBannerAnimated
 // checks it between animation frames, and resolveInitNetworkID checks it
 // while blocked on the interactive --id prompt. A ctx already done when
-// either returns is treated exactly like any other runInit error — this
+// either returns is treated exactly like any other runInit error; this
 // function returns before touching the filesystem, so nothing is created
 // (no directory, no config) on a cancelled init.
 func runInit(ctx context.Context, args []string) error {
@@ -60,7 +60,7 @@ func runInit(ctx context.Context, args []string) error {
 
 	// Arg-count/conflict validation happens before the banner plays (not
 	// just before flags.Parse's own error path): both checks below are
-	// pure — no output on the success path — so hoisting them ahead of
+	// pure, no output on the success path, so hoisting them ahead of
 	// printBannerAnimated costs nothing on a well-formed invocation, but
 	// means a doomed `moltnet init a b` (or a positional path combined with
 	// --dir) fails instantly instead of only after burning the ~0.9s settle
@@ -69,7 +69,7 @@ func runInit(ctx context.Context, args []string) error {
 	if flags.NArg() > 1 {
 		// Same fix as runNode (node.go): flag stops parsing at the first
 		// non-flag arg, so `moltnet init <path> --id x` never reaches --id as
-		// a flag — it lands here as extra positional args. Name the
+		// a flag; it lands here as extra positional args. Name the
 		// offending flag instead of the generic message below when one of
 		// the extras looks like one.
 		for _, extra := range flags.Args()[1:] {
@@ -94,9 +94,9 @@ func runInit(ctx context.Context, args []string) error {
 		return err
 	}
 
-	// P2-2: the banner must be the first output on every init path — before
+	// P2-2: the banner must be the first output on every init path, before
 	// the positional-path deprecation note below and before
-	// resolveInitNetworkID's interactive --id prompt further down — so it
+	// resolveInitNetworkID's interactive --id prompt further down, so it
 	// prints immediately once flags are known to be well-formed.
 	// printBannerAnimated (banner_player.go) plays the settle animation on a
 	// real terminal, falling back to plain printBanner's static output
@@ -105,7 +105,7 @@ func runInit(ctx context.Context, args []string) error {
 	if err := ctx.Err(); err != nil {
 		// SIGINT/SIGTERM landed mid-animation (P2-2/item-3): nothing has
 		// been written to the filesystem yet, so returning here is a clean
-		// abort — runCLI's normal error path takes it from here, no special
+		// abort; runCLI's normal error path takes it from here, no special
 		// cleanup needed (playBanner never uses the alternate screen or
 		// hides the cursor; see its doc comment).
 		return err
@@ -227,7 +227,7 @@ func runInit(ctx context.Context, args []string) error {
 	}
 
 	// Check existence up front (rather than generating a token first and
-	// discarding it — P3-3) so the token is only ever generated when it will
+	// discarding it; P3-3) so the token is only ever generated when it will
 	// actually be used: embedded in a fresh config below, or added to an
 	// existing one (P1-2).
 	serverExists := false
@@ -265,7 +265,7 @@ func runInit(ctx context.Context, args []string) error {
 	// no-ops on an existing path without ever looking at serverContents, so
 	// computing it regardless of serverOccupied would mean generating a
 	// secret only to discard it (P3-3's rule, now applying to the plain
-	// path too now that defaultMoltnetConfig also mints one — see
+	// path too now that defaultMoltnetConfig also mints one; see
 	// buildFreshServerConfig's doc comment, init_server_config.go). Gated on
 	// serverOccupied (not just serverExists), matching the note above: a
 	// dangling symlink or directory at serverPath is refused by
@@ -278,7 +278,7 @@ func runInit(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		// Authoring-time bind warning (PLAN.md's setup-wizard spec, "Q4 —
+		// Authoring-time bind warning (PLAN.md's setup-wizard spec, "Q4,
 		// the warning is computed, never static"): describes serverContents
 		// before it is written, same as checkoutWarning above describes root.
 		if warning := initNonLoopbackWarning(listenAddr, *bearerFlag, roomIDs); warning != "" {

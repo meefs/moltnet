@@ -14,8 +14,8 @@ var version = "0.0.0-dev"
 // sourceCheckout is the source checkout path this binary was built from,
 // stamped by the Makefile's `build` target via ldflags exactly like
 // version is (`-X main.sourceCheckout=$(CURDIR)`). It is empty for any
-// binary not built that way — release-assets/-docker builds, `go build`
-// run by hand, or an older Makefile — and `moltnet update` (update.go)
+// binary not built that way, release-assets/-docker builds, `go build`
+// run by hand, or an older Makefile, and `moltnet update` (update.go)
 // degrades to its plain source-install refusal whenever it is empty.
 var sourceCheckout = ""
 
@@ -23,7 +23,7 @@ var stdout io.Writer = os.Stdout
 
 // stderr is the same swappable-for-tests seam as stdout, for the handful of
 // callers (reportConsoleServerDown, console.go) that deliberately write to
-// standard error instead of standard output — e.g. so a script capturing
+// standard error instead of standard output, e.g. so a script capturing
 // `moltnet console --print`'s stdout never sees failure prose mixed into the
 // URL it's trying to parse.
 var stderr io.Writer = os.Stderr
@@ -38,14 +38,14 @@ func main() {
 			// f.usage() itself before returning the sentinel). `--help` is
 			// a request, never a failure, so this is the one place that
 			// turns it into a clean exit 0 with no "error: ..." line on
-			// top of the usage text that already printed — the same
+			// top of the usage text that already printed, the same
 			// sentinel-matching pattern as context.Canceled below.
 			os.Exit(0)
 		}
 		if errors.Is(err, context.Canceled) || errors.Is(err, errSetupCancelled) {
 			// A command aborted on ctx.Err() after SIGINT/SIGTERM (runCLI's
-			// signal.NotifyContext, cli.go) — e.g. runInit mid-animation or
-			// mid-prompt — or promptSelect's own errSetupCancelled sentinel
+			// signal.NotifyContext, cli.go), e.g. runInit mid-animation or
+			// mid-prompt, or promptSelect's own errSetupCancelled sentinel
 			// (setup_prompt_select.go), the scripted-0x03/ISIG-disabled
 			// select-cancel path that never reaches ctx cancellation at all
 			// (see its own doc comment). Either way the operator already

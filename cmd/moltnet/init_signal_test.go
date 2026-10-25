@@ -13,7 +13,7 @@ import (
 // TestRunInitAbortsOnSIGINTDuringAnimation is item 3's own regression guard:
 // runCLI installs signal.NotifyContext(SIGINT, SIGTERM) (cli.go), but before
 // this change runInit never consulted it, so a Ctrl-C while the settle
-// animation (or the --id prompt) was in progress was inert — init ran to
+// animation (or the --id prompt) was in progress was inert, init ran to
 // completion regardless. This drives runInit with the real production
 // signal factory (defaultSignalContext, signals.go) against a real pty (a
 // plain captureStdout pipe never lets the animation actually run, so it
@@ -63,7 +63,7 @@ func TestRunInitAbortsOnSIGINTDuringAnimation(t *testing.T) {
 		// roughly one frame interval, not run out whatever sleep or
 		// remaining animation was already in flight. 300ms is generous
 		// headroom over that while still catching a regression where the
-		// select isn't actually wired to ctx — such a version still
+		// select isn't actually wired to ctx, such a version still
 		// eventually returns (via the hard cap or the animation simply
 		// finishing), just far slower than a genuinely pinned abort.
 		if elapsed >= 300*time.Millisecond {
@@ -88,9 +88,9 @@ func TestRunInitAbortsOnSIGINTDuringAnimation(t *testing.T) {
 // so it must race that read against ctx.Done() in a separate goroutine
 // (see resolveInitNetworkID's doc comment) rather than check ctx up front
 // and then block anyway. os.Stdin is swapped for the read end of a pipe
-// that never receives input, so the read goroutine is genuinely blocked —
+// that never receives input, so the read goroutine is genuinely blocked,
 // exactly the state a real interactive prompt is in while waiting on a
-// human — when SIGINT arrives.
+// human, when SIGINT arrives.
 func TestResolveInitNetworkIDAbortsOnSIGINTDuringPrompt(t *testing.T) {
 	previousInteractive := isInteractive
 	isInteractive = func() bool { return true }

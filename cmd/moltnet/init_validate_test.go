@@ -54,7 +54,7 @@ func TestRunInitErrorsOnTooManyArgs(t *testing.T) {
 // (printBannerAnimated) before ever reaching the "at most one positional
 // path" check, so a doomed command still cost a real user the whole
 // animation before showing the error it could have shown instantly. Needs a
-// real pty (preparePTYBannerTest, banner_player_test.go) — a plain
+// real pty (preparePTYBannerTest, banner_player_test.go), a plain
 // captureStdout pipe never satisfies stdoutIsRealTTY, so printBannerAnimated
 // would silently no-op either way and the ordering bug would go unnoticed.
 func TestRunInitValidatesArgsBeforeAnimation(t *testing.T) {
@@ -78,7 +78,7 @@ func TestRunInitValidatesArgsBeforeAnimation(t *testing.T) {
 	}
 
 	if output := drainedOutput(buf); output != "" {
-		t.Fatalf("output = %q, want nothing written at all — the arg-count error must fire before printBannerAnimated", output)
+		t.Fatalf("output = %q, want nothing written at all: the arg-count error must fire before printBannerAnimated", output)
 	}
 }
 

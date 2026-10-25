@@ -20,7 +20,7 @@ type targetRef struct {
 	id   string
 	kind string
 	// roomID is only ever set for a thread target (protocol.TargetKindThread),
-	// by resolveThreadTarget, once the thread's parent room is known — see
+	// by resolveThreadTarget, once the thread's parent room is known, see
 	// resolveThreadTarget's doc comment for why a thread's authorization and
 	// wire representation both reduce to its room's. Room and DM targets
 	// never populate this; it stays "".
@@ -29,7 +29,7 @@ type targetRef struct {
 
 // errClientConfigNotFound is loadClientConfig's sentinel for "explicitPath
 // was empty and none of clientconfig.DiscoverPath's default candidates
-// exist" — the one loadClientConfig failure mode that is fallback-eligible
+// exist", the one loadClientConfig failure mode that is fallback-eligible
 // (see resolveClientOrOperator, client_operator_fallback.go). An explicit
 // --config pointing at a path that does not exist fails DiscoverPath's
 // os.Stat directly instead, with a different (non-sentinel) error, so it is
@@ -170,7 +170,7 @@ func parseTarget(value string) (targetRef, error) {
 // membership or write-policy of its own. pkg/protocol/types.go's
 // ValidateTarget requires target.room_id on every thread-kind Target, and
 // the server resolves every thread read/write through that same room's own
-// canReadRoom/canWriteRoom — internal/rooms/access_policy.go's
+// canReadRoom/canWriteRoom, internal/rooms/access_policy.go's
 // roomForWrite (for send) and internal/rooms/query.go's GetThreadContext /
 // service_collections.go's ListThreadMessagesContext (for read) all look up
 // thread.RoomID and then defer entirely to the room check. A thread's
@@ -179,7 +179,7 @@ func parseTarget(value string) (targetRef, error) {
 // own local ensureTargetAllowed room check, instead of inventing a separate
 // thread-level rule the server has no equivalent for.
 //
-// This doubles as where request.Target.RoomID comes from for `send` — the
+// This doubles as where request.Target.RoomID comes from for `send`, the
 // wire Target for a thread message requires it (see send.go) regardless of
 // whether the local authorization check below even runs (it is skipped in
 // the zero-setup operator fallback), since the server's own validation
@@ -367,7 +367,7 @@ type conversationsView struct {
 	// MemberID omits empty: the zero-setup operator fallback has no member
 	// identity at all (resolveOperatorClient never sets
 	// AttachmentConfig.MemberID), so printing `"member_id": ""` there would
-	// be a fabricated field rather than real attachment data — the
+	// be a fabricated field rather than real attachment data, the
 	// client-config path always has a real, non-empty member id, so
 	// omitempty never hides anything for it.
 	MemberID  string          `json:"member_id,omitempty"`

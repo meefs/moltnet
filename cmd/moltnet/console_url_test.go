@@ -172,7 +172,7 @@ func writeConsoleRawTestConfig(t *testing.T, path, body string) {
 // (a bearer network whose only token carried [write]) both moved to
 // console_selfheal_test.go: `moltnet console` no longer just prints a note
 // in either case, it self-heals by minting and writing a fresh
-// observe-only token — the P1 security invariant they pin (a
+// observe-only token, the P1 security invariant they pin (a
 // privileged-scoped token must never be the one appended to the browser
 // URL) still holds and is still asserted there, alongside the new
 // self-heal behavior.

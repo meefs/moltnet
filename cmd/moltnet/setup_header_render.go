@@ -8,12 +8,12 @@ import (
 
 // setup_header_render.go continues setup_header.go (type, gating, Start,
 // Write/Fd all live there): everything below is the render/ticker/lifecycle
-// half — painting, the ping-pong redraw, the ticker goroutine, Suspend/
-// Resume/Stop, and the two header-aware prompt wrappers — split out purely
+// half, painting, the ping-pong redraw, the ticker goroutine, Suspend/
+// Resume/Stop, and the two header-aware prompt wrappers, split out purely
 // to keep each file under this repo's 400-line limit.
 
 // paintInitial writes the header's first frame with no cursor movement at
-// all — there is nothing above it yet to move up over, unlike every
+// all, there is nothing above it yet to move up over, unlike every
 // subsequent redraw. Called before stdout is repointed at h, so this writes
 // straight to the real file directly (never through Write: this is the
 // header's own content, not transcript body).
@@ -29,15 +29,15 @@ func (h *setupHeader) paintInitial() {
 
 // redraw repaints the header in place with frame idx: cursor up over the
 // header's own rows plus everything printed below it since, clear and
-// rewrite each header row (never a per-frame-shape assumption — \x1b[2K
+// rewrite each header row (never a per-frame-shape assumption, \x1b[2K
 // erases whatever a longer previous frame left behind), then cursor back
 // down by the same body distance so the very next transcript write lands
 // exactly where it would have without any of this happening. Never a scroll
 // region (SETUP.md constraint 5) and never more than a handful of relative
-// cursor moves — no absolute positioning.
+// cursor moves, no absolute positioning.
 //
 // P1-2: a CUU/CUD pair that overshoots the viewport does NOT "just get
-// clamped harmlessly" the way an earlier version of this comment claimed —
+// clamped harmlessly" the way an earlier version of this comment claimed,
 // CUU clamps at the top margin, so once rows+bodyLines reaches the live
 // viewport height, the \x1b[2K + header rows land on top of the live
 // transcript instead of the header, and the trailing CUD clamps at the
@@ -46,22 +46,22 @@ func (h *setupHeader) paintInitial() {
 // rows+bodyLines has reached it, sets scrolledOff and every subsequent call
 // returns immediately: SETUP.md's "it scrolls away" outcome for real, not
 // "it repaints at the clamp". scrolledOff is sticky for the header's whole
-// remaining lifetime — bodyLines only ever grows from here (the transcript
+// remaining lifetime, bodyLines only ever grows from here (the transcript
 // never shrinks), so there is no path back under the threshold once it is
 // hit. Caller must hold mu; writes straight to h.file, never through Write,
 // so the header's own rows are never counted as body.
 //
-// P2-1: a second, independently-checked latch guards the same entry point —
+// P2-1: a second, independently-checked latch guards the same entry point,
 // accountingStale, set by onResize (setup_header_signal_unix.go) whenever a
 // SIGWINCH lands. A resize makes a real terminal reflow whatever wrapped
 // lines are already on screen, so bodyLines (accumulated under the *old*
 // width) no longer describes how far below the header the cursor actually
-// sits; painting anything using it — even just re-drawing the current frame
-// in place — could land on top of live transcript instead of the header.
+// sits; painting anything using it, even just re-drawing the current frame
+// in place, could land on top of live transcript instead of the header.
 // Rather than try to recompute bodyLines after the fact (nothing records
 // enough history to redo that math once the reflow has already happened),
 // this simply refuses to paint at all while accountingStale is true, and
-// clears it once bodyLines has genuinely gone back to 0 — in practice, past
+// clears it once bodyLines has genuinely gone back to 0, in practice, past
 // the header's own first paint, that never happens again for the rest of a
 // real run, so this behaves the same as scrolledOff: once any resize lands,
 // the header stops animating rather than risk repainting with math it can
@@ -110,7 +110,7 @@ func (h *setupHeader) redraw(idx int) {
 }
 
 // nextPingPongIndex advances idx one step along dir within [0, n-1],
-// bouncing direction at either end — the "ping-pongs it for the full swing"
+// bouncing direction at either end, the "ping-pongs it for the full swing"
 // idle motion assets/AGENTS.md describes for this frame set. A pure
 // function, independent of any terminal state, so it is unit-tested
 // directly (setup_header_test.go) without a pty.
@@ -130,9 +130,9 @@ func nextPingPongIndex(idx, dir, n int) (int, int) {
 
 // tick is the ticker goroutine's one unit of work: advance the ping-pong
 // index and redraw, unless running is false (a Suspend/Stop raced the timer
-// firing — running is only ever flipped under mu, so this check is
+// firing, running is only ever flipped under mu, so this check is
 // authoritative), the frame hasn't actually changed (constraint 6: bounded
-// repaint cost — no redraw when nothing would change on screen), or lastNL
+// repaint cost, no redraw when nothing would change on screen), or lastNL
 // is false, meaning some write is mid-line right now. That last case should
 // never actually happen while running is true (every prompt suspends the
 // ticker first), but costs nothing to check defensively: skipping one frame
@@ -155,8 +155,8 @@ func (h *setupHeader) tick() {
 // refuses outright once stopped is set (P2-2): Stop() hands stdout back to
 // the bare file and clears activeSetupHeader, so a ticker started after that
 // point would be writing header escapes into a terminal (or a stdout var)
-// this header no longer owns. Not reachable through today's call ordering —
-// nothing calls Resume() after Stop() — but nothing enforced that either,
+// this header no longer owns. Not reachable through today's call ordering,
+// nothing calls Resume() after Stop(), but nothing enforced that either,
 // so this guard exists rather than relying on callers to get the ordering
 // right forever. Otherwise idempotent: Resume() calls it unconditionally,
 // and a paired Suspend() may not have run first (defensive, though
@@ -189,7 +189,7 @@ func (h *setupHeader) startTicker() {
 }
 
 // stopTicker stops the redraw goroutine, if running, and blocks until it has
-// actually exited before returning — so the caller (Suspend, or Stop via
+// actually exited before returning, so the caller (Suspend, or Stop via
 // stopOnce) can rely on there being zero chance of a tick landing after this
 // call returns, which is exactly the guarantee a prompt about to read stdin
 // (or read raw keys) needs (SETUP.md constraint 1).
@@ -219,7 +219,7 @@ func (h *setupHeader) Suspend() {
 
 // Resume restarts the ticker after a prompt read has returned. A no-op once
 // a resize has permanently degraded this header to static (onResize,
-// setup_header_signal_unix.go) — there is nothing left to resume ticking.
+// setup_header_signal_unix.go), there is nothing left to resume ticking.
 func (h *setupHeader) Resume() {
 	if h == nil {
 		return
@@ -238,19 +238,19 @@ func (h *setupHeader) Resume() {
 // (enableRawSelectMode disables ECHO, so every visible byte is this
 // process's own Write call, already counted), promptLineCtx never touches
 // termios, so the typed answer and its terminating Enter are rendered by
-// the terminal's own cooked-mode echo — bytes that land on the real screen
+// the terminal's own cooked-mode echo, bytes that land on the real screen
 // but never pass through Write. Left uncorrected, bodyLines would
 // permanently undercount by one after every typed answer, and the very
 // next redraw would move up one row short, painting header content over
 // the first line of transcript instead of the header. Only ever called
 // after a promptLineCtx call actually returned a completed line (err ==
-// nil) — see setupPromptLineCtx — so a cancelled read (ctx done before
+// nil), see setupPromptLineCtx, so a cancelled read (ctx done before
 // Enter) never claims a row that was never actually completed on screen.
 //
 // TODO(setup-p2): this assumes ECHO stays enabled through every
 // promptLineCtx call in this wizard, which is true today (nothing before
 // askSetupNetworkID's or askSetupRooms' typed sub-prompts disables it) but
-// is not something setupPromptLineCtx itself verifies — a future typed
+// is not something setupPromptLineCtx itself verifies, a future typed
 // prompt added under a raw/no-echo mode would silently double-count here.
 //
 // answer is the completed line promptLineCtx returned (trimmed, per its own
@@ -260,12 +260,12 @@ func (h *setupHeader) Resume() {
 // "question + typed answer" line actually wraps at the live terminal width
 // (P1-1's own wrap-blindness fix for the select widget, applied here too).
 // h.col already holds the column the question's own Write left the cursor
-// at, so advanceRows is seeded with it instead of column 0 — the terminal's
+// at, so advanceRows is seeded with it instead of column 0, the terminal's
 // cooked-mode echo continues from exactly that column, not a fresh line.
 // This is an approximation in one respect: the terminal echoes the
 // operator's raw keystrokes, including any leading/trailing whitespace
 // promptLineCtx's own strings.TrimSpace already discarded by the time this
-// runs — trimmed-away whitespace is not reflected in the row count, a minor
+// runs, trimmed-away whitespace is not reflected in the row count, a minor
 // gap compared to the flat "+1" this replaces.
 func (h *setupHeader) noteEchoedLine(answer string) {
 	if h == nil {
@@ -288,12 +288,12 @@ func (h *setupHeader) noteEchoedLine(answer string) {
 // *setupHeader, so runSetupInteractive can unconditionally `defer
 // header.Stop()` right after startSetupHeader regardless of which branch
 // that returned. Never touches termios or the alternate screen, so there is
-// nothing here a Ctrl-C needs this to run for (SETUP.md constraint 3) — it
+// nothing here a Ctrl-C needs this to run for (SETUP.md constraint 3), it
 // exists for a clean visual settle and to stop the goroutine, not for
 // correctness of the terminal's own state.
 //
 // P2-3: the settle redraw additionally requires h.lastNL, matching every
-// other call site that invokes redraw (tick, onResize) — Stop was the one
+// other call site that invokes redraw (tick, onResize), Stop was the one
 // place that didn't. A Ctrl-C landing while a typed question is mid-line
 // (cursor sitting after a partial prompt, no trailing newline) leaves
 // lastNL false; CUU preserves the column it moves along, so redrawing

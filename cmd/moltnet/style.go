@@ -24,7 +24,7 @@ const (
 // isOutputTerminal reports whether stdout is attached to a terminal. It
 // mirrors isInteractive's go-isatty pattern (pair.go), checking the output
 // side rather than stdin. It is a var, not a plain func, so tests can force
-// the TTY-styled path without a real terminal attached to stdout — see
+// the TTY-styled path without a real terminal attached to stdout, see
 // cmd/moltnet/style_test.go, following the same seam pattern
 // cmd/moltnet/uninstall_test.go uses for isInteractive.
 //
@@ -33,7 +33,7 @@ const (
 // stdout file in a small io.Writer that also forwards Fd() so it can keep
 // serving as the package's stdout var across a prompt's Suspend/Resume
 // cycle (SETUP.md's "ticker suspends while a prompt reads stdin") without
-// this check — and stdoutIsRealTTY's/terminalWidth's identical assertions —
+// this check, and stdoutIsRealTTY's/terminalWidth's identical assertions,
 // suddenly reporting a genuine terminal as non-interactive. *os.File already
 // satisfies fdFile, so every existing caller (a real os.Stdout, or a test's
 // os.Pipe()/pty file) is unaffected; only that new wrapper type widens what
@@ -66,7 +66,7 @@ func noColorSet() bool {
 
 // dumbTerminal reports whether TERM is set to "dumb", the conventional
 // signal (used by readline, less, git, and others) that the terminal
-// understands no ANSI escape sequences at all — distinct from NO_COLOR,
+// understands no ANSI escape sequences at all, distinct from NO_COLOR,
 // which is an explicit user opt-out rather than a capability signal.
 func dumbTerminal() bool {
 	return os.Getenv("TERM") == "dumb"
@@ -97,12 +97,12 @@ func styled(enabled bool, code, s string) string {
 }
 
 // green, yellow, bold, and dim gate on colorEnabled(), i.e. on whether
-// STDOUT is a styled terminal — they must only ever wrap text written to
+// STDOUT is a styled terminal, they must only ever wrap text written to
 // stdout. A write to stderr (os.Stderr, not the stdout var) styled with any
 // of these four would use the wrong TTY/NO_COLOR/TERM check and could color
 // (or fail to color) against the wrong stream's terminal state. red is the
 // one exception: it gates on errorColorEnabled() (stderr's own TTY check)
-// and is the only one of the five safe to use on a stderr write — see
+// and is the only one of the five safe to use on a stderr write, see
 // main.go's top-level error path for the intended usage.
 func green(s string) string  { return styled(colorEnabled(), ansiGreen, s) }
 func yellow(s string) string { return styled(colorEnabled(), ansiYellow, s) }
@@ -115,7 +115,7 @@ func red(s string) string    { return styled(errorColorEnabled(), ansiRed, s) }
 // output phases (a token prompt, a subdomain claim, a results block, ...)
 // produces exactly one blank line between the phases that actually printed
 // something, and none before the first phase or when a phase prints nothing
-// at all — the house block style `moltnet relay deploy` shares with
+// at all, the house block style `moltnet relay deploy` shares with
 // `init`/`uninstall` (see printInitSummary, printUninstallPlan). The zero
 // value is ready to use; callers create one fresh per command invocation
 // (see runRelayDeploy) so state never leaks between unrelated commands or
@@ -123,7 +123,7 @@ func red(s string) string    { return styled(errorColorEnabled(), ansiRed, s) }
 //
 // Each phase-printing function calls start() itself, immediately before its
 // own first write, rather than the orchestrator guessing in advance whether
-// a given phase will print anything — a phase that turns out to print
+// a given phase will print anything, a phase that turns out to print
 // nothing (e.g. maybeSaveCloudflareToken's silent non-interactive no-op)
 // then correctly costs no blank line at all.
 type sectionPrinter struct{ started bool }

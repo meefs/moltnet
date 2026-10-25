@@ -16,7 +16,7 @@ import (
 
 // TestParseTarget is the PLAN 7C.3 table test for the parser leg: room and
 // dm targets keep working exactly as before, thread:<id> now parses
-// (roomID left unset — resolveThreadTarget fills it in later), and every
+// (roomID left unset, resolveThreadTarget fills it in later), and every
 // other shape is still rejected with a clear error.
 func TestParseTarget(t *testing.T) {
 	cases := []struct {
@@ -98,7 +98,7 @@ func TestResolveThreadTargetFetchesRoomID(t *testing.T) {
 }
 
 // TestResolveThreadTargetErrorsOnMissingRoomID guards the case where the
-// server reports a thread record with no room attached at all — a
+// server reports a thread record with no room attached at all, a
 // same-shape defensive check to unknownRoomError's server-side equivalent,
 // but on the client before any authorization decision is made from it.
 func TestResolveThreadTargetErrorsOnMissingRoomID(t *testing.T) {
@@ -125,7 +125,7 @@ func TestResolveThreadTargetErrorsOnMissingRoomID(t *testing.T) {
 // TestEnsureTargetAllowedThread is the PLAN 7C.3 authorization-rule table
 // test: a thread's local allowlist check is exactly its resolved room's
 // check (ensureRoomAllowed), reused rather than duplicated. This covers
-// both directions — attached and refused — and the "not yet resolved"
+// both directions, attached and refused, and the "not yet resolved"
 // programmer-error guard.
 func TestEnsureTargetAllowedThread(t *testing.T) {
 	writable := true

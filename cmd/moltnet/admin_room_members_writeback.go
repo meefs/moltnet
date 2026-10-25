@@ -10,7 +10,7 @@ import (
 
 // adminRoomMembersConfigWriteback persists an `admin room members add/remove`
 // mutation into the local Moltnet server config, so the change survives the
-// next restart instead of being silently reconciled away (PLAN.md 7B.5 —
+// next restart instead of being silently reconciled away (PLAN.md 7B.5,
 // see internal/app/config_writeback_membership.go's doc comment for the bug
 // this closes: startup's applyRequestFromConfig replaces every
 // config-declared room's member list wholesale, and membership granted only
@@ -31,7 +31,7 @@ import (
 // This is a best-effort aftercare step, not a second source of truth for
 // whether the command itself succeeded: the live API mutation it follows
 // has already happened by the time this runs. Both a room that is not
-// declared in this config at all (app.ErrRoomConfigNotFound — the room was
+// declared in this config at all (app.ErrRoomConfigNotFound, the room was
 // created directly via the API, the console, or `moltnet apply`, never
 // through `room create`/`pair invite --room`) and a write that fails to
 // reload print a warning and return, rather than failing the command over a
