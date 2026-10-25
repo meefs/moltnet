@@ -21,6 +21,9 @@ func validatePairings(pairings []protocol.Pairing) error {
 		if strings.TrimSpace(pairing.ID) == "" {
 			return fmt.Errorf("%s.id is required", name)
 		}
+		if scope := strings.TrimSpace(pairing.Scope); scope != "" && scope != protocol.PairingScopeRooms {
+			return fmt.Errorf("%s.scope must be empty (a full pairing) or %q (a room link)", name, protocol.PairingScopeRooms)
+		}
 		if err := protocol.ValidateNetworkNamespace(pairing.RemoteNetworkID); err != nil {
 			return fmt.Errorf("%s.remote_network_id: %w", name, err)
 		}
