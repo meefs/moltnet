@@ -1,5 +1,5 @@
 import { dayKey } from "../../../lib/format";
-import type { Message, MessagePage, RoomHub, RoomHubEvent } from "../../../lib/types";
+import type { Message, MessagePage, RoomHub, RoomHubEvent, RoomHubWithheld } from "../../../lib/types";
 import { continuesFrom, rowKeyOf } from "./TimelineMessage";
 
 /**
@@ -16,7 +16,8 @@ export function messagesOf(pages: MessagePage[] | undefined): Message[] {
 
 export type TimelineRow =
   | { kind: "message"; key: string; created_at: string; message: Message; startsDay: boolean; continued: boolean }
-  | { kind: "control"; key: string; created_at: string; event: RoomHubEvent; startsDay: boolean };
+  | { kind: "control"; key: string; created_at: string; event: RoomHubEvent; startsDay: boolean }
+  | { kind: "withheld"; key: string; created_at: string; withheld: RoomHubWithheld; startsDay: false };
 
 /**
  * A shared room is shown in room order (the home's `room_seq`), never in
@@ -59,6 +60,12 @@ export function buildTimelineRows(loaded: Message[], hub: RoomHub | null | undef
     })
     .slice()
     .sort((a, b) => a.seq - b.seq);
+  // A withheld message sits at its room seq, like the message it stands for.
+  const firstSeq = first?.room_seq;
+  const withheld = (hub?.withheld ?? [])
+    .filter((item) => !hasOlder || typeof firstSeq !== "number" || item.room_seq > firstSeq)
+    .slice()
+    .sort((a, b) => a.room_seq - b.room_seq);
 
   const rows: TimelineRow[] = [];
   let previousMessage: Message | undefined;
@@ -80,8 +87,18 @@ export function buildTimelineRows(loaded: Message[], hub: RoomHub | null | undef
     previousMessage = undefined;
   };
 
+  let nextWithheld = 0;
+  const pushWithheldBefore = (seq: number) => {
+    while (nextWithheld < withheld.length && withheld[nextWithheld]!.room_seq < seq) {
+      const item = withheld[nextWithheld++]!;
+      rows.push({ kind: "withheld", key: `withheld:${hub?.global_room_id ?? ""}#${item.room_seq}`, created_at: previousAt ?? "", withheld: item, startsDay: false });
+      previousMessage = undefined;
+    }
+  };
+
   let next = 0;
   for (const message of messages) {
+    pushWithheldBefore(typeof message.room_seq === "number" ? message.room_seq : Number.POSITIVE_INFINITY);
     // An event at the same instant (or epoch) as a message comes first: the
     // join precedes the joiner's first word.
     while (next < events.length && eventPrecedes(events[next]!, message)) pushEvent(events[next++]!);
@@ -95,6 +112,7 @@ export function buildTimelineRows(loaded: Message[], hub: RoomHub | null | undef
     });
     previousMessage = message;
   }
+  pushWithheldBefore(Number.POSITIVE_INFINITY);
   while (next < events.length) pushEvent(events[next++]!);
   return rows;
 }

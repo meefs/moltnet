@@ -1,4 +1,4 @@
-import { controlEventText } from "../../../lib/trust";
+import { controlEventText, withheldText } from "../../../lib/trust";
 import type { RoomHub } from "../../../lib/types";
 import type { TimelineRow } from "./timelineRows";
 import { TimelineMessage } from "./TimelineMessage";
@@ -11,6 +11,8 @@ export function TimelineRowView({ row, hub }: { row: TimelineRow; hub: RoomHub |
       {row.startsDay ? <DayDivider date={row.created_at} /> : null}
       {row.kind === "message" ? (
         <TimelineMessage message={row.message} continued={row.continued} />
+      ) : row.kind === "withheld" ? (
+        <ControlEventLine text={withheldText(row.withheld)} date={row.created_at} />
       ) : hub ? (
         <ControlEventLine text={controlEventText(row.event, hub)} date={row.created_at} />
       ) : null}

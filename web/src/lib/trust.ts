@@ -1,5 +1,5 @@
 import { shortFingerprint } from "./format";
-import type { MessageOrigin, RoomHub, RoomHubEvent, RoomHubMember } from "./types";
+import type { MessageOrigin, RoomHub, RoomHubEvent, RoomHubMember, RoomHubWithheld } from "./types";
 
 export type TrustTone = "green" | "amber" | "muted" | "coral";
 
@@ -102,4 +102,10 @@ export function receivedLag(createdAt: string, receivedAt: string | undefined): 
   const created = Date.parse(createdAt);
   if (Number.isNaN(received.valueOf()) || Number.isNaN(created)) return null;
   return Math.abs(received.valueOf() - created) > 5_000 ? received : null;
+}
+
+/** The line standing in for a message the home withheld from catch-up. */
+export function withheldText(item: RoomHubWithheld): string {
+  const why = item.reason === "too_large" ? "too large for catch-up" : item.reason;
+  return `a message was withheld by the home (${why}, room seq ${item.room_seq}); it was not received here`;
 }

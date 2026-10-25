@@ -231,6 +231,14 @@ export interface RoomHub {
   history?: string;
   members?: RoomHubMember[];
   events?: RoomHubEvent[];
+  /** Placed messages this member may see but the home withheld from catch-up. */
+  withheld?: RoomHubWithheld[];
+}
+
+export interface RoomHubWithheld {
+  room_seq: number;
+  membership_epoch?: number;
+  reason: string;
 }
 
 export interface MessagePage {

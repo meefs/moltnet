@@ -150,7 +150,7 @@ describe("grouped roster", () => {
 describe("control events", () => {
   const loaded = [msg("a", "2026-10-25T10:00:00Z"), msg("b", "2026-10-25T11:00:00Z"), msg("c", "2026-10-25T12:00:00Z")];
   const describeRows = (rows: ReturnType<typeof buildTimelineRows>) =>
-    rows.map((row) => (row.kind === "message" ? row.message.id : `#${row.event.seq}`));
+    rows.map((row) => (row.kind === "message" ? row.message.id : row.kind === "withheld" ? `w${row.withheld.room_seq}` : `#${row.event.seq}`));
 
   it("interleaves the log with messages by created_at", () => {
     expect(describeRows(buildTimelineRows(loaded, hubFixture(), false))).toEqual(["#1", "a", "#2", "b", "#3", "c", "#4"]);
@@ -177,6 +177,24 @@ describe("control events", () => {
       ],
     });
     expect(describeRows(buildTimelineRows(arrived, hub, false))).toEqual(["#1", "one", "two", "#2", "three", "pending"]);
+  });
+
+  it("shows a withheld message at its room seq, never as a message", () => {
+    const arrived = [
+      msg("one", "2026-10-25T10:00:00Z", { room_seq: 1, membership_epoch: 1 }),
+      msg("three", "2026-10-25T10:05:00Z", { room_seq: 3, membership_epoch: 1 }),
+    ];
+    const hub = hubFixture({ events: [], withheld: [{ room_seq: 2, membership_epoch: 1, reason: "too_large" }, { room_seq: 4, reason: "too_large" }] });
+    const rows = buildTimelineRows(arrived, hub, false);
+    expect(describeRows(rows)).toEqual(["one", "w2", "three", "w4"]);
+    expect(describeRows(buildTimelineRows(arrived.slice(1), hub, true))).toEqual(["three", "w4"]);
+  });
+
+  it("renders a withheld message as a system line saying it was not received", async () => {
+    messages = [msg("one", "2026-10-25T10:00:00Z", { room_seq: 1, membership_epoch: 1 })];
+    hub = hubFixture({ events: [], withheld: [{ room_seq: 2, reason: "too_large" }] });
+    mount(<Timeline />);
+    expect(await screen.findByText(/withheld by the home \(too large for catch-up, room seq 2\)/)).toBeTruthy();
   });
 
   it("holds back a notice before the first loaded message by epoch while older pages remain", () => {
