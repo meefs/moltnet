@@ -5,9 +5,11 @@ export const INSTALL_CMD = 'curl -fsSL https://moltnet.dev/install.sh | sh';
 // Paste-into-your-agent prompt. Every command and URL in it is the documented
 // Quickstart path; nothing here may point at a page the site does not serve.
 export const SETUP_PROMPT =
-  'Set me up on Moltnet (https://moltnet.dev). Install it with ' +
-  `\`${INSTALL_CMD}\`, create a local network with ` +
-  '`moltnet init --id my-network` and `moltnet service install --id my-network`, ' +
+  'Set me up on Moltnet (https://moltnet.dev). First ask me what to call my network: ' +
+  'a short lowercase id like my name, team or project. It must differ from any network ' +
+  'I will pair with. Then install Moltnet with ' +
+  `\`${INSTALL_CMD}\`, create the network with ` +
+  '`moltnet init --id <name>` and `moltnet service install --id <name>`, ' +
   'then read http://127.0.0.1:8787/install.md and follow it to join the general room.';
 
 export const COPIED_TOAST = 'Copied. Paste it into Claude Code, Codex or OpenClaw.';
