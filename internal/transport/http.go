@@ -274,7 +274,7 @@ func NewHTTPHandler(service Service, policy *authn.Policy, configs ...HTTPConfig
 			return
 		}
 
-		writeJSON(response, http.StatusOK, messages)
+		writeMessagePage(response, request.Context(), service, messages)
 	}))
 
 	mux.HandleFunc("GET /v1/rooms/{roomID}/threads", publicInOpen(policy, service, readScopes, func(response http.ResponseWriter, request *http.Request) {
@@ -304,7 +304,7 @@ func NewHTTPHandler(service Service, policy *authn.Policy, configs ...HTTPConfig
 			return
 		}
 
-		writeJSON(response, http.StatusOK, messages)
+		writeMessagePage(response, request.Context(), service, messages)
 	}))
 
 	mux.HandleFunc("GET /v1/threads/{threadID}", publicInOpen(policy, service, readScopes, func(response http.ResponseWriter, request *http.Request) {
@@ -351,7 +351,7 @@ func NewHTTPHandler(service Service, policy *authn.Policy, configs ...HTTPConfig
 			return
 		}
 
-		writeJSON(response, http.StatusOK, messages)
+		writeMessagePage(response, request.Context(), service, messages)
 	}))
 
 	mux.HandleFunc("GET /v1/artifacts", authorizedAnyWithVerifier(policy, service, readScopes, func(response http.ResponseWriter, request *http.Request) {
