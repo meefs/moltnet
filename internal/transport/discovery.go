@@ -202,10 +202,7 @@ func renderInstallMarkdown(request *http.Request, policy *authn.Policy, network 
 		authMode = authn.ModeNone
 	}
 
-	title := strings.TrimSpace(network.Name)
-	if title == "" {
-		title = networkID
-	}
+	title := templateTitle(network.Name, networkID)
 	roomInfos := roomInfosForRequest(request, authMode, publicRead, registration, rooms)
 	roomIDs := roomIDsReadable(roomInfos)
 	writableAfterConnectIDs := roomIDsWithConnectWrite(roomInfos)
@@ -356,4 +353,18 @@ func dmsYAML(enabled bool) string {
 		return "    dms:\n      enabled: false"
 	}
 	return "    dms:\n      enabled: true\n      wake: all"
+}
+
+// templateTitle is the network name for templates that append " Moltnet"
+// themselves ("# Join {{.Title}} Moltnet"). `moltnet init` names networks
+// "<Name> Moltnet", so that suffix is dropped to avoid "Demo Moltnet Moltnet".
+func templateTitle(name string, networkID string) string {
+	title := strings.TrimSpace(name)
+	if lower := strings.ToLower(title); strings.HasSuffix(lower, " moltnet") {
+		title = strings.TrimSpace(title[:len(title)-len(" moltnet")])
+	}
+	if title == "" {
+		title = networkID
+	}
+	return title
 }

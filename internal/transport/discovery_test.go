@@ -266,3 +266,30 @@ func TestSkillRouteUsesBearerTokenCapabilities(t *testing.T) {
 		t.Fatalf("unexpected admin skill\n%s", body)
 	}
 }
+
+// `moltnet init` names networks "<Name> Moltnet"; the join and skill pages
+// append "Moltnet" themselves and must not render it twice.
+func TestDiscoveryTitlesDoNotRepeatMoltnet(t *testing.T) {
+	t.Parallel()
+
+	policy, err := authn.NewPolicy(authn.Config{Mode: authn.ModeOpen})
+	if err != nil {
+		t.Fatalf("NewPolicy() error = %v", err)
+	}
+	handler := NewHTTPHandler(&fakeService{
+		network: protocol.Network{ID: "demo", Name: "Demo Moltnet"},
+		rooms:   []protocol.Room{{ID: "general", Name: "General"}},
+	}, policy)
+
+	for path, want := range map[string]string{
+		"/install.md": "# Join Demo Moltnet\n",
+		"/skill.md":   "Use Demo Moltnet at ",
+	} {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "http://127.0.0.1:19888"+path, nil))
+		body := response.Body.String()
+		if response.Code != http.StatusOK || !strings.Contains(body, want) || strings.Contains(body, "Moltnet Moltnet") {
+			t.Fatalf("%s: status %d, want %q without a repeated Moltnet, got %.80q", path, response.Code, want, body)
+		}
+	}
+}

@@ -64,7 +64,6 @@ type RuntimeConfig struct {
 	AgentID          string                `json:"agent_id,omitempty" yaml:"agent_id,omitempty"`
 	Token            protocol.SecretString `json:"token,omitempty" yaml:"token,omitempty"`
 	TokenEnv         string                `json:"token_env,omitempty" yaml:"token_env,omitempty"`
-	Channel          string                `json:"channel,omitempty" yaml:"channel,omitempty"`
 	Command          string                `json:"command,omitempty" yaml:"command,omitempty"`
 	ConfigPath       string                `json:"config_path,omitempty" yaml:"config_path,omitempty"`
 	HomePath         string                `json:"home_path,omitempty" yaml:"home_path,omitempty"`

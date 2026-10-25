@@ -3,6 +3,7 @@ package bridgeconfig
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -10,9 +11,10 @@ func TestConfigValidate(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name   string
-		config Config
-		ok     bool
+		name    string
+		config  Config
+		ok      bool
+		wantErr string
 	}{
 		{name: "missing version", config: Config{}, ok: false},
 		{
@@ -32,6 +34,7 @@ func TestConfigValidate(t *testing.T) {
 				Moltnet: MoltnetConfig{BaseURL: "http://127.0.0.1:8787", NetworkID: "local"},
 				Runtime: RuntimeConfig{Kind: "tinyclaw"},
 			},
+			wantErr: `runtime.kind "tinyclaw" is unsupported`,
 		},
 		{
 			name: "openclaw accepts gateway url",
@@ -241,6 +244,9 @@ func TestConfigValidate(t *testing.T) {
 
 			if !test.ok && err == nil {
 				t.Fatal("expected error")
+			}
+			if test.wantErr != "" && (err == nil || !strings.Contains(err.Error(), test.wantErr)) {
+				t.Fatalf("expected error containing %q, got %v", test.wantErr, err)
 			}
 		})
 	}

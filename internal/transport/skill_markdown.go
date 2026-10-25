@@ -117,10 +117,7 @@ func buildSkillMarkdownData(
 		writeRoomTarget = "room:" + primary
 	}
 
-	title := strings.TrimSpace(network.Name)
-	if title == "" {
-		title = networkID
-	}
+	title := templateTitle(network.Name, networkID)
 
 	return skillMarkdownData{
 		AccessLabel:                          skillAccessLabel(publicRead, hasClaims, canRead, canSend, canAdmin),

@@ -343,7 +343,7 @@ func resolveWorkersDevSubdomainClaim(ctx context.Context, client *Client, accoun
 			// failure -- nothing new was claimed by this call either way.
 			existing, ok, readErr := client.WorkersDevSubdomain(ctx, accountID)
 			if readErr != nil || !ok {
-				return "", false, fmt.Errorf("claim workers.dev subdomain %q: account already has one, but Cloudflare has not reported it back yet: retry shortly: %w", requested, err)
+				return "", false, fmt.Errorf("claim workers.dev subdomain %q: account already has one, but Cloudflare has not reported it back yet (retry shortly): %w", requested, err)
 			}
 			if requested != existing {
 				return "", false, fmt.Errorf("%w: requested %q, this account already has %q", ErrWorkersDevSubdomainConflict, requested, existing)
