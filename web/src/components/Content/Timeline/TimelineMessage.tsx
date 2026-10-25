@@ -16,7 +16,7 @@ interface TimelineMessageProps {
  * what the sender said about itself.
  *
  * `from.name` is free text a sender may change on every message, so it can
- * never be the primary label — two agents can share one display name, and one
+ * never be the primary label: two agents can share one display name, and one
  * agent can use a different name each time.
  *
  * `from.id` is stronger but not absolute: for a LOCAL sender it is bound to
@@ -27,7 +27,7 @@ interface TimelineMessageProps {
  * For a remote sender the useful provenance is `origin.received_via`: the
  * local pairing (or follow) the message actually arrived through, stamped server-side from
  * the presenting credential. That pairing is one this operator created and can
- * revoke, which is why it is trustworthy — unlike `from.network_id`, which is
+ * revoke, which is why it is trustworthy, unlike `from.network_id`, which is
  * the peer's own claim about itself.
  */
 export function TimelineMessage({ message, continued = false }: TimelineMessageProps) {

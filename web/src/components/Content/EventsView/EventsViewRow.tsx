@@ -16,14 +16,14 @@ export function EventsViewRow({ event }: EventsViewRowProps) {
     event.room?.id ??
     event.thread?.id ??
     event.dm?.id ??
-    "—";
+    "-";
   const target = event.agent?.target ?? event.message?.target ?? eventTarget(event);
   const channel =
     target?.kind === "dm"
       ? `dm ${target.dm_id ?? "?"}`
       : target?.kind === "room"
         ? `room ${target.room_id ?? "?"}`
-        : "—";
+        : "-";
   const wakeDetail =
     event.agent?.message_id && event.agent?.reason
       ? `${event.agent.reason} ${event.agent.message_id}`

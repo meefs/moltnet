@@ -11,7 +11,7 @@ export function DeliveryStatus({ delivery }: { delivery: PairingDeliveryStatus }
         <Stat label="pending messages" value={String(delivery.pending)} warn={delivery.pending > 0} />
         <Stat
           label="oldest pending"
-          value={delivery.pending > 0 ? formatPendingAge(delivery.oldest_pending_age_seconds) : "—"}
+          value={delivery.pending > 0 ? formatPendingAge(delivery.oldest_pending_age_seconds) : "-"}
           warn={delivery.pending > 0}
         />
         <Stat label="rejected messages" value={String(rejected)} bad={rejected > 0} />

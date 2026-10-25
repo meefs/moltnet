@@ -26,11 +26,11 @@ export function EventsView() {
           {events.length === 0 ? (
             <p className="text-faint text-xs px-4 py-3">
               {status === "open"
-                ? "no events received yet — the stream is idle."
+                ? "no events received yet; the stream is idle."
                 : status === "unsupported"
                   ? reason || "event stream is unsupported by this network."
                 : status === "error"
-                  ? reason || "stream disconnected — waiting for reconnect."
+                  ? reason || "stream disconnected; waiting for reconnect."
                   : "connecting to the event stream…"}
             </p>
           ) : (

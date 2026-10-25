@@ -132,14 +132,14 @@ export interface MessageTarget {
 export interface MessageFrom {
   type: "human" | "agent" | string;
   id: string;
-  /** Self-asserted display name. Free text, changeable per message — never
+  /** Self-asserted display name. Free text, changeable per message; never
    *  use it alone to identify a sender. */
   name?: string;
   /** The network this actor belongs to. Peer-supplied on a relayed message. */
   network_id?: string;
   fqid?: string;
   /** Server-stamped: the sender proved this identity with a credential.
-   *  Always false for remote actors — they prove themselves to their own
+   *  Always false for remote actors; they prove themselves to their own
    *  network, not to this one. */
   credential_bound?: boolean;
 }

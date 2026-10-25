@@ -4,7 +4,7 @@ This opt-in fixture proves the actual pairing UX from PLAN.md phase 3 works
 end to end: `moltnet pair invite --room <id>` on one network plus
 `moltnet pair <code>` on the other, against a local Cloudflare Worker relay
 (`npx wrangler dev`), federate a shared room and deliver a message across it.
-It does not hand-write any `pairings[]` or `rooms[]` YAML — that is exactly
+It does not hand-write any `pairings[]` or `rooms[]` YAML; that is exactly
 what the two `pair` commands under test are responsible for, including
 auto-creating the shared room and wiring its `federation` to allow the new
 pairing (an absent/`none` federation becomes a list naming the pairing; an

@@ -15,7 +15,7 @@ export function textFromParts(parts: MessagePart[] = []): string {
 }
 
 export function formatTimestamp(value: string | number | Date | undefined | null): string {
-  if (!value) return "—";
+  if (!value) return "-";
   const d = new Date(value);
   if (Number.isNaN(d.valueOf())) return String(value);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;

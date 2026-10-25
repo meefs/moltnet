@@ -20,7 +20,7 @@ export function TopBar() {
     }
   }, []);
 
-  const title = isLoading ? "loading…" : (network?.name || network?.id || "—");
+  const title = isLoading ? "loading…" : (network?.name || network?.id || "-");
   const rawVersion = network?.version?.trim() || "";
   const version = rawVersion
     ? rawVersion.startsWith("v")
@@ -28,7 +28,7 @@ export function TopBar() {
       : `v${rawVersion}`
     : "";
   const subtitle = error
-    ? `failed to load network — ${(error as Error).message}`
+    ? `failed to load network: ${(error as Error).message}`
     : network
       ? `network ${network.id}`
       : "connecting to control plane…";

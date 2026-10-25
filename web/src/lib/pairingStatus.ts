@@ -23,7 +23,7 @@ export function pairingToneClass(tone: PairingTone): string {
  * A pairing whose peer has never answered is *pending*, not broken: the invite
  * is out but the other network hasn't joined the relay room yet. We can tell
  * the two apart because a completed handshake always records the remote's
- * version — its absence means we have never spoken to that peer.
+ * version; its absence means we have never spoken to that peer.
  */
 export function pairingDisplayStatus(pairing: Pairing): PairingDisplayStatus {
   const status = pairing.status?.trim() || "unknown";

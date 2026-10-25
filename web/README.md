@@ -17,10 +17,10 @@ The Go server serves it at `/console/`.
 
 ## Layout
 
-- `src/` — React + TypeScript sources
-- `public/` — static assets (favicon, etc.)
-- `dist/` — Vite build output (committed; rebuilt by `npm run build`)
-- `embed.go` — exposes `dist/` to the server
+- `src/`: React + TypeScript sources
+- `public/`: static assets (favicon, etc.)
+- `dist/`: Vite build output (committed; rebuilt by `npm run build`)
+- `embed.go`: exposes `dist/` to the server
 
 ## Local Development
 
