@@ -172,6 +172,7 @@ func (s *Service) syncHubControl(ctx context.Context, hub store.HubRoom) (hubRos
 		}
 	}
 	logHub(ctx, hub.GlobalRoomID).Info("hub room membership changed", "from_epoch", before.Epoch, "to_epoch", after.Epoch, "joined", joined, "left", left)
+	s.publishHubMembershipNotice(ctx, hub)
 	return after, nil
 }
 
@@ -192,4 +193,20 @@ func (s *Service) SyncHubRoomContext(ctx context.Context, globalRoomID string) (
 		return HubRoomView{}, err
 	}
 	return s.hubRoomView(ctx, hub)
+}
+
+// publishHubMembershipNotice tells local subscribers (the console) that the
+// room's audience changed, before any re-signed message goes out to it.
+// This is notification, not consent: the sender's network re-signs and
+// resends automatically.
+func (s *Service) publishHubMembershipNotice(ctx context.Context, hub store.HubRoom) {
+	room, ok, err := s.getRoom(ctx, hub.LocalRoomID)
+	if err != nil || !ok {
+		return
+	}
+	now, err := s.now()
+	if err != nil {
+		return
+	}
+	s.publishEvent(protocol.Event{ID: newPrefixedID("evt"), Type: protocol.EventTypeRoomMembersUpdated, NetworkID: s.networkID, Room: &room, CreatedAt: now})
 }

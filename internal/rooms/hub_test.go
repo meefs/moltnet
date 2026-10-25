@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/noopolis/moltnet/internal/rooms"
 	"github.com/noopolis/moltnet/internal/store"
@@ -126,12 +127,22 @@ func TestHubStaleEpochSyncsResignsAndRetries(t *testing.T) {
 	h.join(t, h.alpha) // alpha's log stops at epoch 2
 	h.add(t, h.beta)   // the room moves to epoch 3 without telling alpha
 	h.join(t, h.beta)
+	notices := h.alpha.service.Subscribe(t.Context())
 	h.alpha.post(t, "signed under epoch 2")
 	// The home answers stale_membership_epoch; alpha learns that beta joined,
 	// re-signs under epoch 3 and resends. Nothing is rejected or dropped.
 	h.beta.waitTexts(t, "signed under epoch 2")
 	if state := h.alpha.delivery(t, "link-home"); state.Rejected != 0 {
 		t.Fatalf("stale epoch was treated as a rejection: %#v", state)
+	}
+	sawNotice := false
+	for !sawNotice {
+		select {
+		case event := <-notices:
+			sawNotice = event.Type == protocol.EventTypeRoomMembersUpdated && event.Room != nil && event.Room.ID == localRoom(h.alpha)
+		case <-time.After(time.Second):
+			t.Fatal("alpha recorded no membership notice for beta's join")
+		}
 	}
 	view, err := h.alpha.service.HubRoomsContext(contextBackground())
 	if err != nil || len(view) != 1 || view[0].Epoch != 3 || view[0].Members["beta"] != protocol.RoomRoleWriter {
