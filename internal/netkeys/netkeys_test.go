@@ -338,9 +338,14 @@ func TestPinLookupIsNotBlockedByAWriterWaitingForTheFileLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer release()
 	other, _ := testPin(t, "beta")
-	go func() { _, _ = store.PinKey(other) }() // waits on the file lock
+	writerDone := make(chan struct{})
+	go func() { // waits on the file lock
+		defer close(writerDone)
+		_, _ = store.PinKey(other)
+	}()
+	// The writer must finish before the temp dir is removed.
+	defer func() { release(); <-writerDone }()
 	time.Sleep(50 * time.Millisecond)
 	done := make(chan struct{})
 	go func() {

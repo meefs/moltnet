@@ -2,13 +2,17 @@ package rooms_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	authn "github.com/noopolis/moltnet/internal/auth"
 	"github.com/noopolis/moltnet/internal/events"
 	"github.com/noopolis/moltnet/internal/netkeys"
@@ -65,7 +69,7 @@ func envelopeTestBackends(t *testing.T) []testBackend {
 	}
 	if dsn := os.Getenv("MOLTNET_TEST_POSTGRES_DSN"); dsn != "" {
 		backends = append(backends, testBackend{"postgres", func(t *testing.T) backendStore {
-			postgres, err := store.NewPostgresStore(dsn)
+			postgres, err := store.NewPostgresStore(freshPostgresSchema(t, dsn))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -214,4 +218,27 @@ func assertNoDelivered(t *testing.T, service *rooms.Service) {
 	if err != nil || len(page.Messages) != 0 {
 		t.Fatalf("expected no delivered messages: %#v, %v", page.Messages, err)
 	}
+}
+
+// freshPostgresSchema gives each store its own schema, so several networks
+// (and repeated tests) can share one test database without seeing each
+// other's rows.
+func freshPostgresSchema(t *testing.T, dsn string) string {
+	t.Helper()
+	config, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db := stdlib.OpenDB(*config)
+	t.Cleanup(func() { _ = db.Close() })
+	schema := fmt.Sprintf("rooms_test_%d", time.Now().UnixNano())
+	if _, err := db.Exec("CREATE SCHEMA " + schema); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = db.Exec("DROP SCHEMA " + schema + " CASCADE") })
+	separator := "?"
+	if strings.Contains(dsn, "?") {
+		separator = "&"
+	}
+	return dsn + separator + "search_path=" + schema
 }
