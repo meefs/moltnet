@@ -3,6 +3,7 @@ package rooms
 import (
 	"context"
 	"encoding/json"
+	"sync/atomic"
 
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -63,7 +64,7 @@ func (s *Service) HubSyncPageContext(ctx context.Context, globalRoomID string, a
 			continue
 		}
 		next := syncEncodedSize(record.Control) + 1
-		if len(page.Control) > 0 && size+next > syncPageBytes {
+		if len(page.Control) > 0 && size+next > syncPageBytes() {
 			// The rest of the control log comes first on the next page;
 			// entries wait for the roster that authorizes them.
 			page.More = true
@@ -102,7 +103,7 @@ func (s *Service) HubSyncPageContext(ctx context.Context, globalRoomID string, a
 		}
 		next := syncEncodedSize(entry) + 1
 		if len(page.Entries) > 0 || len(page.Control) > 0 {
-			if size+next > syncPageBytes {
+			if size+next > syncPageBytes() {
 				page.More = true
 				break
 			}
@@ -171,8 +172,15 @@ func (s *Service) hubSyncMessages(ctx context.Context, hub store.HubRoom, receip
 	return result, nil
 }
 
-// syncPageBytes is protocol.MaxRoomSyncPageBytes (tests lower it).
-var syncPageBytes = protocol.MaxRoomSyncPageBytes
+// syncPageLimit holds the sync page budget: protocol.MaxRoomSyncPageBytes.
+// Tests lower it while background sync requests may still be reading it, so
+// it is atomic.
+var syncPageLimit atomic.Int64
+
+func init() { syncPageLimit.Store(protocol.MaxRoomSyncPageBytes) }
+
+// syncPageBytes is the current sync page budget.
+func syncPageBytes() int { return int(syncPageLimit.Load()) }
 
 // syncTransportBytes is the pairing transport limit a single-entry page may
 // use: protocol.MaxPairingPayloadBytes, the limit HTTP and relay share.
@@ -182,7 +190,7 @@ const syncTransportBytes = protocol.MaxPairingPayloadBytes
 func syncEncodedSize(value any) int {
 	encoded, err := json.Marshal(value)
 	if err != nil {
-		return syncPageBytes
+		return syncPageBytes()
 	}
 	return len(encoded)
 }

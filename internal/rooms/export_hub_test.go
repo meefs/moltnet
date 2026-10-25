@@ -3,9 +3,8 @@ package rooms
 // SetSyncPageBytesForTest lowers the sync page budget; call the result to
 // restore it.
 func SetSyncPageBytesForTest(limit int) func() {
-	previous := syncPageBytes
-	syncPageBytes = limit
-	return func() { syncPageBytes = previous }
+	previous := syncPageLimit.Swap(int64(limit))
+	return func() { syncPageLimit.Store(previous) }
 }
 
 // SyncHubRoomOnceForTest runs one catch-up pass (what the sync loop runs),
