@@ -34,15 +34,8 @@ func (s *MemoryStore) AppendMessageWithLifecycleContext(ctx context.Context, mes
 	return s.appendMessageLocked(message, envelopeForMessage(ctx, message))
 }
 func (s *MemoryStore) appendMessageLocked(message protocol.Message, envelope *MessageEnvelopeRecord) (AppendLifecycle, error) {
-	if key := messageOriginReceipt(message); key != "" {
-		if id, exists := s.originReceipts[key]; exists {
-			// Same origin tuple, different signed content: a fork or a
-			// forgery, never an idempotent retry.
-			if stored, offered := s.originDigests[key], envelopeDigest(envelope); stored != offered {
-				return AppendLifecycle{}, envelopeConflict(message.Origin, stored, offered)
-			}
-			return AppendLifecycle{}, &DuplicateMessageError{MessageID: id}
-		}
+	if err := s.checkOriginReceiptLocked(message, envelope); err != nil {
+		return AppendLifecycle{}, err
 	}
 	_, duplicate := s.messageIDs[message.ID]
 	if duplicate && s.messageOrigins[message.ID] != messageOriginReceipt(message) {
@@ -119,13 +112,7 @@ func (s *MemoryStore) appendMessageLocked(message protocol.Message, envelope *Me
 	}
 	s.messageIDs[message.ID] = struct{}{}
 	s.messageOrigins[message.ID] = messageOriginReceipt(message)
-	if key := messageOriginReceipt(message); key != "" {
-		s.originReceipts[key] = message.ID
-		s.originDigests[key] = envelopeDigest(envelope)
-	}
-	if envelope != nil {
-		s.envelopes[message.ID] = *envelope
-	}
+	s.recordOriginReceiptLocked(message, envelope)
 	s.recordRoomActivity(message)
 
 	return lifecycle, nil

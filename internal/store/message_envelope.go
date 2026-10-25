@@ -115,3 +115,31 @@ func marshalEnvelope(record MessageEnvelopeRecord) (string, error) {
 	}
 	return string(encoded), nil
 }
+
+// checkOriginReceiptLocked reports a stored origin tuple as a duplicate only
+// when its envelope digest matches; a different digest is a fork or a
+// forgery, never an idempotent retry.
+func (s *MemoryStore) checkOriginReceiptLocked(message protocol.Message, envelope *MessageEnvelopeRecord) error {
+	key := messageOriginReceipt(message)
+	if key == "" {
+		return nil
+	}
+	id, exists := s.originReceipts[key]
+	if !exists {
+		return nil
+	}
+	if stored, offered := s.originDigests[key], envelopeDigest(envelope); stored != offered {
+		return envelopeConflict(message.Origin, stored, offered)
+	}
+	return &DuplicateMessageError{MessageID: id}
+}
+
+func (s *MemoryStore) recordOriginReceiptLocked(message protocol.Message, envelope *MessageEnvelopeRecord) {
+	if key := messageOriginReceipt(message); key != "" {
+		s.originReceipts[key] = message.ID
+		s.originDigests[key] = envelopeDigest(envelope)
+	}
+	if envelope != nil {
+		s.envelopes[message.ID] = *envelope
+	}
+}
