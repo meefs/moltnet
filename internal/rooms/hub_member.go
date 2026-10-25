@@ -174,3 +174,22 @@ func (s *Service) syncHubControl(ctx context.Context, hub store.HubRoom) (hubRos
 	logHub(ctx, hub.GlobalRoomID).Info("hub room membership changed", "from_epoch", before.Epoch, "to_epoch", after.Epoch, "joined", joined, "left", left)
 	return after, nil
 }
+
+// SyncHubRoomContext pulls a member's copy of a hub room's control log up
+// to the home's head (operators; senders also sync on a stale epoch).
+func (s *Service) SyncHubRoomContext(ctx context.Context, globalRoomID string) (HubRoomView, error) {
+	if err := requireHubOperator(ctx); err != nil {
+		return HubRoomView{}, err
+	}
+	hub, ok, err := s.hubRoomByGlobal(ctx, globalRoomID)
+	if err != nil {
+		return HubRoomView{}, err
+	}
+	if !ok {
+		return HubRoomView{}, hubNotFoundError(globalRoomID)
+	}
+	if _, err := s.syncHubControl(ctx, hub); err != nil {
+		return HubRoomView{}, err
+	}
+	return s.hubRoomView(ctx, hub)
+}

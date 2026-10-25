@@ -3,6 +3,7 @@ package rooms_test
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -57,6 +58,9 @@ func newHubNet(t *testing.T, id string, storage backendStore) *hubNet {
 // pins and key survive, process-local state does not.
 func (n *hubNet) start(t *testing.T) {
 	t.Helper()
+	if n.service != nil {
+		_ = n.service.Close()
+	}
 	n.service = rooms.NewService(rooms.ServiceConfig{
 		NetworkID: n.id, Store: n.store, Messages: n.store, Broker: events.NewBroker(),
 		Pairings: n.pairings, PairingClient: pairings.NewClient(), Identity: n.identity, KeyPins: n.pins,
@@ -274,7 +278,6 @@ func homeReceipt(t *testing.T, home *netkeys.Identity, global string, epoch, seq
 	return &signed
 }
 
-
 func verifiedPin(network string, identity *netkeys.Identity) netkeys.Pin {
 	return netkeys.Pin{NetworkID: network, Fingerprint: identity.Fingerprint(), PublicKey: identity.Public().PublicKey,
 		Trust: protocol.KeyTrustVerified, Source: netkeys.PinSourceOperator}
@@ -301,4 +304,21 @@ func waitFor(t *testing.T, condition func() bool) {
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
+}
+
+func authnPairToken(id, secret string) authn.TokenConfig {
+	return authn.TokenConfig{ID: id, Value: secret, Scopes: []authn.Scope{authn.ScopePair}}
+}
+
+func pairGet(t *testing.T, url, secret string) string {
+	t.Helper()
+	request, _ := http.NewRequest(http.MethodGet, url, nil)
+	request.Header.Set("Authorization", "Bearer "+secret)
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	raw, _ := io.ReadAll(response.Body)
+	return string(raw)
 }
