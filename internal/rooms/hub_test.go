@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	authn "github.com/noopolis/moltnet/internal/auth"
 	"github.com/noopolis/moltnet/internal/rooms"
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -263,9 +264,16 @@ func TestRoomLinkGrantsOnlyTheHubRoom(t *testing.T) {
 		Federation: &protocol.RoomFederation{Mode: protocol.RoomFederationAll}}); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := h.home.service.RegisterAgentContext(authn.WithClaims(contextBackground(), authn.Claims{TokenID: "scout"}),
+		protocol.RegisterAgentRequest{RequestedAgentID: "scout", Name: "Scout"}); err != nil {
+		t.Fatal(err)
+	}
+	if body := pairGet(t, h.home.url+"/v1/agents", hubOperatorToken); !strings.Contains(body, `"scout"`) {
+		t.Fatalf("operator does not see the registered agent, so the room-link check below proves nothing: %s", body)
+	}
 	for _, path := range []string{"/v1/rooms", "/v1/agents"} {
 		body := pairGet(t, h.home.url+path, "alpha-link-secret")
-		if strings.Contains(body, "open-plan") || strings.Contains(body, "research") || strings.Contains(body, `"lead"`) {
+		if strings.Contains(body, "open-plan") || strings.Contains(body, "research") || strings.Contains(body, `"lead"`) || strings.Contains(body, `"scout"`) {
 			t.Fatalf("room link discovered %s: %s", path, body)
 		}
 	}
