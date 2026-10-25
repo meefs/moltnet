@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
@@ -120,7 +121,13 @@ func loadIdentity(path string) (*Identity, error) {
 	if info.Mode().Perm()&0o077 != 0 {
 		return nil, fmt.Errorf("network key %s is readable by other users (mode %o); run chmod 600", path, info.Mode().Perm())
 	}
+	if owner, ok := fileOwner(info); ok && owner != os.Getuid() {
+		return nil, fmt.Errorf("network key %s is owned by uid %d, but this process runs as uid %d; run moltnet as the key's owner or chown the keys directory", path, owner, os.Getuid())
+	}
 	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrPermission) {
+		return nil, fmt.Errorf("network key %s is not readable by this user (uid %d); run moltnet as the key's owner or fix its permissions", path, os.Getuid())
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -136,6 +143,14 @@ func loadIdentity(path string) (*Identity, error) {
 		return nil, fmt.Errorf("network key %s is not valid", path)
 	}
 	return identityFromPrivate(ed25519.NewKeyFromSeed(seed)), nil
+}
+
+// fileOwner returns the owning uid where the platform reports one.
+func fileOwner(info os.FileInfo) (int, bool) {
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+		return int(stat.Uid), true
+	}
+	return 0, false
 }
 
 func (i *Identity) PublicKey() ed25519.PublicKey {
