@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
 // runRoomCommand dispatches `moltnet room create|list|remove|join`
@@ -27,9 +29,23 @@ func runRoomCommand(ctx context.Context, args []string) error {
 	case "list":
 		return runRoomList(args[1:])
 	case "remove":
+		if _, values, err := splitRoomHubArgs(args[1:]); err == nil && len(values) == 2 {
+			return runRoomRemoveMember(ctx, args[1:])
+		}
 		return removeRoomCommand("moltnet room remove", args[1:])
 	case "join":
+		if _, values, err := splitRoomHubArgs(args[1:]); err == nil && len(values) == 1 && strings.HasPrefix(values[0], protocol.InvitePrefix) {
+			return runRoomHubJoin(ctx, args[1:])
+		}
 		return runRoomJoin(args[1:])
+	case "share":
+		return runRoomShare(ctx, args[1:])
+	case "invite":
+		return runRoomInvite(ctx, args[1:])
+	case "members":
+		return runRoomMembers(ctx, args[1:])
+	case "leave":
+		return runRoomLeave(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown room command %q\n\n%s", args[0], buildRoomUsage())
 	}

@@ -11,11 +11,12 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
 const (
 	maxHeaderSize               = 8192
-	maxRelayPayloadBytes        = 1 << 20                                  // One MiB matches the service's normal JSON and attachment frame allowance.
+	maxRelayPayloadBytes        = protocol.MaxPairingPayloadBytes          // One MiB matches the service's normal JSON and attachment frame allowance.
 	maxRelayFrameBytes          = maxHeaderSize + 1 + maxRelayPayloadBytes // Includes the largest JSON header and its newline delimiter.
 	maxInboundResponseBodyBytes = maxRelayPayloadBytes                     // Bound relayed handler buffering to a normal Moltnet response size.
 	defaultCallTimeout          = 15 * time.Second

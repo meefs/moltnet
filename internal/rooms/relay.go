@@ -199,6 +199,10 @@ func (s *Service) setPairingRelaySuccess(pairingID string) {
 }
 
 func (s *Service) pairingMatchesRelayTarget(pairing protocol.Pairing, message protocol.Message) bool {
+	if pairing.IsRoomLink() {
+		// Room links carry hub rooms only, through the hub delivery path.
+		return false
+	}
 	if message.Target.Kind == protocol.TargetKindRoom || message.Target.Kind == protocol.TargetKindThread {
 		room, err := s.roomForWrite(context.Background(), message.Target)
 		// SendMessageContext has already verified persisted room and thread

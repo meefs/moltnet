@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/noopolis/moltnet/internal/app"
+	"github.com/noopolis/moltnet/internal/netkeys"
 )
 
 // runPairRevoke implements `moltnet pair revoke <pairing-id>` (PLAN.md
@@ -118,6 +119,11 @@ func revokePairingWithRollback(path string, pairingID string) (app.RevokeResult,
 
 	if err := app.RemoveInviteReceipt(path, pairingID); err != nil {
 		return app.RevokeResult{}, fmt.Errorf("revoked pairing but failed to remove its invite receipt: %w", err)
+	}
+	// The credential is gone, so the network it spoke for no longer binds
+	// the pairing id: a later invite minted under the same id starts fresh.
+	if err := netkeys.OpenPinStore(app.KeysDirForConfigPath(path)).ForgetPairing(pairingID); err != nil {
+		return app.RevokeResult{}, fmt.Errorf("revoked pairing but failed to clear its network binding: %w", err)
 	}
 
 	return result, nil

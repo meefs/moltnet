@@ -1,6 +1,8 @@
 package transport
 
+import "github.com/noopolis/moltnet/pkg/protocol"
+
 const (
-	maxJSONBodyBytes        = 1 << 20
+	maxJSONBodyBytes        = protocol.MaxPairingPayloadBytes
 	maxAttachmentFrameBytes = 1 << 20
 )

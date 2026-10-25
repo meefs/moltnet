@@ -31,6 +31,8 @@ type Network struct {
 	Capabilities NetworkCapabilities `json:"capabilities,omitempty"`
 	Console      *NetworkConsole     `json:"console,omitempty"`
 	Warnings     []NetworkWarning    `json:"warnings,omitempty"`
+	// Identity is the network's public signing key, when it has one.
+	Identity *NetworkIdentity `json:"identity,omitempty"`
 }
 
 type NetworkConsole struct {
@@ -202,6 +204,18 @@ type Pairing struct {
 	Delivery          *PairingDeliveryStatus `json:"delivery,omitempty" yaml:"delivery,omitempty"`
 	DeliveryLimits    *PairingDeliveryLimits `json:"delivery_limits,omitempty" yaml:"delivery_limits,omitempty"`
 	Token             SecretString           `json:"token,omitempty" yaml:"token,omitempty"`
+	// Scope "rooms" makes this a room link: it carries only the hub rooms
+	// whose control log admits its network. Room links never expose agent
+	// lists or other rooms, and never carry DMs. Empty is a full pairing.
+	Scope string `json:"scope,omitempty" yaml:"scope,omitempty"`
+}
+
+// PairingScopeRooms marks a room link (see Pairing.Scope).
+const PairingScopeRooms = "rooms"
+
+// IsRoomLink reports whether a pairing carries only hub rooms.
+func (p Pairing) IsRoomLink() bool {
+	return strings.TrimSpace(p.Scope) == PairingScopeRooms
 }
 
 type CreateRoomRequest struct {
@@ -244,6 +258,14 @@ type SendMessageRequest struct {
 	// derived from it: harnesses such as daimon's turn harness set this, the
 	// model never does.
 	CauseEventIDs []string `json:"cause_event_ids,omitempty"`
+	// Envelope is the origin network's signed statement of this message,
+	// sent beside it on pairing relays (moltnet.envelope.v1). Receivers
+	// accept it only from pair-scoped credentials; local callers cannot
+	// supply one.
+	Envelope *SignedEnvelope `json:"envelope,omitempty"`
+	// Receipt is the room home's signed placement of a hub-room message,
+	// sent only by a home forwarding to its members.
+	Receipt *SignedRoomReceipt `json:"receipt,omitempty"`
 }
 
 type MessageAccepted struct {
@@ -252,6 +274,9 @@ type MessageAccepted struct {
 	Accepted      bool   `json:"accepted"`
 	ThreadCreated bool   `json:"thread_created"`
 	DMCreated     bool   `json:"dm_created"`
+	// Receipt is the home's placement of a hub-room submission, returned to
+	// the submitting member so its own copy learns its room seq.
+	Receipt *SignedRoomReceipt `json:"receipt,omitempty"`
 }
 
 type PageInfo struct {

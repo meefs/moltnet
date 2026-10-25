@@ -69,3 +69,22 @@ both stamped from `internal/rooms/causal.go`:
 - `testdata/stele.causal-contract.v1.json` — immutable cross-language corpus
   snapshot; `scripts/verify-stele-corpus.sh` checks it against the published
   `@noopolis/stele` package before CI and release.
+
+## Network Identity and Signed Envelopes
+
+- `network_identity.go` — Ed25519 network key wire forms, `sha256:<hex>`
+  fingerprints, trust levels (`verified`, `unconfirmed`, `introduced`), and the HTTP-only
+  signature states.
+- `envelope.go` / `envelope_canonical.go` — `moltnet.envelope.v1`: the
+  origin-signed message statement, encoded as canonical-json.v1, digested and
+  signed with domain separation, parsed strictly. `global_room_id`,
+  `membership_epoch`, and per-room `origin_seq` are reserved optional fields
+  for hub rooms. None of this enters the machine v1 contract.
+- `hub.go` / `hub_signing.go` — hub rooms: global room ids
+  (`<home fingerprint>/<room id>`), the home-signed control log
+  (`moltnet.room-control.v1`) and receipts (`moltnet.room-receipt.v1`),
+  canonical, domain-separated and parsed strictly. `Pairing.Scope: rooms`
+  marks a room link.
+- `hub_sync.go`, `hub_admission.go`, `hub_view.go` — catch-up pages
+  (`RoomSyncPage`), signed room admissions (`moltnet.room-admission.v1`),
+  room invites (`Invite.HubRoom`), and the HTTP shared-room views.

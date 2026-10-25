@@ -17,6 +17,9 @@ type MemoryStore struct {
 	pairingDeliverySequence int64
 	pairingDeliveryStates   map[string]PairingDeliveryState
 	originReceipts          map[string]string
+	originDigests           map[string]string
+	envelopes               map[string]MessageEnvelopeRecord
+	hub                     hubState
 	messageOrigins          map[string]string
 	mu                      sync.RWMutex
 	followCheckpoints       map[string]follow.Checkpoint
@@ -39,6 +42,9 @@ func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		pairingDeliveryStates: make(map[string]PairingDeliveryState),
 		originReceipts:        make(map[string]string),
+		originDigests:         make(map[string]string),
+		envelopes:             make(map[string]MessageEnvelopeRecord),
+		hub:                   newHubState(),
 		messageOrigins:        make(map[string]string),
 		followCheckpoints:     make(map[string]follow.Checkpoint),
 		deliveryCursors:       make(map[string]int),

@@ -16,9 +16,15 @@ var inboundAllowedRequests = map[string]map[string]struct{}{
 		"/v1/network": {},
 		"/v1/rooms":   {},
 		"/v1/agents":  {},
+		// Hub room control log pulls (members ask their room's home).
+		"/v1/hub/control": {},
+		"/v1/hub/sync":    {},
 	},
 	http.MethodPost: {
 		"/v1/messages": {},
+		// Hub room invite redemption and leaving (members ask the home).
+		"/v1/hub/admit": {},
+		"/v1/hub/leave": {},
 	},
 }
 

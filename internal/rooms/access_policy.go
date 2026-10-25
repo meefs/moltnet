@@ -17,6 +17,9 @@ func (s *Service) enforceTargetWritePolicy(ctx context.Context, target protocol.
 	if room.ID == "" {
 		return nil
 	}
+	if err := s.enforceHubWrite(ctx, target, room.ID); err != nil {
+		return err
+	}
 	if !s.canWriteRoom(ctx, room, actor) && room.Follow != nil {
 		return followReadOnlyError(room.ID)
 	}
@@ -152,7 +155,10 @@ func (s *Service) canReadRoom(ctx context.Context, room protocol.Room) bool {
 				}
 			}
 		}
-		return false
+		// A shared room this network joined counts its members by network:
+		// every local agent participates (writes still need a registered
+		// agent and the network's writer role), so it may read.
+		return s.joinedHubRoom(ctx, room.ID)
 	}
 	if hasClaims && claims.AllowsAny([]authn.Scope{authn.ScopeObserve, authn.ScopeAdmin}) {
 		return true

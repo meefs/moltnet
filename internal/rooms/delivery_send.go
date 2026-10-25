@@ -15,6 +15,11 @@ func (s *Service) sendQueuedMessage(ctx context.Context, pairing protocol.Pairin
 	if message.Target.Kind == protocol.TargetKindDM && s.disableDirectMessages {
 		return fmt.Errorf("%w: local direct messages disabled", errDeliveryRejected)
 	}
+	if hub, ok, err := s.hubRoomForTarget(ctx, message.Target); err != nil {
+		return err
+	} else if ok {
+		return s.sendQueuedHubMessage(ctx, pairing, record, hub)
+	}
 	if message.Origin.NetworkID != s.networkID || message.Origin.ReceivedVia != "" {
 		return fmt.Errorf("%w: invalid relay origin", errDeliveryRejected)
 	}
@@ -62,6 +67,9 @@ func (s *Service) sendQueuedMessage(ctx context.Context, pairing protocol.Pairin
 	request, ok := s.relayRequest(pairing, message)
 	if !ok {
 		return fmt.Errorf("%w: invalid target", errDeliveryRejected)
+	}
+	if request.Envelope, err = s.storedOutboundEnvelope(ctx, message.ID); err != nil {
+		return err
 	}
 	accepted, err := s.pairingClient.RelayMessage(ctx, pairing, request)
 	if err != nil {

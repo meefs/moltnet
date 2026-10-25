@@ -60,8 +60,9 @@ func (s *Service) StartPairingDelivery() {
 		return
 	}
 	s.relayStart.Do(func() {
-		s.relayWG.Add(1)
+		s.relayWG.Add(2)
 		go s.runDeliveryWorker()
+		go s.runHubSyncLoop()
 	})
 }
 

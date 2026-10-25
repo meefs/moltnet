@@ -107,6 +107,11 @@ func printPairInviteAftercare(ctx context.Context, config app.Config, path, code
 func printPairJoinAftercare(ctx context.Context, config app.Config, path, pairingID string, opts pairAftercareOptions) error {
 	remote := strings.TrimSpace(opts.remoteNetworkID)
 	printInitConfigCheckLine(fmt.Sprintf("paired with %s", remote), "")
+	if fingerprint := strings.TrimSpace(opts.remoteFingerprint); fingerprint != "" {
+		// Say exactly which key is now trusted for which id, so the operator
+		// can compare it with the inviter out of band.
+		printInitConfigCheckLine(fmt.Sprintf("trusted %s key %s", remote, protocol.DisplayFingerprint(fingerprint)), "")
+	}
 	outcome := printPairStatusBlock(ctx, config, path, pairingID, opts.restart, opts.verbose)
 
 	rooms := protocol.UniqueTrimmedStrings(opts.roomIDs)

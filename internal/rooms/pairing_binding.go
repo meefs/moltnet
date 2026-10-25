@@ -2,6 +2,7 @@ package rooms
 
 import (
 	"context"
+	"slices"
 	"strings"
 
 	authn "github.com/noopolis/moltnet/internal/auth"
@@ -38,12 +39,15 @@ import (
 // Trust-on-first-use closes it: whatever the peer claims first is what it is
 // held to.
 //
-// This binding is deliberately process-local, alongside pairingStatuses
+// The learned binding is process-local, alongside pairingStatuses
 // (service.go), and is NOT written back to config: the server has never
 // written its own config, and introducing a second writer racing the
-// `pair invite`/`pair revoke` CLI commands over one file is a worse trade
-// than re-learning on restart. The residual window is one message per
-// credential per process start, and only for credentials config never bound.
+// `pair invite`/`pair revoke` CLI commands over one file is a worse trade.
+// Signed peers do not depend on it across restarts: the first signed
+// message pins the peer's key with this pairing as its source, and that
+// durable pin (pinnedPairingNetworks) is checked before the learned binding.
+// The residual re-learn window is left only for unsigned legacy peers, whose
+// messages are labeled unsigned and carry no verified identity anyway.
 func (s *Service) pairCredentialMatchesOrigin(ctx context.Context, claims authn.Claims, originNetworkID string, strict bool) bool {
 	if credentialNetworkID := strings.TrimSpace(claims.Network()); credentialNetworkID != "" {
 		return credentialNetworkID == originNetworkID
@@ -66,6 +70,33 @@ func (s *Service) pairCredentialMatchesOrigin(ctx context.Context, claims authn.
 		// pairing time counts, and this credential has none.
 		logPairBindingRefusal(ctx, originNetworkID)
 		return false
+	}
+
+	// An unbound credential may not claim a network another pairing is
+	// config-bound to, nor one other than the id its own peer reported in
+	// authenticated discovery (persisted as the delivery destination).
+	if reason := s.unboundOriginConflict(ctx, originNetworkID); reason != "" {
+		observability.Logger(ctx, "rooms.pairing", "origin_network_id", originNetworkID).
+			Warn("rejecting inbound pair-scoped message: " + reason)
+		return false
+	}
+
+	// A key pinned through this pairing durably records which network the
+	// credential speaks for. It outlives the process-local learned binding
+	// below, so a restart cannot reopen first contact for a different,
+	// not-yet-pinned network id under the same credential.
+	if pinned, known, err := s.pinnedPairingNetworks(ctx); err != nil {
+		observability.Logger(ctx, "rooms.pairing", "origin_network_id", originNetworkID).
+			Error("refusing pair-scoped message: network key trust store unavailable", "error", err)
+		return false
+	} else if known {
+		if !slices.Contains(pinned, originNetworkID) {
+			observability.Logger(ctx, "rooms.pairing", "origin_network_id", originNetworkID, "pinned_networks", pinned).
+				Warn("rejecting inbound pair-scoped message whose origin differs from the network pinned through this pairing")
+			return false
+		}
+		s.bindOrMatchPairNetwork(credentialKey, originNetworkID)
+		return true
 	}
 
 	matched, firstContact := s.bindOrMatchPairNetwork(credentialKey, originNetworkID)
@@ -105,6 +136,39 @@ func (s *Service) bindOrMatchPairNetwork(credentialKey, originNetworkID string) 
 	}
 	s.learnedPairNetworks[credentialKey] = originNetworkID
 	return true, true
+}
+
+// unboundOriginConflict explains why an unbound credential may not claim
+// originNetworkID, or returns "".
+func (s *Service) unboundOriginConflict(ctx context.Context, originNetworkID string) string {
+	pairing, ok := s.pairingForPairScopedContext(ctx)
+	if !ok {
+		return ""
+	}
+	if other, err := s.findPairingByRemoteNetwork(originNetworkID); err == nil && other.ID != pairing.ID {
+		return "origin network is config-bound to a different pairing"
+	}
+	if s.pairingDeliveries != nil {
+		if state, err := s.pairingDeliveries.PairingDeliveryStateContext(ctx, pairing.ID); err == nil &&
+			state.RemoteNetworkID != "" && state.RemoteNetworkID != originNetworkID {
+			return "origin network differs from the network this pairing's peer reported in discovery"
+		}
+	}
+	return ""
+}
+
+// pinnedPairingNetworks reports the networks whose keys were pinned through
+// the caller's pairing; known is false when there are none.
+func (s *Service) pinnedPairingNetworks(ctx context.Context) ([]string, bool, error) {
+	pairing, ok := s.pairingForPairScopedContext(ctx)
+	if !ok || s.keyPins == nil {
+		return nil, false, nil
+	}
+	networks, err := s.keyPins.PairingNetworks(pairing.ID)
+	if err != nil {
+		return nil, false, err
+	}
+	return networks, len(networks) > 0, nil
 }
 
 func logPairBindingRefusal(ctx context.Context, originNetworkID string) {

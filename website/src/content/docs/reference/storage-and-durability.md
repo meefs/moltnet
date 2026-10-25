@@ -40,6 +40,11 @@ Override with `MOLTNET_SQLITE_PATH`.
 
 For shared deployments where multiple processes or services need access.
 
+A network that is the **home of a shared room** must run as one server
+process: room placement order is held by a process-local lock, and the list
+of shared rooms is cached per process. Several Moltnet processes acting as
+one home over one Postgres database are not supported.
+
 ```yaml
 storage:
   kind: postgres

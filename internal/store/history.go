@@ -27,17 +27,15 @@ func (s *MemoryStore) AppendMessageContext(_ context.Context, message protocol.M
 	return err
 }
 
-func (s *MemoryStore) AppendMessageWithLifecycleContext(_ context.Context, message protocol.Message) (AppendLifecycle, error) {
+func (s *MemoryStore) AppendMessageWithLifecycleContext(ctx context.Context, message protocol.Message) (AppendLifecycle, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return s.appendMessageLocked(message)
+	return s.appendMessageLocked(message, envelopeForMessage(ctx, message))
 }
-func (s *MemoryStore) appendMessageLocked(message protocol.Message) (AppendLifecycle, error) {
-	if key := messageOriginReceipt(message); key != "" {
-		if id, exists := s.originReceipts[key]; exists {
-			return AppendLifecycle{}, &DuplicateMessageError{MessageID: id}
-		}
+func (s *MemoryStore) appendMessageLocked(message protocol.Message, envelope *MessageEnvelopeRecord) (AppendLifecycle, error) {
+	if err := s.checkOriginReceiptLocked(message, envelope); err != nil {
+		return AppendLifecycle{}, err
 	}
 	_, duplicate := s.messageIDs[message.ID]
 	if duplicate && s.messageOrigins[message.ID] != messageOriginReceipt(message) {
@@ -114,9 +112,7 @@ func (s *MemoryStore) appendMessageLocked(message protocol.Message) (AppendLifec
 	}
 	s.messageIDs[message.ID] = struct{}{}
 	s.messageOrigins[message.ID] = messageOriginReceipt(message)
-	if key := messageOriginReceipt(message); key != "" {
-		s.originReceipts[key] = message.ID
-	}
+	s.recordOriginReceiptLocked(message, envelope)
 	s.recordRoomActivity(message)
 
 	return lifecycle, nil

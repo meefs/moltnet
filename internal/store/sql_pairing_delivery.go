@@ -17,14 +17,15 @@ func (s *SQLStore) AppendMessageWithPairingDeliveriesContext(
 	return s.appendMessageWithLifecycleContext(ctx, message, event, pairingIDs)
 }
 
-func (s *SQLStore) insertPairingReceiveReceipt(ctx context.Context, tx *sql.Tx, message protocol.Message) error {
+func (s *SQLStore) insertPairingReceiveReceipt(ctx context.Context, tx *sql.Tx, message protocol.Message, envelope *MessageEnvelopeRecord) error {
 	if messageOriginReceipt(message) == "" {
 		return nil
 	}
+	offered := envelopeDigest(envelope)
 	result, err := tx.ExecContext(ctx, bindQuery(s.dialect, `
-		INSERT INTO pairing_receive_receipts (origin_network_id, origin_message_id, stored_message_id)
-		VALUES (?, ?, ?) ON CONFLICT DO NOTHING
-	`), message.Origin.NetworkID, message.Origin.MessageID, message.ID)
+		INSERT INTO pairing_receive_receipts (origin_network_id, origin_message_id, stored_message_id, envelope_digest)
+		VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING
+	`), message.Origin.NetworkID, message.Origin.MessageID, message.ID, offered)
 	if err != nil {
 		return fmt.Errorf("insert pairing receive receipt: %w", err)
 	}
@@ -33,10 +34,15 @@ func (s *SQLStore) insertPairingReceiveReceipt(ctx context.Context, tx *sql.Tx, 
 		return err
 	}
 	if count == 0 {
-		var id string
+		var id, stored string
 		if err := tx.QueryRowContext(ctx, bindQuery(s.dialect,
-			`SELECT stored_message_id FROM pairing_receive_receipts WHERE origin_network_id = ? AND origin_message_id = ?`), message.Origin.NetworkID, message.Origin.MessageID).Scan(&id); err != nil {
+			`SELECT stored_message_id, envelope_digest FROM pairing_receive_receipts WHERE origin_network_id = ? AND origin_message_id = ?`), message.Origin.NetworkID, message.Origin.MessageID).Scan(&id, &stored); err != nil {
 			return err
+		}
+		// Same origin tuple, different signed content: a fork or a forgery,
+		// never an idempotent retry to acknowledge.
+		if stored != offered {
+			return envelopeConflict(message.Origin, stored, offered)
 		}
 		return &DuplicateMessageError{MessageID: id}
 	}

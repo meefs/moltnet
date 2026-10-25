@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/noopolis/moltnet/internal/follow"
+	"github.com/noopolis/moltnet/internal/hubinvites"
+	"github.com/noopolis/moltnet/internal/netkeys"
 	"github.com/noopolis/moltnet/internal/observability"
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -51,6 +53,18 @@ type ServiceConfig struct {
 	// TranscriptWriter is optional. When set, accepted room/DM messages are
 	// exported beside causal.jsonl as research data for the memetics programme.
 	TranscriptWriter *observability.TranscriptWriter
+	// Identity signs locally originated messages relayed over pairings.
+	// Nil leaves outbound relays unsigned, exactly as before keys existed.
+	Identity *netkeys.Identity
+	// KeyPins is the durable trust store for peer network keys. Nil means
+	// an in-memory store (tests and keyless servers).
+	KeyPins *netkeys.PinStore
+	// HubSyncInterval is how often member hub rooms catch up from their
+	// home without a gap or reconnect prompting it (default 30s).
+	HubSyncInterval time.Duration
+	// HubInvites holds shared-room invite grants and pending joins. Nil
+	// means an in-memory store (tests and keyless servers).
+	HubInvites *hubinvites.Store
 }
 
 type Service struct {
@@ -77,17 +91,30 @@ type Service struct {
 	causalWriter              *observability.CausalWriter
 	transcriptWriter          *observability.TranscriptWriter
 	pairingDeliveries         store.PairingDeliveryStore
-	deliveryRetryMin          time.Duration
-	deliveryRetryMax          time.Duration
-	deliveryPollInterval      time.Duration
-	deliveryTimeout           time.Duration
-	relayWake                 chan struct{}
-	relayStart                sync.Once
-	relayWG                   sync.WaitGroup
-	pairingsMu                sync.RWMutex
-	pairingPublishMu          sync.Mutex
-	deliveryMu                sync.Mutex
-	pairingStatuses           map[string]pairingStatus
+	envelopes                 store.MessageEnvelopeStore
+	hubs                      store.HubStore
+	// hubMu serializes hub control-log appends and receipt placement, so
+	// one home assigns each room seq exactly once.
+	hubMu                sync.Mutex
+	hubRosters           hubRosterCache
+	hubRoomList          hubRoomsCache
+	hubSyncWake          chan struct{}
+	hubSyncMu            sync.Mutex
+	hubSyncInterval      time.Duration
+	identity             *netkeys.Identity
+	keyPins              *netkeys.PinStore
+	hubInvites           *hubinvites.Store
+	deliveryRetryMin     time.Duration
+	deliveryRetryMax     time.Duration
+	deliveryPollInterval time.Duration
+	deliveryTimeout      time.Duration
+	relayWake            chan struct{}
+	relayStart           sync.Once
+	relayWG              sync.WaitGroup
+	pairingsMu           sync.RWMutex
+	pairingPublishMu     sync.Mutex
+	deliveryMu           sync.Mutex
+	pairingStatuses      map[string]pairingStatus
 	// learnedPairNetworks pins a pair credential to the origin network it
 	// first asserted, for credentials config never bound (the inviting side).
 	// Guarded by pairingsMu. See pairing_binding.go.
@@ -178,7 +205,17 @@ func NewService(config ServiceConfig) *Service {
 		now:                       now,
 	}
 	service.pairingDeliveries, _ = config.Messages.(store.PairingDeliveryStore)
+	service.envelopes, _ = config.Messages.(store.MessageEnvelopeStore)
+	service.hubs, _ = config.Messages.(store.HubStore)
+	service.identity, service.keyPins = config.Identity, config.KeyPins
+	if service.keyPins == nil {
+		service.keyPins = netkeys.NewMemoryPinStore()
+	}
+	if service.hubInvites = config.HubInvites; service.hubInvites == nil {
+		service.hubInvites = hubinvites.NewMemory()
+	}
 	service.configureDelivery(config)
+	service.configureHubSync(config)
 	service.follows = follow.New(service)
 	return service
 }
@@ -200,10 +237,15 @@ func (s *Service) Network() protocol.Network {
 	warnings := s.networkWarningsLocked()
 	s.pairingsMu.RUnlock()
 
+	var identity *protocol.NetworkIdentity
+	if public, ok := s.LocalIdentity(); ok {
+		identity = &public
+	}
 	return protocol.Network{
-		ID:      s.networkID,
-		Name:    s.networkName,
-		Version: s.version,
+		Identity: identity,
+		ID:       s.networkID,
+		Name:     s.networkName,
+		Version:  s.version,
 		Protocols: protocol.NetworkProtocols{
 			HTTP:   []string{protocol.HTTPProtocolV1},
 			Attach: []string{protocol.AttachmentProtocolV1},

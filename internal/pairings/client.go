@@ -2,6 +2,8 @@ package pairings
 
 import (
 	"context"
+	"net/url"
+	"strconv"
 
 	"github.com/noopolis/moltnet/internal/pairings/relay"
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -12,6 +14,8 @@ type pairingTransport interface {
 	FetchRooms(ctx context.Context, pairing protocol.Pairing) ([]protocol.Room, error)
 	FetchAgents(ctx context.Context, pairing protocol.Pairing) ([]protocol.AgentSummary, error)
 	RelayMessage(ctx context.Context, pairing protocol.Pairing, request protocol.SendMessageRequest) (protocol.MessageAccepted, error)
+	FetchRoomControl(ctx context.Context, pairing protocol.Pairing, globalRoomID string, afterSeq int64) (protocol.RoomControlPage, error)
+	FetchRoomSync(ctx context.Context, pairing protocol.Pairing, globalRoomID string, afterSeq, controlAfter int64) (protocol.RoomSyncPage, error)
 }
 
 type Client struct {
@@ -57,4 +61,26 @@ func (c *Client) RelayMessage(
 	requestPayload protocol.SendMessageRequest,
 ) (protocol.MessageAccepted, error) {
 	return c.transportFor(pairing).RelayMessage(ctx, pairing, requestPayload)
+}
+
+// FetchRoomControl pulls a hub room's control log after afterSeq from the
+// room's home, over the pairing that reaches it.
+func (c *Client) FetchRoomControl(ctx context.Context, pairing protocol.Pairing, globalRoomID string, afterSeq int64) (protocol.RoomControlPage, error) {
+	return c.transportFor(pairing).FetchRoomControl(ctx, pairing, globalRoomID, afterSeq)
+}
+
+// FetchRoomSync pulls a catch-up page of a hub room from its home.
+func (c *Client) FetchRoomSync(ctx context.Context, pairing protocol.Pairing, globalRoomID string, afterSeq, controlAfter int64) (protocol.RoomSyncPage, error) {
+	return c.transportFor(pairing).FetchRoomSync(ctx, pairing, globalRoomID, afterSeq, controlAfter)
+}
+
+// RoomSyncPath is GET /v1/hub/sync with its query.
+func RoomSyncPath(globalRoomID string, afterSeq, controlAfter int64) string {
+	return "/v1/hub/sync?" + url.Values{"room": {globalRoomID}, "after": {strconv.FormatInt(afterSeq, 10)},
+		"control_after": {strconv.FormatInt(controlAfter, 10)}}.Encode()
+}
+
+// RoomControlPath is GET /v1/hub/control with its query.
+func RoomControlPath(globalRoomID string, afterSeq int64) string {
+	return "/v1/hub/control?" + url.Values{"room": {globalRoomID}, "after": {strconv.FormatInt(afterSeq, 10)}}.Encode()
 }

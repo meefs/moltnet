@@ -51,7 +51,19 @@ func (s *SQLStore) appendMessageWithLifecycleContext(
 	}
 	defer rollback(tx)
 
-	if err := s.insertPairingReceiveReceipt(ctx, tx, message); err != nil {
+	envelope := envelopeForMessage(ctx, message)
+	receipt := hubReceiptForMessage(ctx, message)
+	duplicateReceipt, err := s.guardHubReceipt(ctx, tx, receipt)
+	if err != nil {
+		return AppendLifecycle{}, err
+	}
+	bind := receipt
+	if duplicateReceipt {
+		receipt = nil
+	} else {
+		bind = nil
+	}
+	if err := s.insertPairingReceiveReceipt(ctx, tx, message, envelope); err != nil {
 		return AppendLifecycle{}, err
 	}
 
@@ -90,6 +102,15 @@ func (s *SQLStore) appendMessageWithLifecycleContext(
 		return AppendLifecycle{}, ErrDuplicateMessage
 	}
 	if err := s.insertArtifacts(ctx, tx, message); err != nil {
+		return AppendLifecycle{}, err
+	}
+	if err := s.insertMessageEnvelope(ctx, tx, envelope); err != nil {
+		return AppendLifecycle{}, err
+	}
+	if err := s.insertHubReceipt(ctx, tx, receipt); err != nil {
+		return AppendLifecycle{}, err
+	}
+	if err := s.bindHubReceipt(ctx, tx, bind); err != nil {
 		return AppendLifecycle{}, err
 	}
 	if event != nil {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/noopolis/moltnet/internal/app"
+	"github.com/noopolis/moltnet/internal/netkeys"
 	"github.com/noopolis/moltnet/internal/relaydeploy"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
@@ -92,17 +93,27 @@ func runPairInvite(ctx context.Context, args []string) error {
 		return err
 	}
 
+	// The invite carries this network's signing identity so the joiner can
+	// pin it as verified; the key is created here if the server never ran.
+	identity, _, err := netkeys.LoadOrCreateIdentity(app.KeysDirForConfigPath(path))
+	if err != nil {
+		return err
+	}
+	public := identity.Public()
+
 	invite := protocol.Invite{
-		V:            protocol.InviteVersion,
-		RelayURL:     relayURL,
-		Room:         room,
-		RelayToken:   relayToken,
-		PairingToken: pairingToken,
-		PairingID:    id,
-		NetworkID:    config.NetworkID,
-		NetworkName:  config.NetworkName,
-		SharedRooms:  []string(sharedRooms),
-		Exp:          time.Now().UTC().Add(protocol.DefaultInviteTTL),
+		NetworkPublicKey:   public.PublicKey,
+		NetworkFingerprint: public.Fingerprint,
+		V:                  protocol.InviteVersion,
+		RelayURL:           relayURL,
+		Room:               room,
+		RelayToken:         relayToken,
+		PairingToken:       pairingToken,
+		PairingID:          id,
+		NetworkID:          config.NetworkID,
+		NetworkName:        config.NetworkName,
+		SharedRooms:        []string(sharedRooms),
+		Exp:                time.Now().UTC().Add(protocol.DefaultInviteTTL),
 	}
 	if err := invite.Validate(); err != nil {
 		return fmt.Errorf("generated invite failed validation: %w", err)
@@ -147,6 +158,13 @@ func runPairInvite(ctx context.Context, args []string) error {
 			return fmt.Errorf("%w, or choose a different --id", err)
 		}
 		return err
+	}
+	if *force {
+		// A re-minted credential under the same pairing id speaks for
+		// whichever network joins next, not the one the old one bound.
+		if err := netkeys.OpenPinStore(app.KeysDirForConfigPath(path)).ForgetPairing(id); err != nil {
+			return fmt.Errorf("wrote the new pairing but failed to clear the old credential's network binding: %w", err)
+		}
 	}
 
 	return printPairInviteAftercare(ctx, config, path, code, id, pairAftercareOptions{

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/noopolis/moltnet/internal/observability"
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
@@ -21,7 +22,25 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 	if request.From.Type == "human" && !s.allowHumanIngress {
 		return protocol.MessageAccepted{}, humanIngressDisabledError()
 	}
+	request.Origin = canonicalOriginIDs(request.Origin)
+	if pairing, relayed := s.pairingForPairScopedContext(ctx); relayed {
+		request = stripPeerTestimony(request)
+		if isHubRequest(request) {
+			return s.receiveHubMessage(ctx, request)
+		}
+		if pairing.IsRoomLink() {
+			return protocol.MessageAccepted{}, hubForbiddenError("a room link carries only signed hub room messages")
+		}
+	} else {
+		// Envelopes and receipts are peer statements; local callers never
+		// supply them.
+		request.Envelope, request.Receipt = nil, nil
+	}
 	if err := s.validateSenderIdentity(ctx, request.From, request.Origin); err != nil {
+		return protocol.MessageAccepted{}, err
+	}
+	inboundEnvelope, err := s.verifyInboundEnvelope(ctx, request)
+	if err != nil {
 		return protocol.MessageAccepted{}, err
 	}
 
@@ -66,6 +85,14 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 		return protocol.MessageAccepted{}, err
 	}
 
+	// Authorized: only now may first contact pin the origin's key.
+	if err := s.commitFirstContactPin(ctx, inboundEnvelope); err != nil {
+		return protocol.MessageAccepted{}, err
+	}
+	if inboundEnvelope != nil {
+		ctx = store.WithMessageEnvelope(ctx, inboundEnvelope.record)
+	}
+
 	target := s.normalizeTarget(request.Target, from)
 	origin := s.normalizeOrigin(ctx, request.Origin, messageID)
 	message := protocol.Message{
@@ -101,6 +128,11 @@ func (s *Service) SendMessageContext(ctx context.Context, request protocol.SendM
 				Accepted:  true,
 			}, nil
 		}
+		if errors.Is(err, store.ErrEnvelopeConflict) {
+			observability.Logger(ctx, "rooms.signing", "origin_network_id", message.Origin.NetworkID, "origin_message_id", message.Origin.MessageID).
+				Warn("rejecting origin message whose envelope conflicts with the stored one", "error", err)
+			return protocol.MessageAccepted{}, envelopeConflictError(err)
+		}
 		if errors.Is(err, store.ErrMessageIDConflict) {
 			return protocol.MessageAccepted{}, &Error{status: http.StatusConflict, msg: err.Error(), cause: err}
 		}
@@ -126,6 +158,11 @@ func (s *Service) appendAndPublishMessage(
 	message protocol.Message,
 	event protocol.Event,
 ) (store.AppendLifecycle, error) {
+	if hub, ok, err := s.hubRoomForTarget(ctx, message.Target); err != nil {
+		return store.AppendLifecycle{}, err
+	} else if ok {
+		return s.appendLocalHubMessage(ctx, request, message, event, hub)
+	}
 	s.deliveryMu.Lock()
 	defer s.deliveryMu.Unlock()
 
@@ -145,7 +182,11 @@ func (s *Service) appendAndPublishMessage(
 			age, size := deliveryBounds(pairing)
 			limits[pairing.ID] = store.PairingDeliveryLimits{MaxAge: age, MaxPending: size, RemoteNetworkID: pairing.RemoteNetworkID}
 		}
-		appendCtx := store.WithPairingDeliveryLimits(ctx, limits)
+		signedCtx, signErr := s.withOutboundEnvelope(ctx, message)
+		if signErr != nil {
+			return store.AppendLifecycle{}, signErr
+		}
+		appendCtx := store.WithPairingDeliveryLimits(signedCtx, limits)
 		lifecycle, err = s.pairingDeliveries.AppendMessageWithPairingDeliveriesContext(appendCtx, message, durableEvent, pairingIDs)
 	case len(pairingIDs) > 0:
 		err = errors.New("message store does not support durable pairing delivery")
@@ -162,7 +203,13 @@ func (s *Service) appendAndPublishMessage(
 	if err != nil {
 		return store.AppendLifecycle{}, err
 	}
+	s.publishAppended(ctx, request, message, event, lifecycle)
+	return lifecycle, nil
+}
 
+// publishAppended runs after a durable, non-duplicate append: drop logs,
+// the causal stamp, and lifecycle and message events, exactly once.
+func (s *Service) publishAppended(ctx context.Context, request protocol.SendMessageRequest, message protocol.Message, event protocol.Event, lifecycle store.AppendLifecycle) {
 	for pairingID, dropped := range lifecycle.PairingDeliveriesDropped {
 		s.logDroppedDeliveries(ctx, pairingID, dropped)
 	}
@@ -189,7 +236,6 @@ func (s *Service) appendAndPublishMessage(
 		})
 	}
 	s.publishEvent(event)
-	return lifecycle, nil
 }
 
 func (s *Service) validateDMSenderTopology(target protocol.Target, actor protocol.Actor) error {
@@ -219,4 +265,28 @@ func (s *Service) validateDMSenderTopology(target protocol.Target, actor protoco
 
 func (s *Service) Subscribe(ctx context.Context) <-chan protocol.Event {
 	return s.filterEvents(ctx, s.broker.Subscribe(ctx))
+}
+
+// canonicalOriginIDs trims the origin ids once, before verification,
+// dedupe and persistence all read them. Origin ids key receive receipts and
+// envelope-conflict checks byte for byte, so " msg-1" and "msg-1" must be
+// one spelling of one signed message everywhere, never two.
+func canonicalOriginIDs(origin protocol.MessageOrigin) protocol.MessageOrigin {
+	origin.NetworkID = strings.TrimSpace(origin.NetworkID)
+	origin.MessageID = strings.TrimSpace(origin.MessageID)
+	return origin
+}
+
+// stripPeerTestimony drops fields a peer may not supply on a pairing relay:
+// the claimed_* origin fields are follow-import testimony only, and
+// cause_event_ids is the local harness's causal context. Neither is covered
+// by the origin signature, so keeping them would let a hop attach
+// unverifiable claims to a verified message.
+func stripPeerTestimony(request protocol.SendMessageRequest) protocol.SendMessageRequest {
+	request.Origin.ClaimedAuthor = nil
+	request.Origin.ClaimedNetworkID = ""
+	request.Origin.ClaimedMessageID = ""
+	request.Origin.ClaimedDiscoveryNetworkID = ""
+	request.CauseEventIDs = nil
+	return request
 }

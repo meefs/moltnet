@@ -3,11 +3,9 @@ import type { KeyboardEvent, TouchEvent, WheelEvent } from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useMessages } from "../../../hooks/useMessages";
 import { useNetwork } from "../../../hooks/useNetwork";
+import { useRoomHub } from "../../../hooks/useRoomHub";
 import { supportsDirectMessages } from "../../../lib/capabilities";
-import {
-  isMessageTargetSelection,
-  type Message,
-} from "../../../lib/types";
+import { isMessageTargetSelection } from "../../../lib/types";
 import { useSelection } from "../../../providers";
 import {
   captureScrollAnchor,
@@ -20,9 +18,10 @@ import {
   type ScrollAnchor,
   type ScrollSnapshot,
 } from "./scroll";
-import { continuesFrom, rowKeyOf, startsDay, TimelineMessage } from "./TimelineMessage";
-import { DayDivider, EmptyPane } from "./TimelinePlaceholders";
+import { EmptyPane } from "./TimelinePlaceholders";
 import { TimelineHeader } from "./TimelineHeader";
+import { TimelineRowView } from "./TimelineRowView";
+import { buildTimelineRows, messagesOf } from "./timelineRows";
 
 const ESTIMATED_ROW_HEIGHT = 64;
 
@@ -31,26 +30,25 @@ export function Timeline() {
   const { data: network } = useNetwork();
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useMessages();
+  const { data: hub } = useRoomHub(selected?.kind === "room" ? selected.id : null);
   const parentRef = useRef<HTMLDivElement>(null);
   const directMessagesEnabled = supportsDirectMessages(network);
   const selectedKey = isMessageTargetSelection(selected)
     ? `${selected.kind}:${selected.id}`
     : null;
 
-  const messages = useMemo<Message[]>(() => {
-    if (!data) return [];
-    // React Query stores the newest page first and appends older pages after it.
-    // Each API page is already chronological, so only reverse the page groups.
-    return data.pages
-      .slice()
-      .reverse()
-      .flatMap((page) => page.messages ?? []);
-  }, [data]);
+  const messages = useMemo(() => messagesOf(data?.pages), [data]);
+  // Shared-room membership changes ride along as system lines, only once the
+  // messages they sit between have loaded.
+  const rows = useMemo(
+    () => buildTimelineRows(messages, data ? hub : null, !!hasNextPage),
+    [data, hasNextPage, hub, messages],
+  );
 
   const virtualizer = useVirtualizer({
-    count: messages.length,
+    count: rows.length,
     getScrollElement: () => parentRef.current,
-    getItemKey: (index) => (messages[index] ? rowKeyOf(messages[index]) : index),
+    getItemKey: (index) => rows[index]?.key ?? index,
     estimateSize: () => ESTIMATED_ROW_HEIGHT,
     overscan: 12,
   });
@@ -148,14 +146,14 @@ export function Timeline() {
       // measurements: right after a fast scroll the DOM may not hold the
       // rows for this offset yet.
       const item = virtualizer.getVirtualItemForOffset(node.scrollTop);
-      const message = item ? messages[item.index] : undefined;
+      const row = item ? rows[item.index] : undefined;
       snapshotRef.current = {
         ...captureScrollSnapshot(node),
-        prepend: item && message ? { rowKey: rowKeyOf(message), endOffset: item.end - node.scrollTop } : null,
+        prepend: item && row ? { rowKey: row.key, endOffset: item.end - node.scrollTop } : null,
       };
       void fetchNextPage();
     },
-    [fetchNextPage, hasNextPage, isFetchingNextPage, messages, virtualizer],
+    [fetchNextPage, hasNextPage, isFetchingNextPage, messages.length, rows, virtualizer],
   );
 
   const handleScroll = useCallback(() => {
@@ -217,7 +215,7 @@ export function Timeline() {
     anchorRestoreTokenRef.current += 1;
 
     const anchorIndex = snapshot.prepend
-      ? messages.findIndex((message) => rowKeyOf(message) === snapshot.prepend?.rowKey)
+      ? rows.findIndex((row) => row.key === snapshot.prepend?.rowKey)
       : -1;
     const restore = () => {
       const current = parentRef.current;
@@ -238,7 +236,7 @@ export function Timeline() {
       requestAnimationFrame(restore);
     });
     snapshotRef.current = null;
-  }, [firstMessageID, isFetchingNextPage, lastMessageID, messages, virtualizer]);
+  }, [firstMessageID, isFetchingNextPage, lastMessageID, rows, virtualizer]);
 
   // Initial selection loads pin to the newest message. Later live appends only
   // stick when the operator was already reading at the bottom of the chat.
@@ -303,7 +301,7 @@ export function Timeline() {
   // The virtualizer only compensates for rows above the viewport, so while the
   // operator is following the newest message, keep the bottom pinned.
   const contentRef = useRef<HTMLDivElement>(null);
-  const hasMessages = messages.length > 0;
+  const hasMessages = rows.length > 0;
   useEffect(() => {
     const node = contentRef.current;
     if (!node || typeof ResizeObserver === "undefined") return;
@@ -333,7 +331,7 @@ export function Timeline() {
 
   return (
     <section className="flex flex-col min-h-0 min-w-0">
-      <TimelineHeader selection={selected} loaded={messages.length} hasOlder={!!hasNextPage} />
+      <TimelineHeader selection={selected} loaded={messages.length} hasOlder={!!hasNextPage} hub={hub} />
         <div
           ref={parentRef}
           className="flex-1 overflow-auto"
@@ -345,7 +343,7 @@ export function Timeline() {
           onTouchStart={handleTouchStart}
           onWheel={handleWheel}
         >
-          {messages.length === 0 ? (
+          {rows.length === 0 ? (
             <p className="text-faint text-[14px] px-5 py-6">
               {isLoading ? "loading…" : "no messages yet."}
             </p>
@@ -364,13 +362,13 @@ export function Timeline() {
                 </div>
               ) : null}
               {virtualizer.getVirtualItems().map((virtualItem) => {
-                const message = messages[virtualItem.index];
-                if (!message) return null;
+                const row = rows[virtualItem.index];
+                if (!row) return null;
                 return (
                   <div
                     key={virtualItem.key}
                     data-index={virtualItem.index}
-                    data-message-id={message.id}
+                    data-message-id={row.kind === "message" ? row.message.id : undefined}
                     ref={virtualizer.measureElement}
                     style={{
                       position: "absolute",
@@ -382,13 +380,7 @@ export function Timeline() {
                       paddingRight: 20,
                     }}
                   >
-                    {startsDay(messages[virtualItem.index - 1], message) ? (
-                      <DayDivider date={message.created_at} />
-                    ) : null}
-                    <TimelineMessage
-                      message={message}
-                      continued={continuesFrom(messages[virtualItem.index - 1], message)}
-                    />
+                    <TimelineRowView row={row} hub={hub} />
                   </div>
                 );
               })}

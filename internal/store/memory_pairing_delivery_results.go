@@ -11,8 +11,11 @@ func (s *MemoryStore) ApplyPairingDeliveryResultsContext(_ context.Context, resu
 		for index := range s.pairingDeliveries {
 			current := &s.pairingDeliveries[index]
 			delivery := result.Delivery
+			// Binding only ever moves a row from unbound to its discovered
+			// destination (conflicting rows are dropped), so a result for
+			// the unbound row still settles it after its own discovery.
 			if current.Sequence != delivery.Sequence || current.PairingID != delivery.PairingID ||
-				current.MessageID != delivery.MessageID || current.RemoteNetworkID != delivery.RemoteNetworkID {
+				current.MessageID != delivery.MessageID || delivery.RemoteNetworkID != "" && current.RemoteNetworkID != delivery.RemoteNetworkID {
 				continue
 			}
 			state := s.pairingDeliveryStates[delivery.PairingID]

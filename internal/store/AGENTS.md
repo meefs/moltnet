@@ -23,3 +23,24 @@ This package owns persistence interfaces and implementations.
 - SQLite as the local default
 - Postgres for shared or hosted deployments
 - object storage integration for large artifacts later
+
+## Hub Rooms
+
+- `hub.go` defines `HubStore`: hub rooms, control logs, receipts, per-room
+  origin seqs. All four backends implement it (`hub_memory.go`,
+  `hub_file.go`, `sql_hub.go`, migration 16).
+- Receipts are written inside the message append (`WithHubReceipt`) and
+  checked before origin dedupe: a different receipt at a seq, a second
+  placement of an event, or a broken chain is `ErrHubReceiptConflict`, never
+  a duplicate. Membership epochs may not decrease along room seqs against
+  the nearest stored receipt either side (any delivery order); SQL appends
+  row-lock the hub room so concurrent appends see each other.
+- `hub_sync.go` / `sql_hub_sync.go` (migration 17): ordered receipts for
+  catch-up, messages by id, a member's forward-only sync cursor (seq and
+  receipt digest; `ErrHubSyncRollback`), and receipts attached to an
+  origin's own already stored copy. The cursor also keeps its receipt's
+  membership epoch and refuses to advance to an older one.
+- `hub_receipt_only.go` (migration 18): receipts stored with no message (a
+  member's sync entries it may not see or refused), under the same conflict
+  rules; a message arriving later for such a receipt binds to it. Envelopes
+  are also found by origin tuple (`EnvelopeForOriginContext`).

@@ -259,8 +259,11 @@ func TestUnboundPairTokenIsPinnedToTheOriginItFirstAsserts(t *testing.T) {
 	t.Parallel()
 
 	service := newPairingCredentialBindingTestService()
-	mustCreateFederatedPolicyRoom(t, service, "floor", []string{"remote-b:member", "network-c:member"})
+	mustCreateFederatedPolicyRoom(t, service, "floor", []string{"remote-d:member", "network-e:member"})
 	// Network deliberately empty: this is the inviter-side credential shape.
+	// The origins it claims are bound to no other pairing; claiming one that
+	// is (remote-b, network-c) is refused outright, see
+	// TestUnboundCredentialCannotSquatAnotherNetwork.
 	claims := authn.NewStaticClaims(authn.TokenConfig{
 		ID:     "pair-unbound",
 		Value:  "pair-unbound-secret",
@@ -268,8 +271,8 @@ func TestUnboundPairTokenIsPinnedToTheOriginItFirstAsserts(t *testing.T) {
 	})
 
 	first := roomSend("floor", "member")
-	first.Origin = protocol.MessageOrigin{NetworkID: "remote-b", MessageID: "remote-b-1"}
-	first.From.NetworkID = "remote-b"
+	first.Origin = protocol.MessageOrigin{NetworkID: "remote-d", MessageID: "remote-d-1"}
+	first.From.NetworkID = "remote-d"
 	if _, err := service.SendMessageContext(bearerClaimsContext(claims), first); err != nil {
 		t.Fatalf("first contact from an unbound pair credential should be accepted: %v", err)
 	}
@@ -277,8 +280,8 @@ func TestUnboundPairTokenIsPinnedToTheOriginItFirstAsserts(t *testing.T) {
 	// Same credential, different claimed origin. Before the learned binding
 	// this was accepted and stored as if it came from network-c.
 	forged := roomSend("floor", "member")
-	forged.Origin = protocol.MessageOrigin{NetworkID: "network-c", MessageID: "network-c-1"}
-	forged.From.NetworkID = "network-c"
+	forged.Origin = protocol.MessageOrigin{NetworkID: "network-e", MessageID: "network-e-1"}
+	forged.From.NetworkID = "network-e"
 
 	before := roomMessageCount(t, service, "floor")
 	if _, err := service.SendMessageContext(bearerClaimsContext(claims), forged); err == nil {
@@ -290,8 +293,8 @@ func TestUnboundPairTokenIsPinnedToTheOriginItFirstAsserts(t *testing.T) {
 
 	// The pinned origin must keep working.
 	again := roomSend("floor", "member")
-	again.Origin = protocol.MessageOrigin{NetworkID: "remote-b", MessageID: "remote-b-2"}
-	again.From.NetworkID = "remote-b"
+	again.Origin = protocol.MessageOrigin{NetworkID: "remote-d", MessageID: "remote-d-2"}
+	again.From.NetworkID = "remote-d"
 	if _, err := service.SendMessageContext(bearerClaimsContext(claims), again); err != nil {
 		t.Fatalf("the origin this credential was pinned to must still be accepted: %v", err)
 	}

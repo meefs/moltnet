@@ -9,6 +9,7 @@ import type {
   Network,
   Pairing,
   Room,
+  RoomHub,
 } from "./types";
 
 interface RawMessagePage extends Omit<MessagePage, "messages"> {
@@ -122,6 +123,12 @@ export const api = {
         before ? `&before=${encodeURIComponent(before)}` : ""
       }`,
     ).then(normalizeMessagePage),
+  /** The room's shared-room log, or null when the room is not shared (404). */
+  roomHub: (id: string) =>
+    getJSON<RoomHub>(`/v1/rooms/${encodeURIComponent(id)}/hub`).catch((err: unknown) => {
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
+    }),
   dmMessages: (id: string, before?: string) =>
     getJSON<RawMessagePage>(
       `/v1/dms/${encodeURIComponent(id)}/messages?limit=50${

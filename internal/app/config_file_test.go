@@ -380,3 +380,18 @@ func TestLoadFileConfigExplicitBinaryPathGetsClearError(t *testing.T) {
 		t.Fatalf("LoadConfigForPath() error = %v, want a binary-file-suspicion error", err)
 	}
 }
+
+func TestValidatePairingsScope(t *testing.T) {
+	base := protocol.Pairing{ID: "pair_1", RemoteBaseURL: "http://remote:8787"}
+	for _, scope := range []string{"", protocol.PairingScopeRooms} {
+		pairing := base
+		pairing.Scope = scope
+		if err := validatePairings([]protocol.Pairing{pairing}); err != nil {
+			t.Fatalf("scope %q: %v", scope, err)
+		}
+	}
+	base.Scope = "everything"
+	if err := validatePairings([]protocol.Pairing{base}); err == nil {
+		t.Fatal("unknown pairing scope accepted")
+	}
+}

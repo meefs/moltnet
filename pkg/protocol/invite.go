@@ -37,6 +37,22 @@ type Invite struct {
 	NetworkName  string    `json:"network_name,omitempty"`
 	SharedRooms  []string  `json:"shared_rooms,omitempty"`
 	Exp          time.Time `json:"exp"`
+	// NetworkPublicKey and NetworkFingerprint carry the inviter's signing
+	// identity so the joiner can pin it as verified. Both are optional for
+	// invites from networks without keys; when one is present both must be,
+	// and the fingerprint must match the key.
+	NetworkPublicKey   string `json:"network_public_key,omitempty"`
+	NetworkFingerprint string `json:"network_fingerprint,omitempty"`
+	// HubRoom makes this a room invite (`moltnet room invite`): its pairing
+	// is a room link, and redeeming it admits the joiner to one shared room
+	// homed by the inviter, whose key the code carries.
+	HubRoom *InviteHubRoom `json:"hub_room,omitempty"`
+}
+
+// InviteHubRoom names the shared room a room invite admits to.
+type InviteHubRoom struct {
+	GlobalRoomID string `json:"global_room_id"`
+	Role         string `json:"role"`
 }
 
 // EncodeInvite renders invite as a `moltnet-invite:` code. The version field
@@ -109,6 +125,25 @@ func (invite Invite) Validate() error {
 	}
 	if time.Now().After(invite.Exp) {
 		return fmt.Errorf("invite expired at %s", invite.Exp.Format(time.RFC3339))
+	}
+	if invite.NetworkPublicKey != "" || invite.NetworkFingerprint != "" {
+		identity := NetworkIdentity{Algorithm: NetworkKeyAlgorithmEd25519, PublicKey: invite.NetworkPublicKey, Fingerprint: invite.NetworkFingerprint}
+		if err := ValidateNetworkIdentity(identity); err != nil {
+			return fmt.Errorf("invite network key: %w", err)
+		}
+	}
+	if invite.HubRoom != nil {
+		fingerprint, _, err := ParseGlobalRoomID(invite.HubRoom.GlobalRoomID)
+		switch {
+		case err != nil:
+			return fmt.Errorf("invite hub_room: %w", err)
+		case invite.NetworkFingerprint == "" || fingerprint != invite.NetworkFingerprint:
+			return errors.New("invite hub_room must be homed by the inviting network's key")
+		case !ValidMemberRole(invite.HubRoom.Role):
+			return fmt.Errorf("invite hub_room role %q must be admin, writer or reader", invite.HubRoom.Role)
+		case len(invite.SharedRooms) > 0:
+			return errors.New("a room invite declares no shared_rooms")
+		}
 	}
 	for _, roomID := range UniqueTrimmedStrings(invite.SharedRooms) {
 		if err := ValidateRoomID(roomID); err != nil {

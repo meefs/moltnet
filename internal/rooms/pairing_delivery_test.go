@@ -70,9 +70,9 @@ func TestPairingDeliveryLostAcknowledgmentRetriesOnce(t *testing.T) {
 
 func TestPairingDeliveryOverflowDropsOldestAndCounts(t *testing.T) {
 	peer, handler := deliveryReceiver(t)
-	url, start := stoppedDeliveryPeer(t, handler)
+	remote := newStoppedDeliveryPeer(t, handler)
 	_, origin := deliveryOrigin(t, store.NewMemoryStore(), protocol.Pairing{
-		ID: "peer", RemoteNetworkID: "peer", RemoteBaseURL: url, Token: "pair-secret",
+		ID: "peer", RemoteNetworkID: "peer", RemoteBaseURL: remote.url, Token: "pair-secret",
 		DeliveryLimits: &protocol.PairingDeliveryLimits{MaxPending: 2},
 	})
 	for i := 0; i < 4; i++ {
@@ -82,7 +82,13 @@ func TestPairingDeliveryOverflowDropsOldestAndCounts(t *testing.T) {
 		state := deliveryStatus(t, origin.URL)
 		return state.Pending == 2 && state.Dropped == 2
 	})
-	start()
+	// An attempt that read its head before the prune still carries a dropped
+	// message. The worker runs one attempt per pairing and lists heads only
+	// after the previous result, so one refusal after the overflow proves no
+	// attempt holding bounded-0 or bounded-1 can reach the peer once it is up.
+	refused := remote.refused.Load()
+	waitDelivery(t, func() bool { return remote.refused.Load() > refused })
+	remote.start()
 	waitDelivery(t, func() bool { return deliveryStatus(t, origin.URL).Pending == 0 })
 	assertDeliveryTexts(t, peer, "bounded-2", "bounded-3")
 	if state := deliveryStatus(t, origin.URL); state.Dropped != 2 {
@@ -254,17 +260,33 @@ func createDeliveryRoom(t *testing.T, service *rooms.Service) {
 // re-binding the same address later raced with other tests taking that port.
 func stoppedDeliveryPeer(t *testing.T, handler http.Handler) (string, func()) {
 	t.Helper()
-	var up atomic.Bool
+	peer := newStoppedDeliveryPeer(t, handler)
+	return peer.url, peer.start
+}
+
+type stoppedPeer struct {
+	url     string
+	up      atomic.Bool
+	refused atomic.Int64 // requests answered while down
+}
+
+func newStoppedDeliveryPeer(t *testing.T, handler http.Handler) *stoppedPeer {
+	t.Helper()
+	peer := &stoppedPeer{}
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if !up.Load() {
+		if !peer.up.Load() {
+			peer.refused.Add(1)
 			http.Error(response, "peer is down", http.StatusServiceUnavailable)
 			return
 		}
 		handler.ServeHTTP(response, request)
 	}))
 	t.Cleanup(server.Close)
-	return server.URL, func() { up.Store(true) }
+	peer.url = server.URL
+	return peer
 }
+
+func (p *stoppedPeer) start() { p.up.Store(true) }
 
 func postDeliveryMessage(t *testing.T, url, text string) {
 	t.Helper()

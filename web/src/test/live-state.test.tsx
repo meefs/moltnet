@@ -22,6 +22,7 @@ vi.mock("../providers", () => ({
 vi.mock("../hooks/useNetwork", () => ({ useNetwork: () => ({ data: { id: "n", capabilities: {} } }) }));
 vi.mock("../hooks/useRooms", () => ({ useRooms: () => ({ data: [] }) }));
 vi.mock("../hooks/useDMs", () => ({ useDMs: () => ({ data: [] }) }));
+vi.mock("../hooks/useRoomHub", () => ({ useRoomHub: () => ({ data: null }) }));
 vi.mock("../hooks/useMessages", () => ({
   useMessages: () => ({ data: { pages: [{ messages: state.messages }] }, hasNextPage: false, isFetchingNextPage: false }),
 }));

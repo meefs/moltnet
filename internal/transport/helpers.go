@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/noopolis/moltnet/internal/rooms"
 	"github.com/noopolis/moltnet/pkg/bridgeconfig"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
@@ -114,6 +115,9 @@ func writeError(response http.ResponseWriter, status int, err error) {
 	payload := map[string]string{
 		"error": publicErrorMessage(status, err),
 		"code":  errorCodeForStatus(status),
+	}
+	if errors.Is(err, rooms.ErrStaleMembershipEpoch) {
+		payload["code"] = protocol.StaleMembershipEpochCode
 	}
 	if requestID != "" {
 		payload["request_id"] = requestID

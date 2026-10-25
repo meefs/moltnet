@@ -82,6 +82,11 @@ func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
 		}
 	}
 
+	identity, keyPins, err := loadNetworkKeys(config)
+	if err != nil {
+		return nil, fmt.Errorf("load network keys: %w", err)
+	}
+
 	pairingClient := pairings.NewClient()
 	relayClients := newRelayClients(config, pairingClient)
 	service := rooms.NewService(rooms.ServiceConfig{
@@ -100,6 +105,9 @@ func newWithRealClock(config Config, realNow func() time.Time) (*App, error) {
 		Messages:                  roomStore,
 		Broker:                    broker,
 		PairingClient:             pairingClient,
+		Identity:                  identity,
+		KeyPins:                   keyPins,
+		HubInvites:                hubInvitesFor(config),
 	})
 
 	config.Auth.Tokens = bindPairingNetworks(config.Auth.Tokens, config.Pairings)

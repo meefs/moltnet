@@ -143,12 +143,12 @@ func (s *FileStore) AppendMessageContext(_ context.Context, message protocol.Mes
 	return err
 }
 
-func (s *FileStore) AppendMessageWithLifecycleContext(_ context.Context, message protocol.Message) (AppendLifecycle, error) {
+func (s *FileStore) AppendMessageWithLifecycleContext(ctx context.Context, message protocol.Message) (AppendLifecycle, error) {
 	s.persistMu.Lock()
 	defer s.persistMu.Unlock()
 
 	working := memoryStoreFromSnapshot(s.snapshot())
-	lifecycle, err := working.AppendMessageWithLifecycleContext(context.Background(), message)
+	lifecycle, err := working.AppendMessageWithLifecycleContext(ctx, message)
 	if err != nil {
 		return AppendLifecycle{}, err
 	}
@@ -163,7 +163,7 @@ func (s *FileStore) AppendMessageWithLifecycleContext(_ context.Context, message
 }
 
 func (s *FileStore) AppendMessageEventWithLifecycleContext(
-	_ context.Context,
+	ctx context.Context,
 	message protocol.Message,
 	event protocol.Event,
 ) (AppendLifecycle, error) {
@@ -171,7 +171,7 @@ func (s *FileStore) AppendMessageEventWithLifecycleContext(
 	defer s.persistMu.Unlock()
 
 	working := memoryStoreFromSnapshot(s.snapshot())
-	lifecycle, err := working.AppendMessageEventWithLifecycleContext(context.Background(), message, event)
+	lifecycle, err := working.AppendMessageEventWithLifecycleContext(ctx, message, event)
 	if err != nil {
 		return AppendLifecycle{}, err
 	}
