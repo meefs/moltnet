@@ -78,6 +78,7 @@ type HubStore interface {
 	// ReplaceOutboundEnvelopeContext re-signs a local, not yet placed
 	// message after a membership epoch change.
 	ReplaceOutboundEnvelopeContext(ctx context.Context, record MessageEnvelopeRecord) error
+	HubSyncStore
 }
 
 type hubReceiptKey struct{}

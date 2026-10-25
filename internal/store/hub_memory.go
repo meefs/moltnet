@@ -14,10 +14,11 @@ type hubState struct {
 	Control    map[string][]HubControlRecord `json:"control,omitempty"`
 	Receipts   []HubReceiptRecord            `json:"receipts,omitempty"`
 	OriginSeqs map[string]int64              `json:"origin_seqs,omitempty"`
+	Cursors    map[string]HubSyncCursor      `json:"cursors,omitempty"`
 }
 
 func newHubState() hubState {
-	return hubState{Rooms: map[string]HubRoom{}, Control: map[string][]HubControlRecord{}, OriginSeqs: map[string]int64{}}
+	return hubState{Rooms: map[string]HubRoom{}, Control: map[string][]HubControlRecord{}, OriginSeqs: map[string]int64{}, Cursors: map[string]HubSyncCursor{}}
 }
 
 func (h hubState) clone() hubState {
@@ -31,6 +32,9 @@ func (h hubState) clone() hubState {
 	cloned.Receipts = append([]HubReceiptRecord(nil), h.Receipts...)
 	for key, seq := range h.OriginSeqs {
 		cloned.OriginSeqs[key] = seq
+	}
+	for key, cursor := range h.Cursors {
+		cloned.Cursors[key] = cursor
 	}
 	return cloned
 }

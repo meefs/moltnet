@@ -46,7 +46,7 @@ func hubBackends(t *testing.T) map[string]func(t *testing.T) hubTestBackend {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = postgres.Close() })
-			for _, table := range []string{"hub_rooms", "hub_control", "hub_receipts", "hub_origin_seqs", "message_envelopes", "pairing_receive_receipts", "pairing_deliveries", "messages", "rooms"} {
+			for _, table := range []string{"hub_rooms", "hub_control", "hub_receipts", "hub_origin_seqs", "hub_sync_cursors", "message_envelopes", "pairing_receive_receipts", "pairing_deliveries", "messages", "rooms"} {
 				if _, err := postgres.db.Exec("DELETE FROM " + table); err != nil {
 					t.Fatal(err)
 				}

@@ -318,4 +318,5 @@ var sqlMigrations = []migration{
 	pairingDeliveryBindingMigration(),
 	messageEnvelopeMigration(),
 	hubRoomsMigration(),
+	hubSyncMigration(),
 }

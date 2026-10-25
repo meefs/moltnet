@@ -274,6 +274,9 @@ type MessageAccepted struct {
 	Accepted      bool   `json:"accepted"`
 	ThreadCreated bool   `json:"thread_created"`
 	DMCreated     bool   `json:"dm_created"`
+	// Receipt is the home's placement of a hub-room submission, returned to
+	// the submitting member so its own copy learns its room seq.
+	Receipt *SignedRoomReceipt `json:"receipt,omitempty"`
 }
 
 type PageInfo struct {
