@@ -143,6 +143,23 @@ func (s *PinStore) PinKey(pin Pin) (Pin, error) {
 	return result, err
 }
 
+// PairingNetworks returns the network ids pinned through pairing
+// pairingID (invite or first-contact pins), so the network a pairing
+// credential speaks for survives restarts with its pin.
+func (s *PinStore) PairingNetworks(pairingID string) ([]string, error) {
+	pins, err := s.List()
+	if err != nil {
+		return nil, err
+	}
+	var networks []string
+	for _, pin := range pins {
+		if (pin.Source == PinSourcePairing || pin.Source == PinSourceInvite) && pin.SourceID == pairingID && pairingID != "" {
+			networks = append(networks, pin.NetworkID)
+		}
+	}
+	return networks, nil
+}
+
 // Forget removes a pin, reporting whether one existed.
 func (s *PinStore) Forget(networkID string) (bool, error) {
 	removed := false
