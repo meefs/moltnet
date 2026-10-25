@@ -106,6 +106,9 @@ type SignedRoomReceipt struct {
 type RoomControlPage struct {
 	GlobalRoomID string              `json:"global_room_id"`
 	Events       []SignedRoomControl `json:"events"`
+	// More means the log continues after the last event (pages are bounded
+	// by MaxRoomSyncPageBytes); ask again after its seq.
+	More bool `json:"more,omitempty"`
 }
 
 // GlobalRoomID is "<home fingerprint>/<home-local room id>": fixed at genesis

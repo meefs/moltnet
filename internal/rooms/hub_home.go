@@ -280,10 +280,17 @@ func (s *Service) HubControlPageContext(ctx context.Context, globalRoomID string
 		}
 	}
 	page := protocol.RoomControlPage{GlobalRoomID: globalRoomID, Events: []protocol.SignedRoomControl{}}
+	size := syncEncodedSize(page)
 	for _, record := range records {
-		if record.Seq > max(afterSeq, 0) && record.Seq <= limit {
-			page.Events = append(page.Events, record.Control)
+		if record.Seq <= max(afterSeq, 0) || record.Seq > limit {
+			continue
 		}
+		next := syncEncodedSize(record.Control) + 1
+		if len(page.Events) > 0 && size+next > syncPageBytes {
+			page.More = true
+			break
+		}
+		page.Events, size = append(page.Events, record.Control), size+next
 	}
 	return page, nil
 }

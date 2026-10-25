@@ -82,7 +82,8 @@ func (s *Service) syncHubRoom(ctx context.Context, hub store.HubRoom) error {
 		if page.GlobalRoomID != hub.GlobalRoomID {
 			return hubInvalidError("home answered for a different hub room")
 		}
-		if _, err := s.applyPulledControl(ctx, hub, page.Control); err != nil {
+		after, err := s.applyPulledControl(ctx, hub, page.Control)
+		if err != nil {
 			return err
 		}
 		next, err := s.verifySyncChain(ctx, hub, cursor, page)
@@ -99,7 +100,9 @@ func (s *Service) syncHubRoom(ctx context.Context, hub store.HubRoom) error {
 			}
 			logHub(ctx, hub.GlobalRoomID).Info("hub room caught up", "from_seq", cursor.Seq, "to_seq", next.Seq, "entries", len(page.Entries))
 		}
-		if !page.More || next.Seq == cursor.Seq {
+		// A page may carry only control events (a long log comes first);
+		// stop when the home says it is done or a page moves nothing.
+		if !page.More || (next.Seq == cursor.Seq && after.Epoch == roster.Epoch) {
 			return nil
 		}
 	}

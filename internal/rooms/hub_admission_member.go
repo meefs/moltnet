@@ -43,7 +43,7 @@ func (s *Service) requestAdmission(ctx context.Context, pairing protocol.Pairing
 	if page.GlobalRoomID != globalRoomID {
 		return nil, hubInvalidError("home answered for a different hub room")
 	}
-	return page.Events, nil
+	return s.continueRoomControl(ctx, pairing, page)
 }
 
 // LeaveHubRoomContext makes this member network leave a hub room: the home

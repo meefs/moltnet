@@ -10,6 +10,17 @@ package protocol
 // MaxRoomSyncPage bounds one GET /v1/hub/sync page.
 const MaxRoomSyncPage = 200
 
+// MaxRoomSyncPageBytes is the encoded size a sync page aims to stay under,
+// control events included: pairing transports (HTTP and relay) accept
+// responses up to 1 MiB. A page always carries at least one control event or
+// entry, so it always advances.
+const MaxRoomSyncPageBytes = 640 << 10
+
+// MaxRoomSyncEntryBytes caps one entry. A message too large to ever fit a
+// page travels receipt-only, so the chain still advances; such a message
+// could not cross a pairing transport live either.
+const MaxRoomSyncEntryBytes = 900 << 10
+
 // RoomSyncEntry is one placed room seq. Message is nil for a seq the
 // caller may not see (placed while it was not a member, or before its join
 // in a from_join room): the receipt alone keeps the chain verifiable.

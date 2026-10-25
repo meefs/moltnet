@@ -32,14 +32,42 @@ func (s *Service) fetchRoomControl(ctx context.Context, pairing protocol.Pairing
 	if !ok {
 		return nil, hubUnavailableError("pairing client cannot fetch hub room control logs")
 	}
-	page, err := client.FetchRoomControl(ctx, pairing, globalRoomID, afterSeq)
+	var events []protocol.SignedRoomControl
+	for {
+		page, err := client.FetchRoomControl(ctx, pairing, globalRoomID, afterSeq)
+		if err != nil {
+			return nil, err
+		}
+		if page.GlobalRoomID != globalRoomID {
+			return nil, hubInvalidError("home answered for a different hub room")
+		}
+		events = append(events, page.Events...)
+		if !page.More || len(page.Events) == 0 {
+			return events, nil
+		}
+		last, _, err := protocol.ParseRoomControlUnverified(page.Events[len(page.Events)-1])
+		if err != nil || last.Seq <= afterSeq {
+			return nil, hubInvalidError("home sent a control page that does not advance")
+		}
+		afterSeq = last.Seq
+	}
+}
+
+// continueRoomControl completes a control log page the home answered with
+// (an admission), pulling the rest when it said there is more.
+func (s *Service) continueRoomControl(ctx context.Context, pairing protocol.Pairing, page protocol.RoomControlPage) ([]protocol.SignedRoomControl, error) {
+	if !page.More || len(page.Events) == 0 {
+		return page.Events, nil
+	}
+	last, _, err := protocol.ParseRoomControlUnverified(page.Events[len(page.Events)-1])
+	if err != nil {
+		return nil, hubInvalidError("home sent an unreadable control page")
+	}
+	rest, err := s.fetchRoomControl(ctx, pairing, page.GlobalRoomID, last.Seq)
 	if err != nil {
 		return nil, err
 	}
-	if page.GlobalRoomID != globalRoomID {
-		return nil, hubInvalidError("home answered for a different hub room")
-	}
-	return page.Events, nil
+	return append(page.Events, rest...), nil
 }
 
 func controlRecords(globalRoomID string, start int64, events []protocol.SignedRoomControl) ([]store.HubControlRecord, error) {

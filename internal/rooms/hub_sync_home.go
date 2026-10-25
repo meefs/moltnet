@@ -2,6 +2,7 @@ package rooms
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -56,10 +57,19 @@ func (s *Service) HubSyncPageContext(ctx context.Context, globalRoomID string, a
 		}
 	}
 	page := protocol.RoomSyncPage{GlobalRoomID: globalRoomID, Control: []protocol.SignedRoomControl{}, Entries: []protocol.RoomSyncEntry{}, ThroughSeq: max(afterSeq, 0)}
+	size := syncEncodedSize(page)
 	for _, record := range records {
-		if record.Seq > max(controlAfter, 0) && record.Seq <= controlLimit {
-			page.Control = append(page.Control, record.Control)
+		if record.Seq <= max(controlAfter, 0) || record.Seq > controlLimit {
+			continue
 		}
+		next := syncEncodedSize(record.Control) + 1
+		if len(page.Control) > 0 && size+next > syncPageBytes {
+			// The rest of the control log comes first on the next page;
+			// entries wait for the roster that authorizes them.
+			page.More = true
+			return page, nil
+		}
+		page.Control, size = append(page.Control, record.Control), size+next
 	}
 	receipts, err := s.hubs.HubReceiptsAfterContext(ctx, globalRoomID, protocol.HubEpochV1, page.ThroughSeq, protocol.MaxRoomSyncPage+1)
 	if err != nil {
@@ -90,7 +100,17 @@ func (s *Service) HubSyncPageContext(ctx context.Context, globalRoomID string, a
 		if request, ok := messages[record.MessageID]; ok {
 			entry.Message = &request
 		}
-		page.Entries = append(page.Entries, entry)
+		next := syncEncodedSize(entry) + 1
+		if entry.Message != nil && next > protocol.MaxRoomSyncEntryBytes {
+			logHub(ctx, globalRoomID).Warn("hub sync serves a message too large for any page receipt-only", "room_seq", record.RoomSeq, "bytes", next)
+			entry.Message = nil
+			next = syncEncodedSize(entry) + 1
+		}
+		if (len(page.Entries) > 0 || len(page.Control) > 0) && size+next > syncPageBytes {
+			page.More = true
+			break
+		}
+		page.Entries, size = append(page.Entries, entry), size+next
 		page.ThroughSeq = record.RoomSeq
 	}
 	return page, nil
@@ -135,4 +155,16 @@ func (s *Service) hubSyncMessages(ctx context.Context, hub store.HubRoom, receip
 		result[id] = request
 	}
 	return result, nil
+}
+
+// syncPageBytes is protocol.MaxRoomSyncPageBytes (tests lower it).
+var syncPageBytes = protocol.MaxRoomSyncPageBytes
+
+// syncEncodedSize is value's JSON size (the page's wire size, near enough).
+func syncEncodedSize(value any) int {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return syncPageBytes
+	}
+	return len(encoded)
 }
