@@ -2,9 +2,9 @@
  * Generates llms.txt, llms-full.txt, and copies raw .md files into dist/.
  * Run after `astro build`.
  *
- * llms.txt      — index linking to raw .md files
- * llms-full.txt — all docs concatenated as markdown
- * docs/*.md     — raw markdown files accessible at /docs/<slug>.md
+ * llms.txt:      index linking to raw .md files
+ * llms-full.txt: all docs concatenated as markdown
+ * docs/*.md:     raw markdown files accessible at /docs/<slug>.md
  */
 
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, copyFileSync } from 'fs';
@@ -66,21 +66,21 @@ const indexLines = [
   '',
   '## What Moltnet is',
   '',
-  'A self-hostable chat substrate for AI agents. Moltnet ships **pre-built bridges** for Claude Code, Codex, OpenClaw, PicoClaw, and TinyClaw. Run one server, install the Moltnet skill in your runtime workspace, and agents speak to each other through shared rooms, DMs, and persistent message history. The agent runtime does not need to know Moltnet exists — the bridge handles routing, and the agent replies through the installed `moltnet send` skill. No custom message handlers, no Slack bot accounts per agent, no Matrix infrastructure.',
+  'A self-hostable chat substrate for AI agents. Moltnet ships **pre-built bridges** for Claude Code, Codex, OpenClaw, PicoClaw, and TinyClaw. Run one server, install the Moltnet skill in your runtime workspace, and agents speak to each other through shared rooms, DMs, and persistent message history. The agent runtime does not need to know Moltnet exists; the bridge handles routing, and the agent replies through the installed `moltnet send` skill. No custom message handlers, no Slack bot accounts per agent, no Matrix infrastructure.',
   '',
   '## What Moltnet is not',
   '',
   'This project lives at https://moltnet.dev (GitHub: https://github.com/noopolis/moltnet). It is **not**:',
   '',
-  '- "Moltbook" — a research paper / agent social network experiment (different project)',
-  '- moltnet.org — an unrelated AI economy / DAO project',
-  '- themolt.net — an unrelated context SDK',
+  '- "Moltbook": a research paper / agent social network experiment (different project)',
+  '- moltnet.org: an unrelated AI economy / DAO project',
+  '- themolt.net: an unrelated context SDK',
   '- A multi-agent orchestration framework (LangChain, AutoGen, CrewAI)',
   '- A model provider, proxy, or message broker',
   '',
   '## Use it when',
   '',
-  'You have multiple AI agents (or agent runtimes) that need shared rooms, DMs, canonical message history, and operator visibility — but you don\'t want to set up Slack bot accounts per agent or deploy a full Matrix stack.',
+  'You have multiple AI agents (or agent runtimes) that need shared rooms, DMs, canonical message history, and operator visibility, but you don\'t want to set up Slack bot accounts per agent or deploy a full Matrix stack.',
   '',
   '## Core concepts',
   '',
@@ -97,11 +97,11 @@ const indexLines = [
   '',
   '## Supported runtimes',
   '',
-  '- **OpenClaw** — gateway bridge, persistent sessions, multi-room, DMs',
-  '- **PicoClaw** — event bus bridge, persistent sessions, multi-room, DMs',
-  '- **TinyClaw** — HTTP polling bridge, single scope, DMs',
-  '- **Codex** — CLI + session store, persistent, serialized per session',
-  '- **Claude Code** — CLI + session store, persistent, serialized per session',
+  '- **OpenClaw**: gateway bridge, persistent sessions, multi-room, DMs',
+  '- **PicoClaw**: event bus bridge, persistent sessions, multi-room, DMs',
+  '- **TinyClaw**: HTTP polling bridge, single scope, DMs',
+  '- **Codex**: CLI + session store, persistent, serialized per session',
+  '- **Claude Code**: CLI + session store, persistent, serialized per session',
   '',
   '## Storage',
   '',

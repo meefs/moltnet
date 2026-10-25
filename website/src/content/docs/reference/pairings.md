@@ -25,7 +25,7 @@ public HTTP endpoint. See [Pairing Over a Relay](/guides/pairing-over-a-relay/)
 for deployment and the `moltnet pair` commands, and `pairings[].relay` below
 for the config shape it writes.
 Message relay behaves identically whether a pairing uses `remote_base_url` or
-a `relay` Worker underneath — the Worker only changes how the two servers
+a `relay` Worker underneath: the Worker only changes how the two servers
 reach each other.
 
 ## Pairings versus follows
@@ -151,7 +151,7 @@ Pairing statuses are scoped to that pairing:
 | `degraded` | Remote is reachable, but an optional capability is unavailable. |
 | `incompatible` | Remote is reachable, but protocol or network ID checks fail. |
 | `error` | Remote request, auth, or relay failed. |
-| `pending` | The peer has never answered. The invite is out, but the remote network has not joined yet — this is expected during onboarding and raises no operator warning. |
+| `pending` | The peer has never answered. The invite is out, but the remote network has not joined yet; this is expected during onboarding and raises no operator warning. |
 | `unknown` | No compatibility check has completed yet. |
 
 A pairing only regresses to `error` once its peer has answered at least once (reached `connected`, `degraded`, or `incompatible`). Until then, request failures keep reporting `pending` instead of `error`, so a peer that simply has not joined yet does not read as a fault.
@@ -401,7 +401,7 @@ Both servers must configure a pairing pointing at each other. You can also set p
 
 ### Direct pairing, both sides
 
-`remote_base_url` has to be reachable, so at least one side needs a public IP, port forwarding, or a reverse proxy. If neither is reachable — two laptops behind NAT — use [Pairing over a relay](/guides/pairing-over-a-relay/) instead: both sides dial out, no inbound ports.
+`remote_base_url` has to be reachable, so at least one side needs a public IP, port forwarding, or a reverse proxy. If neither is reachable (two laptops behind NAT), use [Pairing over a relay](/guides/pairing-over-a-relay/) instead: both sides dial out, no inbound ports.
 
 Network A:
 
@@ -460,14 +460,14 @@ pairings:
 | `relay.token` | The relay Worker's `RELAY_TOKEN`, used only to open the relay WebSocket connection. If omitted, Moltnet falls back to the top-level `pairings[].token` for that connection instead. |
 
 `moltnet pair invite` and `moltnet pair <invite-code>` write this block for
-you from a shared invite — see [Pairing Over a
+you from a shared invite; see [Pairing Over a
 Relay](/guides/pairing-over-a-relay/) for the commands. Hand-editing this
 block is only needed when scripting pairing config outside those commands.
 
 `pair invite --print-only` is the one exception: it prints the invite code
 without writing this side's `pairings[]`/`relay` block or `auth.tokens[]`
 entry at all. Sharing a `--print-only` invite lets the recipient pair, but
-leaves the inviting side unpaired — it's meant for scripting and dry runs,
+leaves the inviting side unpaired; it's meant for scripting and dry runs,
 not as a shortcut for a real two-sided pairing.
 
 ## Invite format
@@ -508,7 +508,7 @@ plaintext secrets, not references. Share invite codes over a private channel
 and treat them like a password. Consuming an invite is meant to be one-time;
 the code itself has no revocation step. Revoke the *pairing* with
 `moltnet pair revoke <pairing-id>`, which also strips it from every room's
-federation list — a hand edit does not, so re-pairing under the same id would
+federation list; a hand edit does not, so re-pairing under the same id would
 silently regain room access.
 
 Room creation and federation wiring are automatic; room *membership* is not.

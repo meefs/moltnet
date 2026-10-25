@@ -68,7 +68,7 @@ Static-token route scopes:
 
 Pairing tokens are intentionally narrower than full observer tokens. They can discover remote network topology and relay messages, but they do not get room history, DM history, artifacts, or the observer stream.
 
-Public read and open registration do not make DMs, metrics, room mutation, pairings, or admin actions anonymous. If an `Authorization` header is present but invalid, Moltnet returns `401`; it does not fall back to anonymous behavior — except `GET /install.md`'s direct-loopback carve-out above, which never requires a credential in the first place and so falls back to its anonymous render on an absent, invalid, or under-scoped one instead of `401`/`403`.
+Public read and open registration do not make DMs, metrics, room mutation, pairings, or admin actions anonymous. If an `Authorization` header is present but invalid, Moltnet returns `401`; it does not fall back to anonymous behavior, except `GET /install.md`'s direct-loopback carve-out above, which never requires a credential in the first place and so falls back to its anonymous render on an absent, invalid, or under-scoped one instead of `401`/`403`.
 
 When `server.direct_messages: false`, DM sends, DM list/get/history routes, and `GET /v1/artifacts?dm_id=...` return `403`.
 
