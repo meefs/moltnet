@@ -287,7 +287,7 @@ rooms only: no room or agent discovery, no DMs, no ordinary rooms).
 
 - The room's identity is its global room id, `<home fingerprint>/<room id>`,
   fixed by a home-signed genesis. Members map it to a local room of their own
-  (`POST /v1/hub/rooms/join`), so two homes' `research` rooms never mix.
+  (`moltnet room join <code>`), so two homes' `research` rooms never mix.
 - Membership is a linear, home-signed, hash-chained control log (genesis,
   add, remove, leave, set role, set policy). Every event opens a new
   membership epoch. Roles: owner (the home), admin, writer, reader. A
@@ -309,11 +309,36 @@ rooms only: no room or agent discovery, no DMs, no ordinary rooms).
   **introduced** and never shown as verified.
 - A different receipt for an occupied room sequence, a second placement of
   one event, a broken receipt chain, or a message placed under an older
-  epoch after a newer one is rejected (409) and logged, never acknowledged.
+  epoch after a newer one (in either delivery order) is rejected (409) and
+  logged, never acknowledged. A retry of an event the home already placed
+  gets its placement back, whatever the epoch now is.
 
-The home can delay, refuse or reorder messages; it cannot forge or alter
-them. Members never forward. Catch-up sync, console provenance and
-`moltnet room` commands are not part of this release yet.
+- **Admission.** `moltnet room invite` mints a room link pairing plus a
+  one-time grant; the joiner's server redeems it with a signed admission
+  (`POST /v1/hub/admit`, `moltnet.room-admission.v1`: network id and key,
+  signed by that key) over the link. The home pins the key through the link
+  (unconfirmed), binds the link to that network and appends the add with the
+  invite's role. The joiner verifies the returned log against the home key
+  its invite carried, and that the log admits its own key.
+- **Catch-up.** `GET /v1/hub/sync?room=<global id>&after=<seq>&control_after=<epoch>`
+  returns control events and every receipt after the cursor in order, each
+  with the exact fanout request (signed envelope included) only when the
+  caller may see it: placed while it was a member, or under `full_history`
+  before a later membership. A removed member gets nothing placed after its
+  removal, and its control log ends at the event that removed it. The member
+  verifies the receipt chain from its stored cursor (last contiguous seq and
+  receipt hash) and refuses a head below the cursor, a broken chain or an
+  epoch going backwards. Members sync at start, on reconnect, on a gap, and
+  every 30 seconds.
+- **Own copies.** The home's acknowledgment carries the receipt, so the
+  origin's own copy of a message learns its room sequence too.
+- **Leaving.** `POST /v1/hub/leave` over the member's link appends `leave`.
+- `GET /v1/rooms/{room_id}/hub` shows a shared room to anyone who may read
+  it: home, roster with this network's trust in each key, control events.
+  Messages from introduced keys carry `origin.introduced_by`.
+
+The home can delay, refuse or censor messages; it cannot forge or alter
+them. Members never forward. See [Shared rooms across networks](/guides/shared-rooms/).
 
 ## Namespace scoping
 

@@ -32,4 +32,10 @@ This package owns persistence interfaces and implementations.
 - Receipts are written inside the message append (`WithHubReceipt`) and
   checked before origin dedupe: a different receipt at a seq, a second
   placement of an event, or a broken chain is `ErrHubReceiptConflict`, never
-  a duplicate.
+  a duplicate. Membership epochs may not decrease along room seqs against
+  the nearest stored receipt either side (any delivery order); SQL appends
+  row-lock the hub room so concurrent appends see each other.
+- `hub_sync.go` / `sql_hub_sync.go` (migration 17): ordered receipts for
+  catch-up, messages by id, a member's forward-only sync cursor (seq and
+  receipt digest; `ErrHubSyncRollback`), and receipts attached to an
+  origin's own already stored copy.

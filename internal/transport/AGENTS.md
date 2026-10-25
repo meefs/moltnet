@@ -25,6 +25,8 @@ This package exposes Moltnet over network transports.
 
 - `hub.go` serves `GET /v1/hub/control` (observe, admin, or pair: the
   service admits only networks the room's log ever admitted) and the
-  admin-only `GET|POST /v1/hub/rooms`, `POST /v1/hub/rooms/control` and
-  `POST /v1/hub/rooms/join`. A stale submission answers 412 with code
-  `stale_membership_epoch`.
+  admin-only `GET|POST /v1/hub/rooms`, `POST /v1/hub/rooms/control`,
+  `/join`, `/sync` and `/leave`; the peer routes `GET /v1/hub/sync`,
+  `POST /v1/hub/admit` and `POST /v1/hub/leave` (pair scope; the service
+  checks the link); and `GET /v1/rooms/{id}/hub` for room readers. A stale
+  submission answers 412 with code `stale_membership_epoch`.

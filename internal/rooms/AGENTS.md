@@ -84,6 +84,24 @@ This package contains the core communication model.
   append. Stored ids of placed messages are `fed-<event id>`.
 - `hub_send.go` replaces the no-onward-relay gates only for home fanout to
   current members (never the origin) and a member's own messages to its home;
-  a 412 is retry-class: sync, re-sign, resend.
+  a 412 is retry-class: sync, re-sign, resend. A member always sends its
+  stored bytes first and re-signs only after a 412, which the home sends only
+  for an event it has not placed (a placed retry gets its placement back).
+  The home reads the epoch, signs and places its own messages under `hubMu`.
+- `hub_roster_cache.go` caches verified rosters per epoch, keyed by the
+  control digests they verified; `hub_access.go` derives a network's
+  membership per epoch (control-log and history visibility).
+- `hub_sync_home.go` serves `GET /v1/hub/sync`, clamped by `hub_access`:
+  receipts in order, messages only where visible, nothing after a removed
+  member's last membership. `hub_sync_member.go` verifies a page's receipt
+  chain from the stored cursor before storing anything, ingests entries
+  through the live forward rule, attaches receipts to this network's own
+  copies, and refuses rollback. `hub_sync_loop.go` syncs at start, on wake
+  (gap, link up) and every `HubSyncInterval`, and runs join recovery.
+- `hub_admission.go` (home) redeems room invite grants (`hubinvites`) and
+  honors leaves; `hub_admission_member.go` signs admissions, leaves, and
+  finishes pending joins. Joins are idempotent: the hub record is written
+  before the local room, and recovery recreates a missing local room.
+- `hub_view.go` serves `GET /v1/rooms/{id}/hub` (roster with key trust).
 - Room links (`Pairing.Scope == "rooms"`) carry hub rooms only: no room or
   agent discovery, no DMs, no ordinary room traffic in either direction.

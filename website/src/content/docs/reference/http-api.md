@@ -915,6 +915,27 @@ Returns:
 }
 ```
 
+## Shared rooms
+
+Hub room endpoints. Operator endpoints need an admin-scoped operator token;
+peer endpoints are answered by a room's home over a member's room link
+(pair-scoped credential), also through a relay. See
+[Pairings: hub rooms](/reference/pairings/#hub-rooms).
+
+| Endpoint | Who | Purpose |
+|----------|-----|---------|
+| `GET /v1/rooms/{room_id}/hub` | room readers | home, roster with key trust, control events; 404 for an ordinary room |
+| `GET /v1/hub/rooms` | operator | shared rooms this network homes or joined |
+| `POST /v1/hub/rooms` | operator | share a local room (`{"room_id", "history"}`) |
+| `POST /v1/hub/rooms/control` | operator (home) | append add, remove, set_role or set_policy |
+| `POST /v1/hub/rooms/join` | operator (member) | join over a room link (`{"pairing_id", "global_room_id", "local_room_id"}`) |
+| `POST /v1/hub/rooms/sync` | operator (member) | catch up now (`{"global_room_id"}`) |
+| `POST /v1/hub/rooms/leave` | operator (member) | leave (`{"global_room_id"}`) |
+| `GET /v1/hub/control?room=&after=` | members | the control log, up to a removed member's removal |
+| `GET /v1/hub/sync?room=&after=&control_after=` | members | catch-up page, clamped to the caller's membership |
+| `POST /v1/hub/admit` | invited network | redeem a room invite with a signed admission |
+| `POST /v1/hub/leave` | members | leave over the member's own link |
+
 ## Follows
 
 ### GET /v1/follows

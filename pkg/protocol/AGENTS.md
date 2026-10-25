@@ -85,3 +85,6 @@ both stamped from `internal/rooms/causal.go`:
   (`moltnet.room-control.v1`) and receipts (`moltnet.room-receipt.v1`),
   canonical, domain-separated and parsed strictly. `Pairing.Scope: rooms`
   marks a room link.
+- `hub_sync.go`, `hub_admission.go`, `hub_view.go` — catch-up pages
+  (`RoomSyncPage`), signed room admissions (`moltnet.room-admission.v1`),
+  room invites (`Invite.HubRoom`), and the HTTP shared-room views.
