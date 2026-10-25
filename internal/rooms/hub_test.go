@@ -356,8 +356,11 @@ func TestHubQueuedFanoutToAMemberRemovedMeanwhileIsDropped(t *testing.T) {
 	h.home.post(t, "while beta is down")
 	waitFor(t, func() bool { return h.home.delivery(t, "link-beta").Pending == 1 })
 	h.control(t, protocol.RoomControlRemove, "beta")
-	h.beta.handler.Store(beta)
+	// Beta stays down until the home has refused the queued row: an attempt
+	// already in flight when the removal landed then still fails, so only
+	// the post-removal check decides the row.
 	waitFor(t, func() bool { return h.home.delivery(t, "link-beta").Rejected == 1 })
+	h.beta.handler.Store(beta)
 	if got := h.beta.texts(t); len(got) != 0 {
 		t.Fatalf("removed member received a message queued before its removal: %q", got)
 	}
