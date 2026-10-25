@@ -265,6 +265,11 @@ func (s *Service) hubOriginState(origin string, member hubMember, allowIntroduce
 }
 
 func (s *Service) hubMessage(ctx context.Context, in hubIngress) (protocol.Message, error) {
+	// The same human-ingress rule as SendMessageContext, for every hub path
+	// (catch-up included, which does not come through it).
+	if (in.envelope.Author.Type == "human" || in.request.From.Type == "human") && !s.allowHumanIngress {
+		return protocol.Message{}, humanIngressDisabledError()
+	}
 	now, err := s.now()
 	if err != nil {
 		return protocol.Message{}, err

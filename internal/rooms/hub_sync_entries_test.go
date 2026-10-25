@@ -187,3 +187,37 @@ func TestHubSyncKeepsTheEpochFloorAcrossPages(t *testing.T) {
 		t.Fatalf("cursor = %#v", cursor)
 	}
 }
+
+// Catch-up applies the human-ingress rule live forwards meet: with it off,
+// a human-authored entry is skipped (receipt kept), not stored.
+func TestHubSyncRefusesHumanEntriesWhenHumanIngressIsOff(t *testing.T) {
+	h := joinedTopology(t, memoryBackend)
+	request := protocol.SendMessageRequest{
+		ID: "human-1", Origin: protocol.MessageOrigin{NetworkID: "home", MessageID: "human-1"},
+		Target: protocol.Target{Kind: protocol.TargetKindRoom, RoomID: canonicalRoomOf(h.global)},
+		From:   protocol.Actor{Type: "human", ID: "ana", NetworkID: "home"}, Parts: []protocol.Part{{Kind: "text", Text: "a human speaks"}},
+	}
+	envelope := protocol.EnvelopeFromRequest(request, h.home.identity.Fingerprint(), "2026-10-25T10:00:00Z")
+	epoch, seq := int64(3), int64(1)
+	envelope.GlobalRoomID, envelope.MembershipEpoch, envelope.OriginSeq = h.global, &epoch, &seq
+	signed, _, err := protocol.SignEnvelope(envelope, h.home.identity.PublicKey(), h.home.identity.Sign)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Envelope = &signed
+	receipt := homeReceipt(t, h.home.identity, h.global, 3, 1, eventID(t, request), "")
+	request.Receipt = receipt
+	// Live, the member refuses it.
+	if status, _ := hubPost(t, h.beta, "beta-link-secret", request); status != http.StatusForbidden {
+		t.Fatalf("live human forward: %d", status)
+	}
+	serveForgedSyncPages(h.home, map[string]protocol.RoomSyncPage{
+		"0": {GlobalRoomID: h.global, ThroughSeq: 1, Entries: []protocol.RoomSyncEntry{{Receipt: *receipt, Message: &request}}},
+	})
+	if err := h.beta.catchUp(t, h.global); err != nil {
+		t.Fatal(err)
+	}
+	if got := h.beta.texts(t); len(got) != 0 {
+		t.Fatalf("catch-up stored a human message with human ingress off: %q", got)
+	}
+}
