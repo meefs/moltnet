@@ -12,7 +12,7 @@ func (s *MemoryStore) AppendMessageWithPairingDeliveriesContext(
 ) (AppendLifecycle, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	lifecycle, err := s.appendMessageLocked(message)
+	lifecycle, err := s.appendMessageLocked(message, envelopeForMessage(ctx, message))
 	if err != nil {
 		return AppendLifecycle{}, err
 	}

@@ -47,6 +47,20 @@ func pairingDeliveryOutcomeMigration() migration {
 	}}
 }
 
+// messageEnvelopeMigration stores signed envelopes beside messages and the
+// envelope digest beside each receive receipt, so a different-content retry
+// of an origin tuple is detected as a conflict rather than a duplicate.
+// Receipts written before this migration keep digest '' (unsigned).
+func messageEnvelopeMigration() migration {
+	return migration{Version: 15, Name: "message_envelopes", Statements: []string{
+		`ALTER TABLE pairing_receive_receipts ADD COLUMN envelope_digest TEXT NOT NULL DEFAULT ''`,
+		`CREATE TABLE IF NOT EXISTS message_envelopes (
+			message_id TEXT PRIMARY KEY, origin_network_id TEXT NOT NULL, origin_message_id TEXT NOT NULL,
+			digest TEXT NOT NULL, state TEXT NOT NULL, fingerprint TEXT NOT NULL, envelope_json TEXT NOT NULL
+		)`,
+	}}
+}
+
 func pairingDeliveryBindingMigration() migration {
 	return migration{Version: 14, Name: "pairing_delivery_binding", Statements: []string{
 		`ALTER TABLE pairing_delivery_states ADD COLUMN remote_network_id TEXT NOT NULL DEFAULT ''`,
