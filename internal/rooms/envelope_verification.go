@@ -91,8 +91,12 @@ func (s *Service) verifyInboundEnvelope(ctx context.Context, request protocol.Se
 	if claims, ok := authn.ClaimsFromContext(ctx); ok && strings.TrimSpace(claims.Network()) == origin {
 		firstContactTrust = protocol.KeyTrustVerified
 	}
+	// A config-bound credential is this operator's own direct evidence: it
+	// confirms or replaces weaker pins (unconfirmed first contact, or a key a
+	// room home merely introduced), never a verified one.
+	upgradable := pinned && firstContactTrust == protocol.KeyTrustVerified && pin.Trust != protocol.KeyTrustVerified
 	switch {
-	case pinned && pin.Fingerprint == envelope.OriginFingerprint:
+	case pinned && pin.Fingerprint == envelope.OriginFingerprint && !upgradable:
 		state, ok := signatureStateForTrust(pin.Trust)
 		if !ok {
 			// Only an explicit verified pin may ever yield "verified".
@@ -102,7 +106,10 @@ func (s *Service) verifyInboundEnvelope(ctx context.Context, request protocol.Se
 		result.record.State = state
 		result.bindPairing = pairing.ID
 		return result, nil
-	case pinned && !(pin.Trust == protocol.KeyTrustUnconfirmed && firstContactTrust == protocol.KeyTrustVerified):
+	case pinned && pin.Fingerprint != envelope.OriginFingerprint && upgradable:
+		logger.Warn("a config-bound first contact replaces a weaker pin for the network",
+			"replaced_trust", pin.Trust, "replaced_fingerprint", pin.Fingerprint, "introduced_by", pin.IntroducedBy, "introduced_in", pin.SourceID)
+	case pinned && !upgradable:
 		logger.Warn("rejecting message signed by a key that conflicts with the pinned key",
 			"pinned_fingerprint", pin.Fingerprint, "offered_fingerprint", envelope.OriginFingerprint)
 		return nil, signatureRejectedError(fmt.Sprintf("network %q is pinned to a different key", origin))

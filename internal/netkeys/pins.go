@@ -109,7 +109,7 @@ func (s *PinStore) List() ([]Pin, error) {
 // PinKey records pin unless the network is already pinned. Pinning the same
 // fingerprint again returns the stored pin, upgrading it to verified when
 // the new pin is verified. A different fingerprint is ErrPinConflict, except
-// that a verified pin replaces an unconfirmed one.
+// that a verified pin replaces an unconfirmed or introduced one.
 func (s *PinStore) PinKey(pin Pin) (Pin, error) {
 	result, _, err := s.PinKeyCreated(pin)
 	return result, err
@@ -136,8 +136,7 @@ func (s *PinStore) PinKeyCreated(pin Pin) (Pin, bool, error) {
 	created := false
 	err = s.update(func(pins map[string]Pin) (bool, error) {
 		existing, ok := pins[pin.NetworkID]
-		if !ok || existing.Fingerprint != pin.Fingerprint &&
-			existing.Trust == protocol.KeyTrustUnconfirmed && pin.Trust == protocol.KeyTrustVerified {
+		if !ok || existing.Fingerprint != pin.Fingerprint && existing.Trust != protocol.KeyTrustVerified && pin.Trust == protocol.KeyTrustVerified {
 			pins[pin.NetworkID], result, created = pin, pin, true
 			return true, nil
 		}
