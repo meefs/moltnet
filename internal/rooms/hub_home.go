@@ -234,36 +234,44 @@ func (s *Service) hubRoomView(ctx context.Context, room store.HubRoom) (HubRoomV
 }
 
 // HubControlPageContext serves a hub room's control log. A peer may read it
-// only if its network was ever admitted, so a removed member still learns
-// of its removal and nobody else learns the roster.
+// only if its network was ever admitted, and a removed member only up to
+// its removal: it learns of that, and nobody else learns the roster.
 func (s *Service) HubControlPageContext(ctx context.Context, globalRoomID string, afterSeq int64) (protocol.RoomControlPage, error) {
 	if s.hubs == nil {
 		return protocol.RoomControlPage{}, hubNotFoundError(globalRoomID)
 	}
-	hub, ok, err := s.hubRoomByGlobal(ctx, globalRoomID)
+	_, ok, err := s.hubRoomByGlobal(ctx, globalRoomID)
 	if err != nil {
 		return protocol.RoomControlPage{}, err
 	}
 	if !ok {
 		return protocol.RoomControlPage{}, hubNotFoundError(globalRoomID)
 	}
-	if pairing, peer := s.pairingForPairScopedContext(ctx); peer {
-		roster, _, err := s.hubRoster(ctx, hub, 0)
-		if err != nil {
-			return protocol.RoomControlPage{}, err
-		}
-		network, err := s.pairingNetworkID(pairing)
-		if err != nil || !roster.Ever[network] || network == s.networkID {
-			return protocol.RoomControlPage{}, hubNotFoundError(globalRoomID)
-		}
-	}
-	records, err := s.hubs.HubControlLogContext(ctx, globalRoomID, max(afterSeq, 0))
+	records, err := s.hubs.HubControlLogContext(ctx, globalRoomID, 0)
 	if err != nil {
 		return protocol.RoomControlPage{}, err
 	}
-	page := protocol.RoomControlPage{GlobalRoomID: globalRoomID, Events: make([]protocol.SignedRoomControl, 0, len(records))}
+	limit := int64(len(records))
+	if pairing, peer := s.pairingForPairScopedContext(ctx); peer {
+		network, err := s.pairingNetworkID(pairing)
+		if err != nil || network == s.networkID {
+			return protocol.RoomControlPage{}, hubNotFoundError(globalRoomID)
+		}
+		access, err := hubAccessFor(records, network)
+		if err != nil {
+			return protocol.RoomControlPage{}, err
+		}
+		// A network never admitted learns nothing; a removed one learns of
+		// its removal and nothing after it.
+		if limit = access.controlLimit(); limit == 0 {
+			return protocol.RoomControlPage{}, hubNotFoundError(globalRoomID)
+		}
+	}
+	page := protocol.RoomControlPage{GlobalRoomID: globalRoomID, Events: []protocol.SignedRoomControl{}}
 	for _, record := range records {
-		page.Events = append(page.Events, record.Control)
+		if record.Seq > max(afterSeq, 0) && record.Seq <= limit {
+			page.Events = append(page.Events, record.Control)
+		}
 	}
 	return page, nil
 }
