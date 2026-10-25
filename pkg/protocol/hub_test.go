@@ -52,15 +52,17 @@ func TestRoomControlShapeRules(t *testing.T) {
 		t.Fatalf("valid add: %v", err)
 	}
 	bad := map[string]func(*RoomControlEvent){
-		"epoch != seq":        func(e *RoomControlEvent) { e.Epoch = 3 },
-		"missing prev":        func(e *RoomControlEvent) { e.PrevHash = "" },
-		"owner role":          func(e *RoomControlEvent) { e.Role = RoomRoleOwner },
-		"key mismatch":        func(e *RoomControlEvent) { e.Fingerprint = genesis.Fingerprint },
-		"history on add":      func(e *RoomControlEvent) { e.History = RoomHistoryFromJoin },
-		"unknown kind":        func(e *RoomControlEvent) { e.Kind = "promote" },
-		"bad global room id":  func(e *RoomControlEvent) { e.GlobalRoomID = "research" },
-		"remove carries key":  func(e *RoomControlEvent) { e.Kind, e.Role = RoomControlRemove, "" },
-		"set_policy w/o hist": func(e *RoomControlEvent) { e.Kind, e.Role, e.NetworkID, e.Fingerprint, e.PublicKey = RoomControlSetPolicy, "", "", "", "" },
+		"epoch != seq":       func(e *RoomControlEvent) { e.Epoch = 3 },
+		"missing prev":       func(e *RoomControlEvent) { e.PrevHash = "" },
+		"owner role":         func(e *RoomControlEvent) { e.Role = RoomRoleOwner },
+		"key mismatch":       func(e *RoomControlEvent) { e.Fingerprint = genesis.Fingerprint },
+		"history on add":     func(e *RoomControlEvent) { e.History = RoomHistoryFromJoin },
+		"unknown kind":       func(e *RoomControlEvent) { e.Kind = "promote" },
+		"bad global room id": func(e *RoomControlEvent) { e.GlobalRoomID = "research" },
+		"remove carries key": func(e *RoomControlEvent) { e.Kind, e.Role = RoomControlRemove, "" },
+		"set_policy w/o hist": func(e *RoomControlEvent) {
+			e.Kind, e.Role, e.NetworkID, e.Fingerprint, e.PublicKey = RoomControlSetPolicy, "", "", "", ""
+		},
 	}
 	for name, mutate := range bad {
 		event := add

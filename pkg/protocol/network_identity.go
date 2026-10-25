@@ -33,11 +33,11 @@ const (
 // Origin signature states exposed on the HTTP message API. They are never
 // part of the machine v1 projection.
 const (
-	SignatureStateVerified   = "verified"
+	SignatureStateVerified    = "verified"
 	SignatureStateIntroduced  = "introduced"
 	SignatureStateUnconfirmed = "unconfirmed"
-	SignatureStateInvalid    = "invalid"
-	SignatureStateUnsigned   = "unsigned"
+	SignatureStateInvalid     = "invalid"
+	SignatureStateUnsigned    = "unsigned"
 )
 
 // NetworkIdentity is a network's public signing identity, published on
