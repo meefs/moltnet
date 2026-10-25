@@ -102,6 +102,12 @@ This package contains the core communication model.
   honors leaves; `hub_admission_member.go` signs admissions, leaves, and
   finishes pending joins. Joins are idempotent: the hub record is written
   before the local room, and recovery recreates a missing local room.
+- `hub_links.go`: the home's per-room member links (`hubinvites.Link`). Every
+  peer hub endpoint on the home resolves the caller's network through the
+  link for that room; a credential linked for another room is a stranger.
+  Fanout goes over each member's link. The durable link is also the binding
+  strict pair-network-binding mode accepts; admission redeems a grant, which
+  is when the inviter learns the joiner's network.
 - `hub_view.go` serves `GET /v1/rooms/{id}/hub` (roster with key trust).
 - Room links (`Pairing.Scope == "rooms"`) carry hub rooms only: no room or
   agent discovery, no DMs, no ordinary room traffic in either direction.

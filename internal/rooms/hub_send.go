@@ -24,9 +24,12 @@ func (s *Service) sendQueuedHubMessage(ctx context.Context, pairing protocol.Pai
 		if err != nil {
 			return err
 		}
-		network, err := s.pairingNetworkID(pairing)
+		network, linked, err := s.hubLinkNetwork(hub.GlobalRoomID, pairing.ID)
 		if err != nil {
 			return err
+		}
+		if !linked {
+			return fmt.Errorf("%w: pairing %s is no member link of this hub room", errDeliveryRejected, pairing.ID)
 		}
 		if _, member := roster.Members[network]; !member || network == s.networkID || network == message.Origin.NetworkID {
 			return fmt.Errorf("%w: %s is not a current member to fan out to", errDeliveryRejected, network)

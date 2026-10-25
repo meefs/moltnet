@@ -163,6 +163,9 @@ func (s *Service) appendHubControl(ctx context.Context, request HubControlReques
 		if err := s.fillHubAddSubject(&event, request.PairingID); err != nil {
 			return HubRoomView{}, err
 		}
+		if err := s.recordHubLink(hub.GlobalRoomID, request.PairingID, event.NetworkID); err != nil {
+			return HubRoomView{}, err
+		}
 	}
 	signed, digest, err := protocol.SignRoomControl(event, s.identity.Sign)
 	if err != nil {
@@ -259,8 +262,11 @@ func (s *Service) HubControlPageContext(ctx context.Context, globalRoomID string
 	}
 	limit := int64(len(records))
 	if pairing, peer := s.pairingForPairScopedContext(ctx); peer {
-		network, err := s.pairingNetworkID(pairing)
-		if err != nil || network == s.networkID {
+		network, linked, err := s.hubPeerNetwork(ctx, globalRoomID, pairing)
+		if err != nil {
+			return protocol.RoomControlPage{}, err
+		}
+		if !linked || network == s.networkID {
 			return protocol.RoomControlPage{}, hubNotFoundError(globalRoomID)
 		}
 		access, err := hubAccessFor(records, network)

@@ -41,8 +41,11 @@ func (s *Service) HubSyncPageContext(ctx context.Context, globalRoomID string, a
 	access := hubAccess{}
 	controlLimit := int64(len(records))
 	if peer {
-		network, err := s.pairingNetworkID(pairing)
-		if err != nil || network == s.networkID {
+		network, linked, err := s.hubPeerNetwork(ctx, globalRoomID, pairing)
+		if err != nil {
+			return protocol.RoomSyncPage{}, err
+		}
+		if !linked || network == s.networkID {
 			return protocol.RoomSyncPage{}, hubNotFoundError(globalRoomID)
 		}
 		if access, err = hubAccessFor(records, network); err != nil {

@@ -35,12 +35,37 @@ type PendingJoin struct {
 	PairingID    string `json:"pairing_id"`
 	GlobalRoomID string `json:"global_room_id"`
 	LocalRoomID  string `json:"local_room_id,omitempty"`
+	// Exp is the invite's expiry: the server stops retrying after it and
+	// marks the join JoinExpired (zero: no expiry recorded).
+	Exp time.Time `json:"exp,omitempty"`
+	// Status is "" while the server still retries, or a terminal state.
+	Status string `json:"status,omitempty"`
+	// LastError is the last reason the join did not finish.
+	LastError string `json:"last_error,omitempty"`
+}
+
+// JoinExpired is the terminal status of a pending join whose invite
+// expired before the home admitted this network.
+const JoinExpired = "expired"
+
+// Pending reports whether the server should still try to finish the join.
+func (j PendingJoin) Pending() bool { return j.Status == "" }
+
+// Link records the pairing a member network was admitted over for one
+// shared room (home side). The home authorizes that pairing for that room
+// only, and fans the room out to the network over it: a network may hold
+// several pairings to the home (a direct pairing, other rooms' links).
+type Link struct {
+	PairingID    string `json:"pairing_id"`
+	GlobalRoomID string `json:"global_room_id"`
+	NetworkID    string `json:"network_id"`
 }
 
 type state struct {
 	V      int           `json:"v"`
 	Grants []Grant       `json:"grants"`
 	Joins  []PendingJoin `json:"joins"`
+	Links  []Link        `json:"links,omitempty"`
 }
 
 // Store keeps grants and pending joins beside the network's keys, shared by
@@ -101,6 +126,46 @@ func (s *Store) RemoveJoin(globalRoomID string) error {
 	return s.update(func(current *state) { current.Joins = withoutJoin(current.Joins, globalRoomID) })
 }
 
+// UpdateJoin replaces the pending join for join.GlobalRoomID, if any.
+func (s *Store) UpdateJoin(join PendingJoin) error {
+	return s.update(func(current *state) {
+		for index := range current.Joins {
+			if current.Joins[index].GlobalRoomID == join.GlobalRoomID {
+				current.Joins[index] = join
+			}
+		}
+	})
+}
+
+// SetLink records link, replacing any earlier link of its network for its
+// room (a re-admission over another pairing moves the room to it).
+func (s *Store) SetLink(link Link) error {
+	return s.update(func(current *state) {
+		kept := current.Links[:0:0]
+		for _, existing := range current.Links {
+			if existing.GlobalRoomID != link.GlobalRoomID || existing.NetworkID != link.NetworkID {
+				kept = append(kept, existing)
+			}
+		}
+		current.Links = append(kept, link)
+	})
+}
+
+// Links lists the member links of one shared room.
+func (s *Store) Links(globalRoomID string) ([]Link, error) {
+	current, err := s.read()
+	if err != nil {
+		return nil, err
+	}
+	var links []Link
+	for _, link := range current.Links {
+		if link.GlobalRoomID == globalRoomID {
+			links = append(links, link)
+		}
+	}
+	return links, nil
+}
+
 func withoutGrant(grants []Grant, pairingID, globalRoomID string) []Grant {
 	kept := make([]Grant, 0, len(grants))
 	for _, grant := range grants {
@@ -127,6 +192,7 @@ func (s *Store) read() (*state, error) {
 		defer s.mu.Unlock()
 		copied := *s.memory
 		copied.Grants, copied.Joins = append([]Grant(nil), s.memory.Grants...), append([]PendingJoin(nil), s.memory.Joins...)
+		copied.Links = append([]Link(nil), s.memory.Links...)
 		return &copied, nil
 	}
 	return readFile(s.path)
@@ -178,6 +244,11 @@ func readFile(path string) (*state, error) {
 	for _, grant := range stored.Grants {
 		if strings.TrimSpace(grant.PairingID) == "" || strings.TrimSpace(grant.GlobalRoomID) == "" {
 			return nil, fmt.Errorf("hub invites file %s has an incomplete grant", path)
+		}
+	}
+	for _, link := range stored.Links {
+		if strings.TrimSpace(link.PairingID) == "" || strings.TrimSpace(link.GlobalRoomID) == "" || strings.TrimSpace(link.NetworkID) == "" {
+			return nil, fmt.Errorf("hub invites file %s has an incomplete member link", path)
 		}
 	}
 	return &stored, nil

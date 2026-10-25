@@ -44,7 +44,11 @@ func (s *Service) AdmitHubMemberContext(ctx context.Context, signed protocol.Sig
 		return protocol.RoomControlPage{}, err
 	}
 	if member, ok := roster.Members[admission.NetworkID]; ok {
-		if member.Fingerprint != admission.Fingerprint || !s.pairingSpeaksFor(ctx, pairing, admission.NetworkID) {
+		linked, err := s.hubLinkSpeaksFor(ctx, hub.GlobalRoomID, pairing, admission.NetworkID)
+		if err != nil {
+			return protocol.RoomControlPage{}, err
+		}
+		if member.Fingerprint != admission.Fingerprint || !linked {
 			return protocol.RoomControlPage{}, hubForbiddenError("this network is already a member under another key or pairing")
 		}
 		return s.HubControlPageContext(ctx, hub.GlobalRoomID, 0)
@@ -61,10 +65,11 @@ func (s *Service) AdmitHubMemberContext(ctx context.Context, signed protocol.Sig
 		logger.Warn("refusing room admission without a live invite for this pairing")
 		return protocol.RoomControlPage{}, hubForbiddenError("no live room invite for this pairing and room")
 	}
-	claims, _ := authn.ClaimsFromContext(ctx)
-	if !s.pairCredentialMatchesOrigin(ctx, claims, admission.NetworkID, s.requirePairNetworkBinding) {
-		return protocol.RoomControlPage{}, hubForbiddenError("this pairing does not speak for the admitted network")
+	if err := s.checkAdmissionCredential(ctx, pairing, admission.NetworkID); err != nil {
+		logger.Warn("refusing room admission over a pairing that speaks for another network", "error", err)
+		return protocol.RoomControlPage{}, err
 	}
+	claims, _ := authn.ClaimsFromContext(ctx)
 	trust := protocol.KeyTrustUnconfirmed
 	if strings.TrimSpace(claims.Network()) == admission.NetworkID {
 		trust = protocol.KeyTrustVerified
@@ -94,12 +99,6 @@ func (s *Service) AdmitHubMemberContext(ctx context.Context, signed protocol.Sig
 	return s.HubControlPageContext(ctx, hub.GlobalRoomID, 0)
 }
 
-// pairingSpeaksFor reports whether pairing is known to speak for network.
-func (s *Service) pairingSpeaksFor(_ context.Context, pairing protocol.Pairing, network string) bool {
-	speaks, err := s.pairingNetworkID(pairing)
-	return err == nil && speaks == network
-}
-
 // LeaveHubPeerContext is the home honoring a member's leave (POST
 // /v1/hub/leave): the caller's network, by its pairing, leaves the room.
 func (s *Service) LeaveHubPeerContext(ctx context.Context, request protocol.RoomLeaveRequest) (protocol.RoomControlPage, error) {
@@ -114,8 +113,16 @@ func (s *Service) LeaveHubPeerContext(ctx context.Context, request protocol.Room
 	if err != nil {
 		return protocol.RoomControlPage{}, err
 	}
-	network, netErr := s.pairingNetworkID(pairing)
-	if !ok || !hub.IsHome() || netErr != nil {
+	if !ok || !hub.IsHome() {
+		return protocol.RoomControlPage{}, hubNotFoundError(request.GlobalRoomID)
+	}
+	network, linked, err := s.hubPeerNetwork(ctx, hub.GlobalRoomID, pairing)
+	if err != nil {
+		return protocol.RoomControlPage{}, err
+	}
+	if !linked {
+		// A link for another room, or none: this credential may not leave
+		// (or learn anything about) this room.
 		return protocol.RoomControlPage{}, hubNotFoundError(request.GlobalRoomID)
 	}
 	roster, _, err := s.hubRoster(ctx, hub, 0)

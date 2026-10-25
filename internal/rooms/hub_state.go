@@ -106,34 +106,35 @@ func (s *Service) pairingNetworkID(pairing protocol.Pairing) (string, error) {
 	return networks[0], nil
 }
 
-// pairingForHubMember finds the one live pairing that reaches network.
-func (s *Service) pairingForHubMember(network string) (protocol.Pairing, bool) {
-	var found []protocol.Pairing
-	for _, pairing := range s.snapshotRelayPairings() {
-		if id, err := s.pairingNetworkID(pairing); err == nil && id == network {
-			found = append(found, pairing)
-		}
-	}
-	if len(found) != 1 {
-		return protocol.Pairing{}, false
-	}
-	return found[0], true
-}
-
 // hubFanoutPairings lists the member links a placed message goes to: every
-// active member but the home itself and the message's origin.
+// active member but the home itself and the message's origin, each over the
+// pairing it was added to this room over (hub_links.go).
 func (s *Service) hubFanoutPairings(ctx context.Context, roster hubRoster, origin string) []string {
+	links, err := s.hubInvites.Links(roster.GlobalRoomID)
+	if err != nil {
+		logHub(ctx, roster.GlobalRoomID).Error("hub member links unreadable; members get this message by catch-up only", "error", err)
+		return nil
+	}
+	live := map[string]bool{}
+	for _, pairing := range s.snapshotRelayPairings() {
+		live[pairing.ID] = true
+	}
 	var ids []string
 	for _, network := range roster.networks() {
 		if network == roster.HomeNetworkID || network == origin {
 			continue
 		}
-		pairing, ok := s.pairingForHubMember(network)
-		if !ok {
-			logHub(ctx, roster.GlobalRoomID).Warn("hub member has no unique pairing; it will not receive this message", "network_id", network)
+		pairingID := ""
+		for _, link := range links {
+			if link.NetworkID == network {
+				pairingID = link.PairingID
+			}
+		}
+		if pairingID == "" || !live[pairingID] {
+			logHub(ctx, roster.GlobalRoomID).Warn("hub member has no live member link; it will not receive this message live", "network_id", network, "pairing_id", pairingID)
 			continue
 		}
-		ids = append(ids, pairing.ID)
+		ids = append(ids, pairingID)
 	}
 	slices.Sort(ids)
 	return ids

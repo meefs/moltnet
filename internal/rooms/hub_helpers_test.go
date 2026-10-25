@@ -36,6 +36,8 @@ type hubNet struct {
 	handler  *atomic.Value
 	tokens   []authn.TokenConfig
 	pairings []protocol.Pairing
+	// strict runs the service with auth.require_pair_network_binding.
+	strict bool
 }
 
 const hubOperatorToken = "operator-secret"
@@ -67,7 +69,8 @@ func (n *hubNet) start(t *testing.T) {
 	n.service = rooms.NewService(rooms.ServiceConfig{
 		NetworkID: n.id, Store: n.store, Messages: n.store, Broker: events.NewBroker(),
 		Pairings: n.pairings, PairingClient: pairings.NewClient(), Identity: n.identity, KeyPins: n.pins, HubInvites: n.invites,
-		DeliveryRetryMin: 10 * time.Millisecond, DeliveryRetryMax: 30 * time.Millisecond,
+		RequirePairNetworkBinding: n.strict,
+		DeliveryRetryMin:          10 * time.Millisecond, DeliveryRetryMax: 30 * time.Millisecond,
 		DeliveryPollInterval: 5 * time.Millisecond, DeliveryTimeout: time.Second,
 	})
 	service := n.service

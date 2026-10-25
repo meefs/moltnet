@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	authn "github.com/noopolis/moltnet/internal/auth"
 	"github.com/noopolis/moltnet/internal/netkeys"
 	"github.com/noopolis/moltnet/internal/store"
 	"github.com/noopolis/moltnet/pkg/protocol"
@@ -106,9 +105,14 @@ func (s *Service) acceptHubSubmission(ctx context.Context, in hubIngress) (proto
 		return protocol.MessageAccepted{}, hubForbiddenError("members submit messages; only the home issues receipts")
 	}
 	origin := in.envelope.OriginNetworkID
-	claims, _ := authn.ClaimsFromContext(ctx)
-	if !s.pairCredentialMatchesOrigin(ctx, claims, origin, s.requirePairNetworkBinding) {
-		return protocol.MessageAccepted{}, hubForbiddenError("this pairing does not speak for the message's origin network")
+	// Transport authorization is the member link recorded for this room
+	// (hub_links.go), not the ordinary pairing binding: a member may also
+	// hold a direct pairing or other rooms' links to this home.
+	if linked, err := s.hubLinkSpeaksFor(ctx, in.hub.GlobalRoomID, in.pairing, origin); err != nil {
+		return protocol.MessageAccepted{}, err
+	} else if !linked {
+		logger.Warn("refusing hub submission over a pairing that is not the origin's link for this room")
+		return protocol.MessageAccepted{}, hubForbiddenError("this pairing does not speak for the message's origin network in this room")
 	}
 	// A retry of an event already placed gets its placement back before any
 	// epoch or role check: the ack may have been lost while the room moved

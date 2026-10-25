@@ -8,7 +8,11 @@ network's keys (`<keys dir>/hub-invites.json`, mode 0600):
   a grant when the joiner's signed admission arrives over that pairing.
 - **pending joins** (member side): `moltnet room join` records the invite it
   redeemed; the server finishes the join once the pairing is live and drops
-  the entry.
+  the entry, or marks it `expired` once the invite's expiry passes.
+- **member links** (home side): per shared room, the one pairing each member
+  network was added over. The home authorizes that pairing for that room
+  only (sync, control log, leave, submissions) and fans out over it, so a
+  network may also hold a direct pairing or other rooms' links.
 
 ## Rules
 
