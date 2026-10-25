@@ -2,12 +2,15 @@ package netkeys
 
 import (
 	"crypto/ed25519"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
@@ -185,5 +188,103 @@ func TestPinStoreRejectsInconsistentPin(t *testing.T) {
 	pin.PublicKey = other.PublicKey
 	if _, err := NewMemoryPinStore().PinKey(pin); err == nil {
 		t.Fatal("pin whose key does not match its fingerprint accepted")
+	}
+}
+
+func TestPinStoreRejectsIncompleteOrInvalidFiles(t *testing.T) {
+	good, _ := testPin(t, "alpha")
+	good.PinnedAt = time.Now().UTC()
+	record := func(mutate func(map[string]any)) string {
+		raw, _ := json.Marshal(good)
+		var value map[string]any
+		_ = json.Unmarshal(raw, &value)
+		mutate(value)
+		encoded, _ := json.Marshal(value)
+		return string(encoded)
+	}
+	cases := map[string]string{
+		"version only":       `{"v":1}`,
+		"null pins":          `{"v":1,"pins":null}`,
+		"missing version":    `{"pins":{}}`,
+		"unknown field":      `{"v":1,"pins":{},"extra":true}`,
+		"misfiled record":    `{"v":1,"pins":{"beta":` + record(func(map[string]any) {}) + `}}`,
+		"unknown trust":      `{"v":1,"pins":{"alpha":` + record(func(v map[string]any) { v["trust"] = "trusted" }) + `}}`,
+		"empty trust":        `{"v":1,"pins":{"alpha":` + record(func(v map[string]any) { delete(v, "trust") }) + `}}`,
+		"key mismatch":       `{"v":1,"pins":{"alpha":` + record(func(v map[string]any) { v["fingerprint"] = "sha256:" + strings.Repeat("ab", 32) }) + `}}`,
+		"noncanonical print": `{"v":1,"pins":{"alpha":` + record(func(v map[string]any) { v["fingerprint"] = strings.ToUpper(good.Fingerprint) }) + `}}`,
+		"unknown source":     `{"v":1,"pins":{"alpha":` + record(func(v map[string]any) { v["source"] = "gossip" }) + `}}`,
+		"introduced no home": `{"v":1,"pins":{"alpha":` + record(func(v map[string]any) { v["trust"] = "introduced" }) + `}}`,
+	}
+	for name, content := range cases {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, pinsFileName), []byte(content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := OpenPinStore(dir).Lookup("alpha"); err == nil {
+				t.Fatalf("pins file %s loaded", content)
+			}
+		})
+	}
+	dir := t.TempDir()
+	valid := `{"v":1,"pins":{"alpha":` + record(func(map[string]any) {}) + `}}`
+	if err := os.WriteFile(filepath.Join(dir, pinsFileName), []byte(valid), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, err := OpenPinStore(dir).Lookup("alpha"); err != nil || !ok {
+		t.Fatalf("valid pins file = %v, %v", ok, err)
+	}
+}
+
+func TestPinLockIsReleasedByHolderNotByAge(t *testing.T) {
+	previous := lockWait
+	lockWait = 200 * time.Millisecond
+	defer func() { lockWait = previous }()
+	path := filepath.Join(t.TempDir(), "pins.json.lock")
+	release, err := acquireFileLock(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// An old lock file is not evidence the holder died: it is still held.
+	old := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(path, old, old); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := acquireFileLock(path); err == nil {
+		t.Fatal("second writer took a held lock")
+	}
+	release()
+	// A lock file left behind by an exited holder never blocks.
+	again, err := acquireFileLock(path)
+	if err != nil {
+		t.Fatalf("lock after release: %v", err)
+	}
+	again()
+}
+
+func TestPinStoreConcurrentWritersKeepEveryPin(t *testing.T) {
+	dir := t.TempDir()
+	const writers = 16
+	var wg sync.WaitGroup
+	errs := make(chan error, writers)
+	for index := 0; index < writers; index++ {
+		pin, _ := testPin(t, fmt.Sprintf("net-%02d", index))
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := OpenPinStore(dir).PinKey(pin)
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	pins, err := OpenPinStore(dir).List()
+	if err != nil || len(pins) != writers {
+		t.Fatalf("pins after concurrent writes = %d, %v", len(pins), err)
 	}
 }

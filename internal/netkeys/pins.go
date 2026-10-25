@@ -1,6 +1,7 @@
 package netkeys
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,6 +29,8 @@ const (
 	PinSourceInvite   = "invite"
 	PinSourcePairing  = "pairing"
 	PinSourceOperator = "operator"
+	// PinSourceRoom is a key a room home introduced (trust introduced).
+	PinSourceRoom = "room"
 )
 
 // Pin binds a human-readable network id to a key fingerprint.
@@ -103,25 +106,13 @@ func (s *PinStore) List() ([]Pin, error) {
 // when the new pin is verified. A different fingerprint is ErrPinConflict.
 func (s *PinStore) PinKey(pin Pin) (Pin, error) {
 	pin.NetworkID = strings.TrimSpace(pin.NetworkID)
-	if err := protocol.ValidateNetworkNamespace(pin.NetworkID); err != nil {
-		return Pin{}, fmt.Errorf("pin network id: %w", err)
-	}
 	fingerprint, err := protocol.NormalizeFingerprint(pin.Fingerprint)
 	if err != nil {
 		return Pin{}, err
 	}
 	pin.Fingerprint = fingerprint
-	if pin.PublicKey != "" {
-		key, err := protocol.ParseNetworkPublicKey(pin.PublicKey)
-		if err != nil {
-			return Pin{}, err
-		}
-		if protocol.NetworkKeyFingerprint(key) != fingerprint {
-			return Pin{}, errors.New("pin public key does not match its fingerprint")
-		}
-	}
-	if pin.Trust != protocol.KeyTrustVerified && pin.Trust != protocol.KeyTrustIntroduced {
-		return Pin{}, fmt.Errorf("unsupported pin trust %q", pin.Trust)
+	if err := validatePin(pin); err != nil {
+		return Pin{}, err
 	}
 	if pin.PinnedAt.IsZero() {
 		pin.PinnedAt = s.now().UTC()
@@ -206,16 +197,89 @@ func (s *PinStore) readLocked() (map[string]Pin, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read key pins: %w", err)
 	}
-	var stored pinsFile
-	if err := json.Unmarshal(raw, &stored); err != nil || stored.V != pinsVersion {
+	pins, err := decodePinsFile(raw)
+	if err != nil {
 		// Fail closed: a damaged trust store must never read as "no pins",
 		// which would silently re-open first-contact pinning.
-		return nil, fmt.Errorf("key pins file %s is invalid; fix or remove it deliberately", s.path)
+		return nil, fmt.Errorf("key pins file %s is invalid (%v); fix or remove it deliberately", s.path, err)
+	}
+	return pins, nil
+}
+
+// decodePinsFile accepts only the exact shape this package writes: version
+// 1, a present pins object, and every record valid and filed under its own
+// network id. Anything else is damage, never an empty trust store.
+func decodePinsFile(raw []byte) (map[string]Pin, error) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	var stored struct {
+		V    *int           `json:"v"`
+		Pins map[string]Pin `json:"pins"`
+	}
+	if err := decoder.Decode(&stored); err != nil {
+		return nil, err
+	}
+	if decoder.More() {
+		return nil, errors.New("trailing data")
+	}
+	if stored.V == nil || *stored.V != pinsVersion {
+		return nil, errors.New("unsupported version")
 	}
 	if stored.Pins == nil {
-		stored.Pins = map[string]Pin{}
+		return nil, errors.New("pins object is missing")
+	}
+	for key, pin := range stored.Pins {
+		if key != pin.NetworkID {
+			return nil, fmt.Errorf("pin filed under %q names network %q", key, pin.NetworkID)
+		}
+		if normalized, err := protocol.NormalizeFingerprint(pin.Fingerprint); err != nil || normalized != pin.Fingerprint {
+			return nil, fmt.Errorf("pin %q fingerprint is not canonical", key)
+		}
+		if pin.PinnedAt.IsZero() {
+			return nil, fmt.Errorf("pin %q has no pinned_at", key)
+		}
+		if err := validatePin(pin); err != nil {
+			return nil, fmt.Errorf("pin %q: %w", key, err)
+		}
 	}
 	return stored.Pins, nil
+}
+
+// validatePin checks one record whose fingerprint is already canonical.
+func validatePin(pin Pin) error {
+	if pin.NetworkID != strings.TrimSpace(pin.NetworkID) {
+		return errors.New("pin network id has surrounding whitespace")
+	}
+	if err := protocol.ValidateNetworkNamespace(pin.NetworkID); err != nil {
+		return fmt.Errorf("pin network id: %w", err)
+	}
+	if pin.PublicKey != "" {
+		key, err := protocol.ParseNetworkPublicKey(pin.PublicKey)
+		if err != nil {
+			return err
+		}
+		if protocol.NetworkKeyFingerprint(key) != pin.Fingerprint {
+			return errors.New("pin public key does not match its fingerprint")
+		}
+	}
+	switch pin.Trust {
+	case protocol.KeyTrustVerified:
+		if pin.IntroducedBy != "" {
+			return errors.New("a verified pin cannot be introduced by a room home")
+		}
+	case protocol.KeyTrustIntroduced:
+		if pin.IntroducedBy == "" {
+			return errors.New("an introduced pin must name the room home that introduced it")
+		}
+	default:
+		return fmt.Errorf("unsupported pin trust %q", pin.Trust)
+	}
+	switch pin.Source {
+	case PinSourceInvite, PinSourcePairing, PinSourceOperator, PinSourceRoom:
+	default:
+		return fmt.Errorf("unsupported pin source %q", pin.Source)
+	}
+	return nil
 }
 
 func writePinsFile(path string, pins map[string]Pin) error {

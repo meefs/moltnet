@@ -68,6 +68,10 @@ func (s *Service) verifyInboundEnvelope(ctx context.Context, request protocol.Se
 		return nil, signatureRejectedError(fmt.Sprintf("network %q is pinned to a different key", origin))
 	case pinned && pin.Trust == protocol.KeyTrustIntroduced:
 		state = protocol.SignatureStateIntroduced
+	case pinned && pin.Trust != protocol.KeyTrustVerified:
+		// Only an explicit verified pin may ever yield "verified".
+		logger.Error("refusing message: pinned key has an unknown trust level", "trust", pin.Trust)
+		return nil, signatureRejectedError(fmt.Sprintf("network %q has a pin with unknown trust", origin))
 	case !pinned:
 		if err := s.pinFirstContact(ctx, origin, pairing.ID, envelope.OriginFingerprint, request.Envelope.PublicKey); err != nil {
 			return nil, err
