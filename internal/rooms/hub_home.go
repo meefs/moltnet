@@ -165,17 +165,27 @@ func (s *Service) appendHubControl(ctx context.Context, request HubControlReques
 		if err := s.fillHubAddSubject(&event, request.PairingID); err != nil {
 			return HubRoomView{}, err
 		}
-		if err := s.recordHubLink(hub.GlobalRoomID, request.PairingID, event.NetworkID); err != nil {
-			return HubRoomView{}, err
-		}
 	}
 	signed, digest, err := protocol.SignRoomControl(event, s.identity.Sign)
 	if err != nil {
 		return HubRoomView{}, hubInvalidError(err.Error())
 	}
 	record := store.HubControlRecord{GlobalRoomID: hub.GlobalRoomID, Seq: event.Seq, Digest: digest, Control: signed}
+	// Validate before touching any link: a refused event must leave every
+	// member's link where it was.
 	if _, err := replayHubRoster(append(records, record), 0); err != nil {
 		return HubRoomView{}, hubInvalidError(err.Error())
+	}
+	if request.Kind == protocol.RoomControlAdd {
+		// The link is written before the add it accompanies (a link without
+		// membership authorizes nothing; membership without its link would
+		// strand the member), and never moves a current member's link.
+		if _, member := roster.Members[event.NetworkID]; member {
+			return HubRoomView{}, hubInvalidError(fmt.Sprintf("network %q is a current member; its member link stays", event.NetworkID))
+		}
+		if err := s.recordHubLink(hub.GlobalRoomID, request.PairingID, event.NetworkID); err != nil {
+			return HubRoomView{}, err
+		}
 	}
 	if err := s.hubs.AppendHubControlContext(ctx, []store.HubControlRecord{record}); err != nil {
 		return HubRoomView{}, err

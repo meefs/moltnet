@@ -183,3 +183,35 @@ func TestHubAdmissionCannotClaimADirectlyPairedNetworkWithNoPin(t *testing.T) {
 		t.Fatal("the refused admission pinned a key")
 	}
 }
+
+// An operator repeats `add alpha` over alpha's direct pairing while alpha is
+// a member over its room link. The add is refused, and alpha's link must not
+// have moved: it keeps sending, receiving and catching up over it.
+func TestHubRefusedReAddKeepsTheMemberLink(t *testing.T) {
+	h := joinedTopology(t, memoryBackend)
+	secret := "alpha-friend-secret"
+	h.home.pairings = append(h.home.pairings, protocol.Pairing{ID: "friend-alpha", RemoteNetworkID: "alpha", RemoteBaseURL: h.alpha.url, Token: protocol.SecretString(secret)})
+	h.home.tokens = append(h.home.tokens, authn.TokenConfig{ID: "friend-alpha", Value: secret, Network: "alpha", Scopes: []authn.Scope{authn.ScopePair}})
+	h.home.start(t)
+	_, err := h.home.service.AppendHubControlContext(contextBackground(), rooms.HubControlRequest{
+		GlobalRoomID: h.global, Kind: protocol.RoomControlAdd, PairingID: "friend-alpha", Role: protocol.RoomRoleWriter})
+	if err == nil {
+		t.Fatal("re-adding a current member was accepted")
+	}
+	links, _ := h.home.invites.Links(h.global)
+	for _, link := range links {
+		if link.NetworkID == "alpha" && link.PairingID != "link-alpha" {
+			t.Fatalf("alpha's link moved to %s although the add was refused", link.PairingID)
+		}
+	}
+	h.alpha.post(t, "alpha after")
+	h.home.waitTexts(t, "alpha after")
+	h.home.post(t, "home after")
+	h.alpha.waitTexts(t, "alpha after", "home after")
+	if err := h.alpha.catchUp(t, h.global); err != nil {
+		t.Fatalf("alpha's catch-up after a refused re-add: %v", err)
+	}
+	if state := h.alpha.delivery(t, "link-home"); state.Rejected != 0 {
+		t.Fatalf("alpha's submissions were refused: %#v", state)
+	}
+}
