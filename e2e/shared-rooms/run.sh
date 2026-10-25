@@ -39,7 +39,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 
-for command in go node npm npx curl jq; do require_command "$command"; done
+for command in go node npm npx curl jq sqlite3; do require_command "$command"; done
 port_relay="$(free_port)" port_home="$(free_port)" port_lab="$(free_port)" port_desk="$(free_port)"
 relay_url="ws://127.0.0.1:$port_relay"
 export E2E_RELAY_TOKEN="$relay_token"
@@ -114,16 +114,52 @@ grep -q "introduced by $net_home" "$run_dir/members-desk.txt" || fail "room memb
 [[ "$(label home research "lab speaks")" == unconfirmed ]] || fail "home labels lab's message $(label home research "lab speaks")"
 pass "fanout to both members; desk: home verified, lab introduced by $net_home; home: lab unconfirmed (first seen on the invite's pairing)"
 
-# --- catch-up: desk is down while the room moves on ----------------------------
+# --- agents read the joined room ----------------------------------------------
+status="$(curl -sS -o "$run_dir/agent-read.json" -w '%{http_code}' -H "Authorization: Bearer $(agent_token_of lab)" "$(url_of lab)/v1/rooms/research/messages?limit=100")"
+[[ "$status" == 200 ]] || fail "lab's agent credential could not read the joined room: $status $(cat "$run_dir/agent-read.json")"
+jq -e 'any(.messages[]; .parts[0].text == "home speaks")' "$run_dir/agent-read.json" >/dev/null || fail "lab's agent read lacks home's message"
+pass "an agent-restricted credential on lab reads the shared room"
+
+# --- a direct pairing beside the room link -----------------------------------
+"$moltnet" pair invite --id friend-lab --relay-url "$relay_url" --relay-token-env E2E_RELAY_TOKEN \
+	--config "$(config_of home)" >"$run_dir/pair-invite.log" 2>&1 || fail "pair invite: $(cat "$run_dir/pair-invite.log")"
+stop_server home && start_server home
+stop_server lab
+"$moltnet" pair "$(invite_code "$run_dir/pair-invite.log")" --config "$(config_of lab)" >"$run_dir/pair-join.log" 2>&1 ||
+	fail "pair join: $(cat "$run_dir/pair-join.log")"
+start_server lab
+api home GET /v1/pairings | jq -e '[.pairings[].id] | index("friend-lab") and index("room-lab")' >/dev/null || fail "home does not hold both pairings to lab"
+post home research lead "home after the direct pairing"
+wait_text lab research "home after the direct pairing"
+post lab research scout "lab after the direct pairing"
+wait_text home research "lab after the direct pairing"
+wait_text desk research "lab after the direct pairing"
+[[ "$(pairing_rejected lab room-lab)" == "0" ]] || fail "home refused lab's room-link submission beside a direct pairing"
+[[ "$(pairing_rejected home room-lab)" == "0" ]] || fail "lab refused home's fanout beside a direct pairing"
+pass "with a direct pairing beside its room link, lab still sends and receives the room over the link"
+
+# --- catch-up from sync alone: desk is down and its outbox is cleared ----------
 stop_server desk
 post home research lead "while desk was down 1"
 post lab research scout "while desk was down 2"
+big="$(head -c 250000 /dev/zero | tr '\0' 'x')"
+for n in 1 2 3; do post home research lead "big-$n:$big"; done
 wait_text home research "while desk was down 2"
+stop_server home
+queued="$(outbox_rows home room-desk)"
+((queued > 0)) || fail "the home had nothing queued for desk; catch-up would prove nothing"
+sqlite3 "$run_dir/home/moltnet.sqlite" "DELETE FROM pairing_deliveries WHERE pairing_id = 'room-desk'" || fail "could not clear desk's outbox"
+[[ "$(outbox_rows home room-desk)" == "0" ]] || fail "desk's outbox is not empty"
+start_server home
 start_server desk
 wait_text desk research "while desk was down 1"
 wait_text desk research "while desk was down 2"
-if grep -q "hub room caught up" "$run_dir/desk.log"; then mechanism="sync from the home"; else mechanism="the home's outbox"; fi
-pass "desk caught up on both messages after restarting (via $mechanism)"
+for n in 1 2 3; do
+	deadline=$((SECONDS + timeout_seconds))
+	until has_prefix desk research "big-$n:"; do ((SECONDS < deadline)) || fail "desk never caught up on big-$n"; sleep 0.5; done
+done
+grep -q "hub room caught up" "$run_dir/desk.log" || fail "desk's catch-up was not logged"
+pass "desk caught up from the home's sync log alone ($queued queued rows cleared; ~1 MB of history over the relay, paged)"
 
 # --- origin's own copy learns its room seq; sync clamps a non-member ---------
 lab_token="$(invite_code "$run_dir/invite-lab.log" | node -e '
@@ -133,9 +169,11 @@ lab_token="$(invite_code "$run_dir/invite-lab.log" | node -e '
 	});')"
 [[ -n "$lab_token" ]] || fail "could not read lab's room link credential from its invite"
 sync_page="$(curl -sS -H "Authorization: Bearer $lab_token" "$(url_of home)/v1/hub/sync?after=0&room=$(jq -rn --arg g "$global" '$g|@uri')")"
-lab_entries="$(jq '[.entries[] | select(.message != null)] | length' <<<"$sync_page")"
-((lab_entries >= 6)) || fail "lab's sync page shows only $lab_entries messages"
-pass "lab's own link reads the room's sync log ($lab_entries messages)"
+# Every message so far was placed while lab was a member: 4 before the
+# direct pairing, 2 beside it, 2 while desk was down, 3 big ones.
+lab_entries="$(sync_message_count "$lab_token")" || fail "lab's sync pages failed"
+[[ "$lab_entries" == 11 ]] || fail "lab's sync log shows $lab_entries messages, want 11"
+pass "lab's own link reads the room's whole sync log across pages (11 messages)"
 
 # --- remove desk: it receives nothing new, its writes are refused ------------
 "$moltnet" room remove research "$net_desk" --config "$(config_of home)" >"$run_dir/remove.log" 2>&1 || fail "room remove: $(cat "$run_dir/remove.log")"

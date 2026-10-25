@@ -65,6 +65,10 @@ auth:
     - id: operator
       value: operator-$network_id-$run_id
       scopes: [observe, write, admin]
+    - id: agent-scout
+      value: agent-scout-$network_id-$run_id
+      scopes: [observe]
+      agents: [scout]
 CONFIG
 	chmod 600 "$dir/Moltnet"
 }
@@ -72,6 +76,7 @@ CONFIG
 config_of() { printf '%s/%s/Moltnet' "$run_dir" "$1"; }
 url_of() { local port_var="port_$1"; printf 'http://127.0.0.1:%s' "${!port_var}"; }
 token_of() { local network_var="net_$1"; printf 'operator-%s-%s' "${!network_var}" "$run_id"; }
+agent_token_of() { local network_var="net_$1"; printf 'agent-scout-%s-%s' "${!network_var}" "$run_id"; }
 
 # start_server <name>: starts the network in the background, sets pid_<name>.
 start_server() {
@@ -183,4 +188,28 @@ invite_code() {
 
 pairing_rejected() {
 	api "$1" GET /v1/pairings | jq -r --arg id "$2" '[.pairings[] | select(.id == $id)][0].delivery.rejected // 0'
+}
+
+# has_prefix <name> <room> <prefix>: a message whose text starts with prefix.
+has_prefix() {
+	messages "$1" "$2" | jq -e --arg prefix "$3" 'any(.messages[]; .parts[0].text | startswith($prefix))' >/dev/null 2>&1
+}
+
+# sync_message_count <token>: messages (not receipt-only entries) the
+# credential may read from the home's /v1/hub/sync, following every page.
+sync_message_count() {
+	local token="$1" after=0 total=0 page
+	while :; do
+		page="$(curl -sS --max-time 10 -H "Authorization: Bearer $token" \
+			"$(url_of home)/v1/hub/sync?after=$after&control_after=999999&room=$(jq -rn --arg g "$global" '$g|@uri')")" || return 1
+		total=$((total + $(jq '[.entries[] | select(.message != null)] | length' <<<"$page")))
+		[[ "$(jq -r .more <<<"$page")" == true ]] || break
+		after="$(jq -r .through_seq <<<"$page")"
+	done
+	printf '%s' "$total"
+}
+
+# outbox_rows <name> <pairing>: queued deliveries in the stopped network's store.
+outbox_rows() {
+	sqlite3 "$run_dir/$1/moltnet.sqlite" "SELECT COUNT(*) FROM pairing_deliveries WHERE pairing_id = '$2'"
 }
