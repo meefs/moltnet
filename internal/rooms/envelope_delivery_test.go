@@ -48,12 +48,13 @@ func TestSignedDeliveryFirstContactPinsJoinerKey(t *testing.T) {
 	// The inviter never learns its joiner's key from the invite; it pins the
 	// key carried by the first signed message over the authenticated pairing.
 	joinerKey := newTestIdentity(t)
-	inviterPins := netkeys.NewMemoryPinStore()
-	inviter := newSignedPeer(t, inviterPins)
+	pinsDir := t.TempDir()
+	inviter := newSignedPeer(t, netkeys.OpenPinStore(pinsDir))
 	_, joiner := newSignedOrigin(t, joinerKey, inviter.pairURL)
 	postDeliveryMessage(t, joiner.URL, "first contact")
 	waitDelivery(t, func() bool { return deliveryStatus(t, joiner.URL).Pending == 0 })
-	pin, ok, err := inviterPins.Lookup("origin")
+	// The pin is durable: a restarted server reads it from the same keys dir.
+	pin, ok, err := netkeys.OpenPinStore(pinsDir).Lookup("origin")
 	if err != nil || !ok || pin.Fingerprint != joinerKey.Fingerprint() || pin.Trust != protocol.KeyTrustVerified ||
 		pin.Source != netkeys.PinSourcePairing || pin.SourceID != "origin" {
 		t.Fatalf("first-contact pin = %#v, %v, %v", pin, ok, err)
