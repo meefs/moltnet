@@ -274,6 +274,10 @@ Signature state appears only on the HTTP message APIs (`origin.signature`,
 `origin.fingerprint`). The machine JSONL v1 projection is unchanged, and
 follow imports keep their untrusted `claimed_*` fields.
 
+Rows queued unsigned before a network had keys (a legacy outbox) are sent
+unsigned. Once the peer has pinned that network's key it refuses them as a
+downgrade (403), so the sender drops them as rejected; they are not re-signed.
+
 v1 has no key rotation. Losing or leaking `network.key` means a new
 identity: every peer must `moltnet keys forget` the old pin and
 `moltnet keys trust` the new fingerprint.
@@ -317,9 +321,18 @@ rooms only: no room or agent discovery, no DMs, no ordinary rooms).
   one-time grant; the joiner's server redeems it with a signed admission
   (`POST /v1/hub/admit`, `moltnet.room-admission.v1`: network id and key,
   signed by that key) over the link. The home pins the key through the link
-  (unconfirmed), binds the link to that network and appends the add with the
-  invite's role. The joiner verifies the returned log against the home key
-  its invite carried, and that the log admits its own key.
+  (unconfirmed), records the link as that network's **member link** for the
+  room, and appends the add with the invite's role. The joiner verifies the
+  returned log against the home key its invite carried, and that the log
+  admits its own key. A link already speaking for another network cannot be
+  redeemed, nor can a network the home is directly paired with (config-bound)
+  but has no pinned key for yet.
+- **Member links.** Every peer hub endpoint on the home (submissions,
+  `GET /v1/hub/sync`, `GET /v1/hub/control`, `POST /v1/hub/leave`) authorizes
+  the caller by the member link recorded for that room (kept beside the keys
+  in `hub-invites.json`), and fanout goes over it. A network may also hold a
+  direct pairing or other rooms' links to the same home; a valid link for
+  another room answers 404.
 - **Catch-up.** `GET /v1/hub/sync?room=<global id>&after=<seq>&control_after=<epoch>`
   returns control events and every receipt after the cursor in order, each
   with the exact fanout request (signed envelope included) only when the
@@ -327,9 +340,16 @@ rooms only: no room or agent discovery, no DMs, no ordinary rooms).
   before a later membership. A removed member gets nothing placed after its
   removal, and its control log ends at the event that removed it. The member
   verifies the receipt chain from its stored cursor (last contiguous seq and
-  receipt hash) and refuses a head below the cursor, a broken chain or an
-  epoch going backwards. Members sync at start, on reconnect, on a gap, and
-  every 30 seconds.
+  receipt hash, and that receipt's membership epoch) and refuses a head
+  below the cursor, a broken chain or an epoch going backwards. Every
+  verified receipt is stored, receipt-only when its message is hidden or
+  refused, so it meets the conflict rules above. Pages (and control log
+  pages, which carry `more`) stay under 640 KiB of JSON, control events
+  first; a single message too large for any page travels receipt-only.
+  Members sync at start, on reconnect, on a gap, and every 30 seconds.
+- **Order.** Stored history is in arrival order. The HTTP message APIs add
+  `room_seq` and `membership_epoch` to each placed shared-room message;
+  display sorts by `room_seq`.
 - **Own copies.** The home's acknowledgment carries the receipt, so the
   origin's own copy of a message learns its room sequence too.
 - **Leaving.** `POST /v1/hub/leave` over the member's link appends `leave`.

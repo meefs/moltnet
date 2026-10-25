@@ -315,6 +315,12 @@ credential without a binding already in config. Enabling it on the inviting
 side therefore rejects every message from peers you invited unless you first
 set that pairing's `remote_network_id` by hand.
 
+Shared rooms are not affected: a room invite's link is bound when the joiner
+redeems it (the moment the inviting home learns the joiner's network, as
+`moltnet pair <code>` is for the joiner), and that member link is recorded
+durably. A strict home therefore admits members by invite and accepts their
+messages over their links. See [Shared rooms](/guides/shared-rooms/).
+
 This is separate from per-room `federation` enforcement (`rooms[].federation`), which is always on and keys on the pairing's identity rather than its network binding. Enabling one does not substitute for the other.
 
 ## Token Storage
