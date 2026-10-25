@@ -38,4 +38,9 @@ This package owns persistence interfaces and implementations.
 - `hub_sync.go` / `sql_hub_sync.go` (migration 17): ordered receipts for
   catch-up, messages by id, a member's forward-only sync cursor (seq and
   receipt digest; `ErrHubSyncRollback`), and receipts attached to an
-  origin's own already stored copy.
+  origin's own already stored copy. The cursor also keeps its receipt's
+  membership epoch and refuses to advance to an older one.
+- `hub_receipt_only.go` (migration 18): receipts stored with no message (a
+  member's sync entries it may not see or refused), under the same conflict
+  rules; a message arriving later for such a receipt binds to it. Envelopes
+  are also found by origin tuple (`EnvelopeForOriginContext`).

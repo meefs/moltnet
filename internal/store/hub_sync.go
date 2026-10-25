@@ -20,6 +20,9 @@ type HubSyncCursor struct {
 	GlobalRoomID string `json:"global_room_id"`
 	Seq          int64  `json:"seq"`
 	Digest       string `json:"digest,omitempty"`
+	// MembershipEpoch is that receipt's membership epoch: the floor every
+	// later receipt's epoch is held to.
+	MembershipEpoch int64 `json:"membership_epoch,omitempty"`
 }
 
 // HubSyncStore is the catch-up half of HubStore.
@@ -33,6 +36,11 @@ type HubSyncStore interface {
 	// AttachHubReceiptContext stores the receipt for a message already
 	// stored here (an origin's own copy), under the append conflict rules.
 	AttachHubReceiptContext(ctx context.Context, record HubReceiptRecord) error
+	// StoreHubReceiptContext stores a verified receipt with no message (one
+	// the member may not see, or refused), under the same conflict rules.
+	StoreHubReceiptContext(ctx context.Context, record HubReceiptRecord) error
+	// EnvelopeForOriginContext finds a stored envelope by origin tuple.
+	EnvelopeForOriginContext(ctx context.Context, originNetworkID, originMessageID string) (MessageEnvelopeRecord, bool, error)
 }
 
 func checkCursorAdvance(stored, next HubSyncCursor) (bool, error) {
@@ -41,6 +49,8 @@ func checkCursorAdvance(stored, next HubSyncCursor) (bool, error) {
 		return false, fmt.Errorf("%w: room %s cursor at seq %d, offered %d", ErrHubSyncRollback, next.GlobalRoomID, stored.Seq, next.Seq)
 	case next.Seq == stored.Seq && next.Digest != stored.Digest && stored.Seq > 0:
 		return false, fmt.Errorf("%w: room %s seq %d holds a different receipt", ErrHubSyncRollback, next.GlobalRoomID, next.Seq)
+	case next.Seq > stored.Seq && next.MembershipEpoch < stored.MembershipEpoch:
+		return false, fmt.Errorf("%w: room %s seq %d at membership epoch %d follows epoch %d", ErrHubSyncRollback, next.GlobalRoomID, next.Seq, next.MembershipEpoch, stored.MembershipEpoch)
 	}
 	return next.Seq > stored.Seq, nil
 }
@@ -117,8 +127,12 @@ func (s *MemoryStore) attachHubReceiptLocked(record HubReceiptRecord) error {
 		return fmt.Errorf("%w: no stored message %s to attach a receipt to", ErrHubReceiptConflict, record.MessageID)
 	}
 	duplicate, err := s.checkHubReceiptLocked(record)
-	if err != nil || duplicate {
+	if err != nil {
 		return err
+	}
+	if duplicate {
+		s.bindHubReceiptLocked(record)
+		return nil
 	}
 	s.hub.Receipts = append(s.hub.Receipts, record)
 	return nil

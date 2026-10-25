@@ -57,8 +57,11 @@ func (s *SQLStore) appendMessageWithLifecycleContext(
 	if err != nil {
 		return AppendLifecycle{}, err
 	}
+	bind := receipt
 	if duplicateReceipt {
 		receipt = nil
+	} else {
+		bind = nil
 	}
 	if err := s.insertPairingReceiveReceipt(ctx, tx, message, envelope); err != nil {
 		return AppendLifecycle{}, err
@@ -105,6 +108,9 @@ func (s *SQLStore) appendMessageWithLifecycleContext(
 		return AppendLifecycle{}, err
 	}
 	if err := s.insertHubReceipt(ctx, tx, receipt); err != nil {
+		return AppendLifecycle{}, err
+	}
+	if err := s.bindHubReceipt(ctx, tx, bind); err != nil {
 		return AppendLifecycle{}, err
 	}
 	if event != nil {

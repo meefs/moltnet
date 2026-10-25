@@ -319,4 +319,5 @@ var sqlMigrations = []migration{
 	messageEnvelopeMigration(),
 	hubRoomsMigration(),
 	hubSyncMigration(),
+	hubReceiptOnlyMigration(),
 }

@@ -12,7 +12,8 @@ import (
 // hubSyncMigration stores each member's verified sync cursor per hub room.
 func hubSyncMigration() migration {
 	return migration{Version: 17, Name: "hub_sync_cursors", Statements: []string{
-		`CREATE TABLE IF NOT EXISTS hub_sync_cursors (global_room_id TEXT PRIMARY KEY, seq BIGINT NOT NULL, digest TEXT NOT NULL)`,
+		`CREATE TABLE IF NOT EXISTS hub_sync_cursors (global_room_id TEXT PRIMARY KEY, seq BIGINT NOT NULL, digest TEXT NOT NULL,
+			membership_epoch BIGINT NOT NULL DEFAULT 0)`,
 	}}
 }
 
@@ -64,7 +65,7 @@ func (s *SQLStore) HubMessagesContext(ctx context.Context, messageIDs []string) 
 
 func (s *SQLStore) HubSyncCursorContext(ctx context.Context, globalRoomID string) (HubSyncCursor, error) {
 	cursor := HubSyncCursor{GlobalRoomID: globalRoomID}
-	err := s.db.QueryRowContext(ctx, bindQuery(s.dialect, `SELECT seq, digest FROM hub_sync_cursors WHERE global_room_id = ?`), globalRoomID).Scan(&cursor.Seq, &cursor.Digest)
+	err := s.db.QueryRowContext(ctx, bindQuery(s.dialect, `SELECT seq, digest, membership_epoch FROM hub_sync_cursors WHERE global_room_id = ?`), globalRoomID).Scan(&cursor.Seq, &cursor.Digest, &cursor.MembershipEpoch)
 	if errors.Is(err, sql.ErrNoRows) {
 		return cursor, nil
 	}
@@ -84,14 +85,14 @@ func (s *SQLStore) AdvanceHubSyncCursorContext(ctx context.Context, cursor HubSy
 		return err
 	}
 	stored := HubSyncCursor{GlobalRoomID: cursor.GlobalRoomID}
-	if err := tx.QueryRowContext(ctx, bindQuery(s.dialect, `SELECT seq, digest FROM hub_sync_cursors WHERE global_room_id = ?`), cursor.GlobalRoomID).Scan(&stored.Seq, &stored.Digest); err != nil {
+	if err := tx.QueryRowContext(ctx, bindQuery(s.dialect, `SELECT seq, digest, membership_epoch FROM hub_sync_cursors WHERE global_room_id = ?`), cursor.GlobalRoomID).Scan(&stored.Seq, &stored.Digest, &stored.MembershipEpoch); err != nil {
 		return err
 	}
 	advance, err := checkCursorAdvance(stored, cursor)
 	if err != nil || !advance {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, bindQuery(s.dialect, `UPDATE hub_sync_cursors SET seq = ?, digest = ? WHERE global_room_id = ?`), cursor.Seq, cursor.Digest, cursor.GlobalRoomID); err != nil {
+	if _, err := tx.ExecContext(ctx, bindQuery(s.dialect, `UPDATE hub_sync_cursors SET seq = ?, digest = ?, membership_epoch = ? WHERE global_room_id = ?`), cursor.Seq, cursor.Digest, cursor.MembershipEpoch, cursor.GlobalRoomID); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -104,7 +105,7 @@ func (s *SQLStore) AttachHubReceiptContext(ctx context.Context, record HubReceip
 	}
 	defer rollback(tx)
 	duplicate, err := s.guardHubReceipt(ctx, tx, &record)
-	if err != nil || duplicate {
+	if err != nil {
 		return err
 	}
 	var exists int
@@ -114,7 +115,11 @@ func (s *SQLStore) AttachHubReceiptContext(ctx context.Context, record HubReceip
 	if exists == 0 {
 		return fmt.Errorf("%w: no stored message %s to attach a receipt to", ErrHubReceiptConflict, record.MessageID)
 	}
-	if err := s.insertHubReceipt(ctx, tx, &record); err != nil {
+	if duplicate {
+		if err := s.bindHubReceipt(ctx, tx, &record); err != nil {
+			return err
+		}
+	} else if err := s.insertHubReceipt(ctx, tx, &record); err != nil {
 		return err
 	}
 	return tx.Commit()

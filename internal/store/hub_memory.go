@@ -228,7 +228,10 @@ func (s *MemoryStore) appendWithHubReceiptLocked(ctx context.Context, message pr
 	if err != nil {
 		return AppendLifecycle{}, err
 	}
-	if receipt != nil && !duplicateReceipt {
+	switch {
+	case receipt != nil && duplicateReceipt:
+		s.bindHubReceiptLocked(*receipt)
+	case receipt != nil:
 		s.hub.Receipts = append(s.hub.Receipts, *receipt)
 	}
 	return lifecycle, nil
