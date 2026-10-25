@@ -44,13 +44,6 @@ func staleEpochError(current int64) error {
 		msg: fmt.Sprintf("%s: the room is at membership epoch %d and this event was not placed; sync its control log and re-sign", protocol.StaleMembershipEpochCode, current)}
 }
 
-func (s *Service) hubRooms(ctx context.Context) ([]store.HubRoom, error) {
-	if s.hubs == nil {
-		return nil, nil
-	}
-	return s.hubs.HubRoomsContext(ctx)
-}
-
 func (s *Service) hubRoomByGlobal(ctx context.Context, globalRoomID string) (store.HubRoom, bool, error) {
 	rooms, err := s.hubRooms(ctx)
 	if err != nil {
@@ -62,6 +55,13 @@ func (s *Service) hubRoomByGlobal(ctx context.Context, globalRoomID string) (sto
 		}
 	}
 	return store.HubRoom{}, false, nil
+}
+
+// joinedHubRoom reports whether roomID is the local room of a hub room this
+// network joined as a member (not one it is home of).
+func (s *Service) joinedHubRoom(ctx context.Context, roomID string) bool {
+	hub, ok, err := s.hubRoomByLocal(ctx, roomID)
+	return err == nil && ok && !hub.IsHome()
 }
 
 func (s *Service) hubRoomByLocal(ctx context.Context, localRoomID string) (store.HubRoom, bool, error) {

@@ -27,8 +27,9 @@ func TestHubJoinInterruptedBeforeItsLocalRoomIsRecovered(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// Alpha retries the join: it finishes instead of failing.
+	// Alpha restarts and retries the join: it finishes instead of failing.
 	crashed(h.alpha)
+	h.alpha.start(t)
 	h.join(t, h.alpha)
 	if _, ok, _ := h.alpha.store.GetRoom(localRoom(h.alpha)); !ok {
 		t.Fatal("repeated join did not provision the local room")

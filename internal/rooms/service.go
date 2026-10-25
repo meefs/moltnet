@@ -97,6 +97,7 @@ type Service struct {
 	// one home assigns each room seq exactly once.
 	hubMu                sync.Mutex
 	hubRosters           hubRosterCache
+	hubRoomList          hubRoomsCache
 	hubSyncWake          chan struct{}
 	hubSyncMu            sync.Mutex
 	hubSyncInterval      time.Duration

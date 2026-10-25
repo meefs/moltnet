@@ -113,7 +113,9 @@ func (s *Service) CreateHubRoomContext(ctx context.Context, roomID, history stri
 		return HubRoomView{}, hubInvalidError(err.Error())
 	}
 	hub := store.HubRoom{GlobalRoomID: genesis.GlobalRoomID, LocalRoomID: room.ID, HomeNetworkID: s.networkID, CreatedAt: time.Now().UTC()}
-	if err := s.hubs.CreateHubRoomContext(ctx, hub, store.HubControlRecord{GlobalRoomID: hub.GlobalRoomID, Seq: 1, Digest: digest, Control: signed}); err != nil {
+	err = s.hubs.CreateHubRoomContext(ctx, hub, store.HubControlRecord{GlobalRoomID: hub.GlobalRoomID, Seq: 1, Digest: digest, Control: signed})
+	s.invalidateHubRooms()
+	if err != nil {
 		if errors.Is(err, store.ErrHubRoomExists) {
 			return HubRoomView{}, hubConflictError(err)
 		}

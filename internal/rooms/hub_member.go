@@ -167,7 +167,9 @@ func (s *Service) joinHubRoom(ctx context.Context, request HubJoinRequest) (HubR
 		// The hub record (with the verified log) is written first and the
 		// local room second, so a crash in between leaves a hub room whose
 		// local room recovery recreates, never an orphaned local room.
-		if err := s.hubs.CreateHubRoomContext(ctx, hub, records[0]); err != nil {
+		err := s.hubs.CreateHubRoomContext(ctx, hub, records[0])
+		s.invalidateHubRooms()
+		if err != nil {
 			if errors.Is(err, store.ErrHubRoomExists) {
 				return HubRoomView{}, hubConflictError(err)
 			}
