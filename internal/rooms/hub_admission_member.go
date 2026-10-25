@@ -2,6 +2,7 @@ package rooms
 
 import (
 	"context"
+	"time"
 
 	"github.com/noopolis/moltnet/internal/hubinvites"
 
@@ -91,13 +92,20 @@ func (s *Service) finishPendingJoins(ctx context.Context) {
 		logHub(ctx, "").Warn("could not read pending hub room joins", "error", err)
 		return
 	}
-	now, err := s.now()
-	if err != nil {
-		return
-	}
+	var now time.Time
 	for _, join := range joins {
 		if !join.Pending() {
 			continue // terminal: shown by `moltnet room members`, kept until removed
+		}
+		// Read the clock only when a join is actually pending: this runs on
+		// every sync pass, and a network with no pending joins has no reason
+		// to consult (or race on) its clock.
+		if now.IsZero() {
+			current, err := s.now()
+			if err != nil {
+				return
+			}
+			now = current
 		}
 		if _, joined, err := s.hubRoomByGlobal(ctx, join.GlobalRoomID); err == nil && joined {
 			_ = s.hubInvites.RemoveJoin(join.GlobalRoomID)
