@@ -27,4 +27,8 @@ keys (the trust store).
 - Without a durable keys directory the server does not sign at all.
 - v1 has no key rotation. Losing or leaking `network.key` means a new
   identity; peers must `moltnet keys forget` and `moltnet keys trust` again.
+- `pairing-bindings.json` records which network each pairing credential has
+  spoken for, apart from pin provenance, so re-sourcing a pin (`keys trust`)
+  never reopens first contact for that credential after a restart. Bindings
+  only grow; `pair revoke` and `pair invite --force` clear one pairing's.
 - Signing and envelope encoding live in `pkg/protocol`; this package only holds keys.

@@ -136,6 +136,9 @@ func (s *Service) acceptHubSubmission(ctx context.Context, in hubIngress) (proto
 	}
 	envelope := store.MessageEnvelopeRecord{OriginNetworkID: origin, OriginMessageID: in.envelope.OriginMessageID,
 		Digest: in.digest, State: state, Fingerprint: in.envelope.OriginFingerprint, Envelope: *in.request.Envelope}
+	if err := s.keyPins.BindPairing(in.pairing.ID, origin); err != nil {
+		return protocol.MessageAccepted{}, trustStoreUnavailableError(err)
+	}
 	return s.placeHubMessage(ctx, in.hub, *in.envelope.MembershipEpoch, in.request, message, envelope)
 }
 

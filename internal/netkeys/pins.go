@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -61,8 +62,10 @@ type PinStore struct {
 	path   string
 	mu     sync.Mutex
 	memory map[string]Pin
-	cache  pinCache
-	now    func() time.Time
+	// bindings is the in-memory store's pairing bindings (bindings.go).
+	bindings map[string][]string
+	cache    pinCache
+	now      func() time.Time
 }
 
 // OpenPinStore uses dir/pins.json; the file is created on the first pin.
@@ -153,6 +156,9 @@ func (s *PinStore) PinKeyCreated(pin Pin) (Pin, bool, error) {
 		pins[pin.NetworkID], result = existing, existing
 		return changed, nil
 	})
+	if err == nil && (pin.Source == PinSourcePairing || pin.Source == PinSourceInvite) {
+		err = s.BindPairing(pin.SourceID, pin.NetworkID)
+	}
 	return result, created, err
 }
 
@@ -170,20 +176,27 @@ func (s *PinStore) ForgetExact(pin Pin) error {
 	})
 }
 
-// PairingNetworks returns the network ids pinned through pairing
-// pairingID (invite or first-contact pins), so the network a pairing
-// credential speaks for survives restarts with its pin.
+// PairingNetworks returns the networks pairing pairingID's credential has
+// spoken for: its durable bindings (which survive a pin being re-sourced,
+// e.g. by `moltnet keys trust`) plus any pin still sourced through it.
 func (s *PinStore) PairingNetworks(pairingID string) ([]string, error) {
+	if pairingID == "" {
+		return nil, nil
+	}
 	pins, err := s.List()
 	if err != nil {
 		return nil, err
 	}
-	var networks []string
+	networks, err := s.pairingBindings(pairingID)
+	if err != nil {
+		return nil, err
+	}
 	for _, pin := range pins {
-		if (pin.Source == PinSourcePairing || pin.Source == PinSourceInvite) && pin.SourceID == pairingID && pairingID != "" {
+		if (pin.Source == PinSourcePairing || pin.Source == PinSourceInvite) && pin.SourceID == pairingID && !slices.Contains(networks, pin.NetworkID) {
 			networks = append(networks, pin.NetworkID)
 		}
 	}
+	slices.Sort(networks)
 	return networks, nil
 }
 

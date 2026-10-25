@@ -21,6 +21,9 @@ import (
 type inboundEnvelope struct {
 	record       store.MessageEnvelopeRecord
 	firstContact *netkeys.Pin
+	// bindPairing durably records that this pairing's credential spoke for
+	// the origin (a matching pin creates no pin, but still binds).
+	bindPairing string
 }
 
 // verifyInboundEnvelope applies the chunk-A acceptance rule to a message
@@ -97,6 +100,7 @@ func (s *Service) verifyInboundEnvelope(ctx context.Context, request protocol.Se
 			return nil, signatureRejectedError(fmt.Sprintf("network %q has a pin with unknown trust", origin))
 		}
 		result.record.State = state
+		result.bindPairing = pairing.ID
 		return result, nil
 	case pinned && !(pin.Trust == protocol.KeyTrustUnconfirmed && firstContactTrust == protocol.KeyTrustVerified):
 		logger.Warn("rejecting message signed by a key that conflicts with the pinned key",
@@ -127,6 +131,11 @@ func signatureStateForTrust(trust string) (string, bool) {
 // The returned undo removes exactly that pin if the append then fails.
 func (s *Service) commitFirstContactPin(ctx context.Context, inbound *inboundEnvelope) (func(), error) {
 	noop := func() {}
+	if inbound != nil && inbound.bindPairing != "" {
+		if err := s.keyPins.BindPairing(inbound.bindPairing, inbound.record.OriginNetworkID); err != nil {
+			return noop, trustStoreUnavailableError(err)
+		}
+	}
 	if inbound == nil || inbound.firstContact == nil {
 		return noop, nil
 	}

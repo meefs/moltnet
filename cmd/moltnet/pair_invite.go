@@ -159,6 +159,13 @@ func runPairInvite(ctx context.Context, args []string) error {
 		}
 		return err
 	}
+	if *force {
+		// A re-minted credential under the same pairing id speaks for
+		// whichever network joins next, not the one the old one bound.
+		if err := netkeys.OpenPinStore(netkeys.DirForConfig(path)).ForgetPairing(id); err != nil {
+			return fmt.Errorf("wrote the new pairing but failed to clear the old credential's network binding: %w", err)
+		}
+	}
 
 	return printPairInviteAftercare(ctx, config, path, code, id, pairAftercareOptions{
 		restart: *restart,
