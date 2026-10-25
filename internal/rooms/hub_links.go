@@ -20,20 +20,6 @@ import (
 // stranger to room B. The record is durable, so it is also the binding that
 // strict pair-network-binding mode asks for.
 
-// hubLinkPairing is the pairing network was added to room over.
-func (s *Service) hubLinkPairing(globalRoomID, network string) (string, bool, error) {
-	links, err := s.hubInvites.Links(globalRoomID)
-	if err != nil {
-		return "", false, trustStoreUnavailableError(err)
-	}
-	for _, link := range links {
-		if link.NetworkID == network {
-			return link.PairingID, true, nil
-		}
-	}
-	return "", false, nil
-}
-
 // hubLinkNetwork is the member network pairing is the room's link for.
 func (s *Service) hubLinkNetwork(globalRoomID, pairingID string) (string, bool, error) {
 	links, err := s.hubInvites.Links(globalRoomID)
@@ -121,18 +107,4 @@ func (s *Service) recordHubLink(globalRoomID, pairingID, network string) error {
 		return trustStoreUnavailableError(err)
 	}
 	return nil
-}
-
-// hubMemberPairing is the live pairing a member network is linked over.
-func (s *Service) hubMemberPairing(globalRoomID, network string) (protocol.Pairing, bool) {
-	pairingID, ok, err := s.hubLinkPairing(globalRoomID, network)
-	if err != nil || !ok {
-		return protocol.Pairing{}, false
-	}
-	for _, pairing := range s.snapshotRelayPairings() {
-		if pairing.ID == pairingID {
-			return pairing, true
-		}
-	}
-	return protocol.Pairing{}, false
 }
