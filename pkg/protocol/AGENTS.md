@@ -73,7 +73,7 @@ both stamped from `internal/rooms/causal.go`:
 ## Network Identity and Signed Envelopes
 
 - `network_identity.go` — Ed25519 network key wire forms, `sha256:<hex>`
-  fingerprints, trust levels (`verified`, `introduced`), and the HTTP-only
+  fingerprints, trust levels (`verified`, `unconfirmed`, `introduced`), and the HTTP-only
   signature states.
 - `envelope.go` / `envelope_canonical.go` — `moltnet.envelope.v1`: the
   origin-signed message statement, encoded as canonical-json.v1, digested and

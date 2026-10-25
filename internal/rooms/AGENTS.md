@@ -75,7 +75,7 @@ This package contains the core communication model.
   local room) and sync (pull newer events, publish a membership notice).
 - `hub_ingest.go` is the signed-envelope branch of sender validation, taken
   for pair-scoped requests carrying a hub envelope or a receipt. The ordinary
-  pairing path, `pairing_binding.go` and `sender_identity.go` are unchanged.
+  pairing path and its gates are not relaxed for it.
   Home: link speaks for the origin AND roster key AND writer AND current
   epoch (else 412). Member: home link only AND receipt AND writer at the
   signed epoch in its own log AND no conflict with its own pins.
