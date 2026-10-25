@@ -94,6 +94,10 @@ func (s *Service) LocalIdentity() (protocol.NetworkIdentity, bool) {
 type MessageSignature struct {
 	State       string
 	Fingerprint string
+	// Signed is the stored envelope's statement for verified and introduced
+	// messages; HTTP renders the signed facts from it, never from the local
+	// projection (which carries receive time and locally resolved mentions).
+	Signed *protocol.MessageEnvelope
 }
 
 // MessageSignatures reports origin signature state for messages received
@@ -119,7 +123,17 @@ func (s *Service) MessageSignatures(ctx context.Context, messages []protocol.Mes
 	}
 	for _, message := range messages {
 		if record, ok := records[message.ID]; ok {
-			result[message.ID] = MessageSignature{State: record.State, Fingerprint: record.Fingerprint}
+			signature := MessageSignature{State: record.State, Fingerprint: record.Fingerprint}
+			if record.State == protocol.SignatureStateVerified || record.State == protocol.SignatureStateIntroduced {
+				envelope, _, err := protocol.ParseSignedEnvelope(record.Envelope)
+				if err != nil {
+					// Verified at store time; damage since then is not verified.
+					signature = MessageSignature{State: protocol.SignatureStateInvalid, Fingerprint: record.Fingerprint}
+				} else {
+					signature.Signed = &envelope
+				}
+			}
+			result[message.ID] = signature
 			continue
 		}
 		via := message.Origin.ReceivedVia

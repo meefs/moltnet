@@ -257,3 +257,50 @@ func TestOriginIDWhitespaceVariantsCannotReplayASignedMessage(t *testing.T) {
 		})
 	}
 }
+
+func TestHTTPRendersSignedFactsFromTheEnvelope(t *testing.T) {
+	originKey := newTestIdentity(t)
+	peer := newSignedPeer(t, netkeys.NewMemoryPinStore())
+	pinAsInvite(t, peer.pins, "origin", originKey)
+	// The origin mentions an agent the receiver does not know, and the
+	// envelope was signed long before the receiver stores it.
+	request := signedRequest(t, originKey, "delayed", "hello @ghost")
+	request.Mentions = []string{"ghost"}
+	request.Envelope = signEnvelopeFor(t, originKey, request)
+	if status, body := deliveryPost(t, peer.pairURL, "pair-secret", request); status != http.StatusAccepted {
+		t.Fatalf("send: %d %s", status, body)
+	}
+	response, err := http.Get(peer.readURL + "/v1/rooms/research/messages")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	var page struct {
+		Messages []struct {
+			CreatedAt     string         `json:"created_at"`
+			ReceivedAt    string         `json:"received_at"`
+			Mentions      []string       `json:"mentions"`
+			LocalMentions []string       `json:"local_mentions"`
+			From          protocol.Actor `json:"from"`
+			Origin        struct {
+				Signature string `json:"signature"`
+			} `json:"origin"`
+		} `json:"messages"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&page); err != nil || len(page.Messages) != 1 {
+		t.Fatalf("decode: %v %#v", err, page)
+	}
+	got := page.Messages[0]
+	if got.Origin.Signature != protocol.SignatureStateVerified || got.CreatedAt != "2026-10-25T10:00:00Z" {
+		t.Fatalf("signed created_at must come from the envelope: %#v", got)
+	}
+	if got.ReceivedAt == "" || got.ReceivedAt == got.CreatedAt {
+		t.Fatalf("receive time must be a separate field: %#v", got)
+	}
+	if len(got.Mentions) != 1 || got.Mentions[0] != "ghost" || len(got.LocalMentions) != 0 {
+		t.Fatalf("signed mentions vs local resolution: %#v", got)
+	}
+	if got.From.FQID != protocol.AgentFQID("origin", "writer") || got.From.NetworkID != "origin" {
+		t.Fatalf("author must be the signed author: %#v", got.From)
+	}
+}

@@ -53,4 +53,12 @@ This package contains the core communication model.
 - Conflicting envelopes for one origin tuple are rejected in the store
   (`store.ErrEnvelopeConflict`, 409), never acknowledged as duplicates.
 - Signature state is an HTTP-only view (`MessageSignatures`); the machine v1
-  projection never carries it.
+  projection never carries it. For verified/introduced messages HTTP renders
+  author, parts, mentions and created_at from the stored envelope, with the
+  local projection's receive time and resolved mentions as `received_at` and
+  `local_mentions`.
+- Origin ids are trimmed once (`canonicalOriginIDs`) before verification,
+  dedupe and persistence. A signed author's FQID must be the one its signed
+  origin and id determine.
+- Pairing credentials with no config binding are held to the network pinned
+  through their pairing (`pinnedPairingNetworks`), which survives restarts.
