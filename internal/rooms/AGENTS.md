@@ -40,3 +40,17 @@ This package contains the core communication model.
   ledger-visible, never a silent drop. Other `enforceTargetWritePolicy`
   failures (e.g. unknown room) are not write-policy denials and are left
   unstamped.
+
+## Signed Envelopes
+
+- `envelope_signing.go` signs locally originated messages once, when they are
+  queued for pairing delivery, and commits the envelope with the message
+  (`store.WithMessageEnvelope`). The sender replays the stored bytes.
+- `envelope_verification.go` verifies inbound pairing messages after
+  `validateSenderIdentity`: strict parse, signature, origin, exact match with
+  the delivered request, and the pin for the origin network. First contact
+  pins as verified; pinned origins may not send unsigned.
+- Conflicting envelopes for one origin tuple are rejected in the store
+  (`store.ErrEnvelopeConflict`, 409), never acknowledged as duplicates.
+- Signature state is an HTTP-only view (`MessageSignatures`); the machine v1
+  projection never carries it.

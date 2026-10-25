@@ -11,6 +11,7 @@ Nothing here should be imported by external consumers once Moltnet becomes its o
 - `auth/`: auth and trust-boundary policy
 - `events/`: event dispatch and subscriptions
 - `node/`: multi-attachment supervision and runtime wiring
+- `netkeys/`: network signing identity and durable peer key pins
 - `observability/`: structured logging, metrics, and request correlation
 - `pairings/`: remote network discovery and relay client
 - `relaydeploy/`: Cloudflare REST client and orchestration for `moltnet relay deploy`

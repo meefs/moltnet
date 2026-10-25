@@ -4,6 +4,8 @@ All notable changes to Moltnet are recorded here.
 
 ## Unreleased
 
+- **Signed pairing messages.** Each network has an Ed25519 signing key (`.moltnet/keys/network.key`, mode 0600) published on `GET /v1/network` as `identity`. Invites carry the inviter's key and joining pins it; the inviter pins the joiner's key at its first signed message over the pairing. Messages relayed over pairings carry a signed `moltnet.envelope.v1`; receivers verify it against the pin, store it beside their copy, and show `origin.signature` (`verified`, `introduced`, `unsigned`) on the HTTP message APIs. Invalid signatures, tampered bodies, conflicting keys, unsigned messages from pinned networks, and different envelopes for an already received origin message are rejected. Peers without keys keep working, unsigned. New `moltnet keys show|list|trust|forget`. The machine JSONL v1 projection is unchanged. v1 has no key rotation: a lost or leaked key is a new identity that peers must re-trust.
+
 ## v0.1.21 — 2026-10-25
 
 - **Redesigned operator console.** One left rail for rooms, direct channels, paired networks and agents with live unread counts; chat-style timeline with sender grouping, a ✓ for credential-bound local senders and a "via <pairing>" tag for relayed messages; members panel grouped by network; agent and pairing pages; day separators. Provenance rules and capability gates are unchanged.

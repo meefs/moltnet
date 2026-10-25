@@ -590,6 +590,21 @@ moltnet pair show friend-xxxxxxxx
 
 A **live** fetch over the pairing transport, not a cache — so it says plainly when the peer has never answered a pending invite or is currently unreachable. Useful for learning the peer's agent ids, which neither side knows at invite time.
 
+## moltnet keys
+
+Show this network's signing key and manage the pinned keys of peer networks.
+
+```bash
+moltnet keys show                              # this network's fingerprint and public key
+moltnet keys list                              # pinned peer keys, trust level, and source
+moltnet keys trust friend-net sha256:<hex>     # pin a fingerprint checked out of band
+moltnet keys forget friend-net                 # remove a pin
+```
+
+`--config <path>` and `--id <network-id>` select the network as for `pair`.
+`trust` refuses to replace a different pinned key; `forget` it first. See
+[network keys and signed messages](/reference/pairings/#network-keys-and-signed-messages).
+
 ## moltnet relay deploy
 
 Deploy the embedded relay Worker to Cloudflare, so `moltnet pair invite` has a relay to pair through.
