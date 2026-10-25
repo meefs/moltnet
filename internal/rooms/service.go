@@ -89,6 +89,7 @@ type Service struct {
 	// hubMu serializes hub control-log appends and receipt placement, so
 	// one home assigns each room seq exactly once.
 	hubMu                sync.Mutex
+	hubRosters           hubRosterCache
 	identity             *netkeys.Identity
 	keyPins              *netkeys.PinStore
 	deliveryRetryMin     time.Duration

@@ -83,7 +83,7 @@ func (s *Service) hubRoster(ctx context.Context, room store.HubRoom, upto int64)
 	if err != nil {
 		return hubRoster{}, nil, err
 	}
-	roster, err := replayHubRoster(records, upto)
+	roster, err := s.hubRosters.roster(room.GlobalRoomID, records, upto)
 	if err != nil {
 		return hubRoster{}, nil, fmt.Errorf("hub room %s control log: %w", room.GlobalRoomID, err)
 	}
