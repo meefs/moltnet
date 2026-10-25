@@ -168,7 +168,7 @@ func runRoomHubJoin(ctx context.Context, args []string) error {
 	if err := writePairingWithRollback(path, pairing, authToken, nil, *force, nil); err != nil {
 		return err
 	}
-	join := hubinvites.PendingJoin{PairingID: invite.PairingID, GlobalRoomID: invite.HubRoom.GlobalRoomID, LocalRoomID: local}
+	join := hubinvites.PendingJoin{PairingID: invite.PairingID, GlobalRoomID: invite.HubRoom.GlobalRoomID, LocalRoomID: local, Exp: invite.Exp}
 	if err := hubinvites.Open(app.KeysDirForConfigPath(path)).AddJoin(join); err != nil {
 		return err
 	}

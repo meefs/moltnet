@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/noopolis/moltnet/internal/app"
 	moltnetclient "github.com/noopolis/moltnet/internal/client"
+	"github.com/noopolis/moltnet/internal/hubinvites"
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
@@ -133,6 +135,10 @@ func runRoomMembers(ctx context.Context, args []string) error {
 	}
 	info, err := resolved.client.RoomHub(ctx, values[0])
 	if err != nil {
+		if pending, ok := pendingJoinFor(resolved.path, values[0]); ok {
+			printPendingJoin(pending)
+			return nil
+		}
 		return notSharedError(values[0], err)
 	}
 	fmt.Fprintf(stdout, "shared room %s (home: %s, epoch %d, history %s)\n", info.LocalRoomID, info.HomeNetworkID, info.MembershipEpoch, info.History)
@@ -211,4 +217,38 @@ func notSharedError(roomID string, err error) error {
 		return fmt.Errorf("room %q is not a shared room here (share it with `moltnet room share %s`, or join one with `moltnet room join <code>`)", roomID, roomID)
 	}
 	return err
+}
+
+// pendingJoinFor finds the `moltnet room join` this network recorded for a
+// local room id that the server has not finished.
+func pendingJoinFor(configPath, localRoomID string) (hubinvites.PendingJoin, bool) {
+	joins, err := hubinvites.Open(app.KeysDirForConfigPath(configPath)).Joins()
+	if err != nil {
+		return hubinvites.PendingJoin{}, false
+	}
+	for _, join := range joins {
+		local := join.LocalRoomID
+		if local == "" {
+			_, local, _ = protocol.ParseGlobalRoomID(join.GlobalRoomID)
+		}
+		if local == localRoomID {
+			return join, true
+		}
+	}
+	return hubinvites.PendingJoin{}, false
+}
+
+func printPendingJoin(join hubinvites.PendingJoin) {
+	switch {
+	case join.Status == hubinvites.JoinExpired:
+		fmt.Fprintf(stdout, "join of %s expired: the invite ran out before the home admitted this network; ask the home for a new invite\n", join.GlobalRoomID)
+	default:
+		fmt.Fprintf(stdout, "join of %s is pending: the server finishes it once the room link is live\n", join.GlobalRoomID)
+		if !join.Exp.IsZero() {
+			fmt.Fprintf(stdout, "  the invite expires %s\n", join.Exp.Format(time.RFC3339))
+		}
+	}
+	if join.LastError != "" {
+		fmt.Fprintf(stdout, "  last attempt: %s\n", join.LastError)
+	}
 }

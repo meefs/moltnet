@@ -69,7 +69,8 @@ func TestRoomInviteAndJoinWriteRoomLinksGrantsAndPendingJoins(t *testing.T) {
 		t.Fatalf("lab's pin for the home = %#v", pin)
 	}
 	joins, _ := hubinvites.Open(netkeys.DirForConfig(labPath)).Joins()
-	if len(joins) != 1 || joins[0].GlobalRoomID != global || joins[0].LocalRoomID != "home-research" || joins[0].PairingID != "room-lab" {
+	if len(joins) != 1 || joins[0].GlobalRoomID != global || joins[0].LocalRoomID != "home-research" || joins[0].PairingID != "room-lab" ||
+		!joins[0].Exp.Equal(invite.Exp) {
 		t.Fatalf("pending joins = %#v", joins)
 	}
 }
@@ -87,5 +88,34 @@ func TestRoomJoinRefusesAPairingInvite(t *testing.T) {
 	err := run(context.Background(), []string{"room", "join", extractInviteCode(t, output), "--config", other}, "test")
 	if err == nil || !strings.Contains(err.Error(), "moltnet pair") {
 		t.Fatalf("room join with a pairing invite: %v", err)
+	}
+}
+
+func TestRoomMembersShowsAPendingOrExpiredJoin(t *testing.T) {
+	labPath := writeMoltnetConfig(t, t.TempDir(), "lab-net", "Lab")
+	server := httptest.NewServer(http.NotFoundHandler())
+	defer server.Close()
+	invites := hubinvites.Open(app.KeysDirForConfigPath(labPath))
+	global := "sha256:" + strings.Repeat("ab", 32) + "/research"
+	if err := invites.AddJoin(hubinvites.PendingJoin{PairingID: "room-lab", GlobalRoomID: global, Exp: time.Now().Add(time.Hour), LastError: "paired network returned HTTP 403 Forbidden"}); err != nil {
+		t.Fatal(err)
+	}
+	members := func() string {
+		return captureStdout(t, func() {
+			if err := run(context.Background(), []string{"room", "members", "research", "--config", labPath, "--base-url", server.URL}, "test"); err != nil {
+				t.Fatalf("room members: %v", err)
+			}
+		})
+	}
+	if output := members(); !strings.Contains(output, "is pending") || !strings.Contains(output, "HTTP 403") {
+		t.Fatalf("pending join output:\n%s", output)
+	}
+	joins, _ := invites.Joins()
+	joins[0].Status = hubinvites.JoinExpired
+	if err := invites.UpdateJoin(joins[0]); err != nil {
+		t.Fatal(err)
+	}
+	if output := members(); !strings.Contains(output, "expired") {
+		t.Fatalf("expired join output:\n%s", output)
 	}
 }

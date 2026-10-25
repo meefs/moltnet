@@ -3,6 +3,8 @@ package rooms
 import (
 	"context"
 
+	"github.com/noopolis/moltnet/internal/hubinvites"
+
 	"github.com/noopolis/moltnet/pkg/protocol"
 )
 
@@ -89,9 +91,24 @@ func (s *Service) finishPendingJoins(ctx context.Context) {
 		logHub(ctx, "").Warn("could not read pending hub room joins", "error", err)
 		return
 	}
+	now, err := s.now()
+	if err != nil {
+		return
+	}
 	for _, join := range joins {
+		if !join.Pending() {
+			continue // terminal: shown by `moltnet room members`, kept until removed
+		}
 		if _, joined, err := s.hubRoomByGlobal(ctx, join.GlobalRoomID); err == nil && joined {
 			_ = s.hubInvites.RemoveJoin(join.GlobalRoomID)
+			continue
+		}
+		if !join.Exp.IsZero() && !now.Before(join.Exp) {
+			join.Status = hubinvites.JoinExpired
+			if err := s.hubInvites.UpdateJoin(join); err != nil {
+				logHub(ctx, join.GlobalRoomID).Error("could not mark an expired pending join", "error", err)
+			}
+			logHub(ctx, join.GlobalRoomID).Warn("pending hub room join expired before the home admitted this network; it will not be retried", "pairing_id", join.PairingID)
 			continue
 		}
 		if _, err := s.findPairingByID(join.PairingID); err != nil {
@@ -100,6 +117,10 @@ func (s *Service) finishPendingJoins(ctx context.Context) {
 		view, err := s.joinHubRoom(ctx, HubJoinRequest{PairingID: join.PairingID, GlobalRoomID: join.GlobalRoomID, LocalRoomID: join.LocalRoomID, Admit: true})
 		if err != nil {
 			logHub(ctx, join.GlobalRoomID).Warn("pending hub room join not finished yet; will retry", "pairing_id", join.PairingID, "error", err)
+			if join.LastError != err.Error() {
+				join.LastError = err.Error()
+				_ = s.hubInvites.UpdateJoin(join)
+			}
 			continue
 		}
 		if err := s.hubInvites.RemoveJoin(join.GlobalRoomID); err != nil {
