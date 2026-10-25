@@ -101,7 +101,7 @@ func buildMissingCloudflareTokenGuidance(id string) string {
 // apart over time.
 func cloudflareTokenCreationGuidance() string {
 	var b strings.Builder
-	b.WriteString("  No Cloudflare API token found, create one (pre-filled):\n")
+	b.WriteString("  No Cloudflare API token found. Create one (pre-filled):\n")
 	fmt.Fprintf(&b, "    %s\n", buildCloudflareTokenDeepLink(cloudflareTokenTemplateName))
 	if isOutputTerminal() {
 		fmt.Fprintf(&b, "    %s\n", dim("(opens pre-filled; just Continue → Create Token → copy)"))
