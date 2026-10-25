@@ -263,7 +263,9 @@ func (s *Service) hubMessage(ctx context.Context, in hubIngress) (protocol.Messa
 }
 
 func (s *Service) storeHubForward(ctx context.Context, in hubIngress, message protocol.Message, envelope store.MessageEnvelopeRecord, placed store.HubReceiptRecord, introduce *netkeys.Pin) (protocol.MessageAccepted, error) {
-	undo := func() {}
+	// The introduced pin is recorded once the forward is fully authorized
+	// and is never undone, so a failed append cannot remove a pin another
+	// accepted message was checked against.
 	if introduce != nil {
 		pin, created, err := s.keyPins.PinKeyCreated(*introduce)
 		switch {
@@ -273,12 +275,7 @@ func (s *Service) storeHubForward(ctx context.Context, in hubIngress, message pr
 			return protocol.MessageAccepted{}, trustStoreUnavailableError(err)
 		case created:
 			logHub(ctx, in.hub.GlobalRoomID).Info("pinned a network key introduced by the room home", "network_id", pin.NetworkID, "fingerprint", pin.Fingerprint)
-			undo = func() { _ = s.keyPins.ForgetExact(pin) }
 		}
 	}
-	accepted, err := s.appendHubMessage(ctx, in.request, message, envelope, &placed, nil)
-	if err != nil && !errors.Is(err, store.ErrDuplicateMessage) {
-		undo()
-	}
-	return accepted, err
+	return s.appendHubMessage(ctx, in.request, message, envelope, &placed, nil)
 }

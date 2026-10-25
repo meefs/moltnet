@@ -49,8 +49,8 @@ This package contains the core communication model.
 - `envelope_verification.go` verifies inbound pairing messages after
   `validateSenderIdentity`: strict parse, signature, origin, exact match with
   the delivered request, and the pin for the origin network. First contact
-  pins only after authorization (`commitFirstContactPin`, undone if the append
-  fails): verified over a config-bound credential, else unconfirmed. Pinned
+  pins only after authorization (`commitFirstContactPin`, never undone: a
+  concurrent accepted message may rely on it): verified over a config-bound credential, else unconfirmed. Pinned
   origins may not send unsigned.
 - Conflicting envelopes for one origin tuple are rejected in the store
   (`store.ErrEnvelopeConflict`, 409), never acknowledged as duplicates.

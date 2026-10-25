@@ -15,9 +15,9 @@ import (
 )
 
 // inboundEnvelope is a verified envelope plus the first-contact pin it
-// would create. The pin is written only after the message is authorized,
-// immediately before the append (commitFirstContactPin), and undone if the
-// append fails, so a refused message can never leave a pin behind.
+// would create. The pin is written only after the message is authorized
+// (commitFirstContactPin), so a refused message never leaves a pin behind,
+// and it is never undone: an accepted message may already rely on it.
 type inboundEnvelope struct {
 	record       store.MessageEnvelopeRecord
 	firstContact *netkeys.Pin
@@ -127,17 +127,19 @@ func signatureStateForTrust(trust string) (string, bool) {
 	return "", false
 }
 
-// commitFirstContactPin writes an authorized message's first-contact pin.
-// The returned undo removes exactly that pin if the append then fails.
-func (s *Service) commitFirstContactPin(ctx context.Context, inbound *inboundEnvelope) (func(), error) {
-	noop := func() {}
+// commitFirstContactPin writes an authorized message's first-contact pin
+// (and its pairing binding). It is never undone: by now the credential is
+// bound to the origin and the signature verified, so a later append failure
+// says nothing about the key, while undoing could remove a pin another
+// concurrently accepted message was verified against.
+func (s *Service) commitFirstContactPin(ctx context.Context, inbound *inboundEnvelope) error {
 	if inbound != nil && inbound.bindPairing != "" {
 		if err := s.keyPins.BindPairing(inbound.bindPairing, inbound.record.OriginNetworkID); err != nil {
-			return noop, trustStoreUnavailableError(err)
+			return trustStoreUnavailableError(err)
 		}
 	}
 	if inbound == nil || inbound.firstContact == nil {
-		return noop, nil
+		return nil
 	}
 	proposed := *inbound.firstContact
 	logger := observability.Logger(ctx, "rooms.signing", "origin_network_id", proposed.NetworkID, "pairing_id", proposed.SourceID)
@@ -146,21 +148,16 @@ func (s *Service) commitFirstContactPin(ctx context.Context, inbound *inboundEnv
 	case errors.Is(err, netkeys.ErrPinConflict):
 		// A concurrent first contact pinned a different key first.
 		logger.Warn("rejecting message signed by a key that conflicts with the pinned key", "offered_fingerprint", proposed.Fingerprint)
-		return noop, signatureRejectedError(fmt.Sprintf("network %q is pinned to a different key", proposed.NetworkID))
+		return signatureRejectedError(fmt.Sprintf("network %q is pinned to a different key", proposed.NetworkID))
 	case err != nil:
 		logger.Error("could not pin network key at first contact", "error", err)
-		return noop, trustStoreUnavailableError(err)
+		return trustStoreUnavailableError(err)
 	}
 	if state, ok := signatureStateForTrust(pin.Trust); ok {
 		inbound.record.State = state
 	}
-	if !created {
-		return noop, nil
+	if created {
+		logger.Info("pinned network key at first contact over the pairing", "fingerprint", pin.Fingerprint, "trust", pin.Trust)
 	}
-	logger.Info("pinned network key at first contact over the pairing", "fingerprint", pin.Fingerprint, "trust", pin.Trust)
-	return func() {
-		if err := s.keyPins.ForgetExact(pin); err != nil {
-			logger.Error("could not undo a first-contact pin after the message was not stored", "error", err)
-		}
-	}, nil
+	return nil
 }
