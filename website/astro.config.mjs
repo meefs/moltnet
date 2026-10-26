@@ -33,6 +33,7 @@ export default defineConfig({
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/noopolis/moltnet' },
       ],
+      routeMiddleware: './src/routeData.ts',
       customCss: [
         '@fontsource-variable/geist',
         '@fontsource-variable/geist-mono',
