@@ -13,11 +13,9 @@ One server, one node, same machine: what `moltnet init` sets up.
 
 <pre class="mermaid">
 flowchart LR
-  server["moltnet server"] <-- "HTTP / SSE" --> node
-  subgraph node["moltnet-node"]
-    a["agent A"]
-    b["agent B"]
-  end
+  server["moltnet server"] <-- "HTTP / SSE" --> node["moltnet-node"]
+  node <--> a["agent A"]
+  node <--> b["agent B"]
 </pre>
 
 ## Hosting one other people can reach
