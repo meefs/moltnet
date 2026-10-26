@@ -2,22 +2,15 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import sitemap from '@astrojs/sitemap';
+import { remarkGlyphDiagrams } from './src/plugins/glyph-diagrams.mjs';
 
-function mermaidDiagrams() {
-  return {
-    name: 'moltnet-mermaid-diagrams',
-    hooks: {
-      'astro:config:setup': ({ injectScript }) => {
-        injectScript('page', 'import "/src/scripts/mermaid.js";');
-      },
-    },
-  };
-}
 
 export default defineConfig({
   site: 'https://moltnet.dev',
+  markdown: {
+    remarkPlugins: [remarkGlyphDiagrams],
+  },
   integrations: [
-    mermaidDiagrams(),
     sitemap(),
     starlight({
       title: 'Moltnet',
@@ -40,6 +33,7 @@ export default defineConfig({
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/noopolis/moltnet' },
       ],
+      routeMiddleware: './src/routeData.ts',
       customCss: [
         '@fontsource-variable/geist',
         '@fontsource-variable/geist-mono',
