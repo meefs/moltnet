@@ -51,19 +51,32 @@ nav.sidebar a[aria-current='page']:hover { background: var(--sl-color-accent-low
 /* Header hairline. */
 header.header { border-bottom-color: var(--line); }
 
-/* Mermaid diagrams */
-pre.mermaid {
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin: 1.75rem 0;
-  overflow: visible;
-  text-align: center;
-  font-family: var(--sans);
-  color: var(--sl-color-gray-3);
+
+/* Glyphcss diagrams, laid out at several widths at build time. The container
+   query rules beside each figure show the widest layout that fits. */
+.sl-markdown-content figure.glyph-diagram {
+  container-type: inline-size;
+  margin: 2rem 0;
+  font-family: 'Geist Mono Variable', ui-monospace, monospace;
+  font-size: 0.78rem;
 }
-pre.mermaid svg { max-width: 100%; height: auto; margin: 0 auto; }
-pre.mermaid svg text,
-pre.mermaid svg .label text,
-pre.mermaid svg .nodeLabel,
-pre.mermaid svg .edgeLabel { font-family: var(--sans) !important; }
+figure.glyph-diagram > pre {
+  display: none;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 1.25rem 2ch;
+  overflow-x: auto;
+  background: var(--sl-color-gray-6);
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+  font: inherit;
+  /* Grow a narrow layout to fill the column; Geist Mono glyphs are about 0.6em wide. */
+  font-size: clamp(0.62rem, calc(100cqw / var(--columns, 96) / 0.62), 0.95rem);
+  line-height: 1.25;
+  color: var(--sl-color-gray-2);
+}
+figure.glyph-diagram > pre:first-child { display: block; }
+figure.glyph-diagram .g-frame { color: var(--sl-color-accent); }
+figure.glyph-diagram .g-label { color: var(--sl-color-gray-1); }
+figure.glyph-diagram .g-edge { color: var(--sl-color-gray-3); }
